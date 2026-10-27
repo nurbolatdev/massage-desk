@@ -9,6 +9,8 @@ spring:
       hibernate.jdbc.time_zone: UTC
   flyway:
     locations: classpath:db/migration
+    # a database seeded earlier must still start without the "seed" profile
+    ignore-migration-patterns: "*:future,repeatable:missing"
   docker:
     compose:
       lifecycle-management: start-only
