@@ -14,5 +14,8 @@
     "check": "bash scripts/check.sh",
     "brand": "node scripts/brand/generate.mjs",
     "postinstall": "npm run build:shared"
+  },
+  "devDependencies": {
+    "sharp": "^0.35.5"
   }
 }

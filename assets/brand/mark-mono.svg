@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FAF6EF"/><stop offset="1" stop-color="#ECE0CE"/></linearGradient>
+<linearGradient id="s1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1E8A72"/><stop offset="1" stop-color="#0E4F45"/></linearGradient>
+<linearGradient id="s2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#34A88C"/><stop offset="1" stop-color="#1F6F5C"/></linearGradient>
+<linearGradient id="s3" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7FD6BE"/><stop offset="1" stop-color="#46B095"/></linearGradient>
+<linearGradient id="dot" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFB25B"/><stop offset="1" stop-color="#F0603C"/></linearGradient>
+<linearGradient id="dark" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#14362F"/><stop offset="1" stop-color="#0D221E"/></linearGradient>
+</defs><g fill="#14332E" transform="translate(0,-10)"><ellipse cx="512" cy="742" rx="292" ry="104"/><ellipse cx="512" cy="566" rx="214" ry="86"/><ellipse cx="512" cy="414" rx="140" ry="64"/><circle cx="512" cy="282" r="58"/></g></svg>
