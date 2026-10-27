@@ -1,0 +1,21 @@
+{
+  "name": "massage-desk",
+  "private": true,
+  "workspaces": [
+    "packages/shared",
+    "apps/mobile"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build:shared": "npm run build -w @massage-desk/shared",
+    "dev:mobile": "npm run start -w @massage-desk/mobile",
+    "check": "bash scripts/check.sh",
+    "brand": "node scripts/brand/generate.mjs",
+    "postinstall": "npm run build:shared"
+  },
+  "devDependencies": {
+    "sharp": "^0.35.5"
+  }
+}
