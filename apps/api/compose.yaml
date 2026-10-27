@@ -1,0 +1,10 @@
+# Local development database. Started automatically by `./mvnw spring-boot:run`.
+services:
+  postgres:
+    image: 'postgres:17-alpine'
+    environment:
+      - 'POSTGRES_DB=massagedesk'
+      - 'POSTGRES_USER=massagedesk'
+      - 'POSTGRES_PASSWORD=massagedesk'
+    ports:
+      - '5432'
