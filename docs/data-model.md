@@ -4,6 +4,15 @@ Source of truth: Flyway migrations in [`apps/api/src/main/resources/db`](../apps
 
 - `migration/` — portable PostgreSQL schema (local, tests, Supabase).
 - `migration-supabase/` — only with profile `supabase`: link to Supabase Auth, row level security, realtime.
+- `seed-dev/` — only with profile `seed`: placeholder services and working hours (repeatable, idempotent). Never enable on prod.
+
+## Connecting to the Supabase dev project
+1. In the project dashboard open **Connect** and copy the **session pooler** connection details (port 5432).
+2. Create `apps/api/.env` (git-ignored) from `apps/api/.env.example`:
+   `DATABASE_URL=jdbc:postgresql://<pooler-host>:5432/postgres?sslmode=require`, `DATABASE_USER=postgres.<project-ref>`, `DATABASE_PASSWORD`, `SUPABASE_URL`.
+3. Run from `apps/api`: `./mvnw spring-boot:run -Dspring-boot.run.profiles=supabase,seed`.
+   The `supabase` profile reads `.env` and applies both migration locations; `seed` adds the dev data.
+   For prod use `supabase` only.
 
 All timestamps are `timestamptz` (UTC); apps display them in `settings.time_zone`.
 

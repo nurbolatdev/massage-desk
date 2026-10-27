@@ -9,6 +9,8 @@ spring:
       hibernate.jdbc.time_zone: UTC
   flyway:
     locations: classpath:db/migration
+    # a database seeded earlier must still start without the "seed" profile
+    ignore-migration-patterns: "*:future,repeatable:missing"
   docker:
     compose:
       lifecycle-management: start-only
@@ -33,3 +35,27 @@ management:
 app:
   whatsapp:
     verify-token: ${WHATSAPP_VERIFY_TOKEN:}
+
+# Flyway locations by profile: "supabase" adds Supabase-only migrations,
+# "seed" adds development seed data (never enable it on prod).
+---
+spring:
+  config:
+    activate:
+      on-profile: seed & !supabase
+  flyway:
+    locations: classpath:db/migration,classpath:db/seed-dev
+---
+spring:
+  config:
+    activate:
+      on-profile: supabase & !seed
+  flyway:
+    locations: classpath:db/migration,classpath:db/migration-supabase
+---
+spring:
+  config:
+    activate:
+      on-profile: supabase & seed
+  flyway:
+    locations: classpath:db/migration,classpath:db/migration-supabase,classpath:db/seed-dev

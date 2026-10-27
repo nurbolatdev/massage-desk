@@ -1,12 +1,13 @@
 # Profile for Supabase-hosted databases (dev and prod projects).
-# Adds Supabase-only migrations: auth foreign keys, row level security, realtime.
+# Supabase-only migrations (db/migration-supabase) are added in application.yml.
+# Connection settings are read from apps/api/.env (run the API from apps/api).
 spring:
+  config:
+    import: optional:file:.env[.properties]
   datasource:
     url: ${DATABASE_URL}
     username: ${DATABASE_USER}
     password: ${DATABASE_PASSWORD}
-  flyway:
-    locations: classpath:db/migration,classpath:db/migration-supabase
   docker:
     compose:
       enabled: false
