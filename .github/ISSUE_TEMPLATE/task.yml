@@ -1,0 +1,31 @@
+name: Задача
+description: Одна задача = одна ветка = один PR
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: Цель
+      description: Что должно быть правдой, когда задача сделана
+    validations:
+      required: true
+  - type: input
+    id: branch
+    attributes:
+      label: Ветка
+      placeholder: feature/<область>-<суть>
+  - type: textarea
+    id: commits
+    attributes:
+      label: Планируемые коммиты
+      value: |
+        - `type(scope): summary`
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Критерии приёмки
+      value: |
+        - [ ]
+  - type: textarea
+    id: deps
+    attributes:
+      label: Зависит от

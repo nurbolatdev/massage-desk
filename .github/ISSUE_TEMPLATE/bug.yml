@@ -1,0 +1,25 @@
+name: Баг
+description: Что-то работает не так
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: Что случилось
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Как повторить
+      value: |
+        1.
+  - type: textarea
+    id: expected
+    attributes:
+      label: Как должно быть
+  - type: dropdown
+    id: where
+    attributes:
+      label: Где
+      options: [Приложение мастера, WhatsApp-бот, Админка, API, Другое]
