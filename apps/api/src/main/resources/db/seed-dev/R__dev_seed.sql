@@ -5,9 +5,9 @@
 insert into services (name, duration_min, price, sort_order)
 select v.name, v.duration_min, v.price, v.sort_order
 from (values
-    ('Classic massage',   60, 150000, 1),
-    ('Back massage',      30,  90000, 2),
-    ('Full body massage', 90, 220000, 3)
+    ('Классический массаж', 60, 150000, 1),
+    ('Массаж спины',        30,  90000, 2),
+    ('Массаж всего тела',   90, 220000, 3)
 ) as v (name, duration_min, price, sort_order)
 where not exists (select 1 from services s where s.name = v.name);
 
