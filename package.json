@@ -2,7 +2,8 @@
   "name": "massage-desk",
   "private": true,
   "workspaces": [
-    "packages/shared"
+    "packages/shared",
+    "apps/mobile"
   ],
   "engines": {
     "node": ">=22"
