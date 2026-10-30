@@ -9,6 +9,7 @@ import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -96,16 +97,16 @@ class ScheduleRepositoriesTests {
 
     @Test
     void readsTimeOffInsertedWithSqlOffsets() {
+        UUID id = UUID.randomUUID();
         jdbc.update("""
                 insert into time_off (id, period, reason)
-                values (gen_random_uuid(), tstzrange('2026-11-02 10:00+05', '2026-11-02 18:00+05'), 'Trip')
-                """);
+                values (?, tstzrange('2026-11-02 10:00+05', '2026-11-02 18:00+05'), 'Trip')
+                """, id);
         entityManager.clear();
 
-        List<TimeOff> all = timeOff.findAll();
+        TimeOff found = timeOff.findById(id).orElseThrow();
 
-        assertThat(all).hasSize(1);
-        assertThat(all.get(0).getPeriod()).isEqualTo(new TimeRange(
+        assertThat(found.getPeriod()).isEqualTo(new TimeRange(
                 Instant.parse("2026-11-02T05:00:00Z"), Instant.parse("2026-11-02T13:00:00Z")));
     }
 }

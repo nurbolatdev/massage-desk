@@ -69,4 +69,13 @@ class TimeRangeConverterTests {
         assertThatThrownBy(() -> new TimeRange(start, start.minusSeconds(1)))
                 .isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    void timeRangeTruncatesBoundsToMicroseconds() {
+        TimeRange range = new TimeRange(
+                Instant.parse("2026-11-02T05:00:00.123456789Z"), Instant.parse("2026-11-02T06:00:00.987654321Z"));
+
+        assertThat(range.start()).isEqualTo(Instant.parse("2026-11-02T05:00:00.123456Z"));
+        assertThat(range.end()).isEqualTo(Instant.parse("2026-11-02T06:00:00.987654Z"));
+    }
 }

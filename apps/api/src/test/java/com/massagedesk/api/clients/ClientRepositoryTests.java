@@ -39,6 +39,7 @@ class ClientRepositoryTests {
         clients.saveAndFlush(new Client("+998900000102", "First"));
 
         assertThatThrownBy(() -> clients.saveAndFlush(new Client("+998900000102", "Second")))
-                .isInstanceOf(DataIntegrityViolationException.class);
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .rootCause().hasMessageContaining("clients_phone_key");
     }
 }
