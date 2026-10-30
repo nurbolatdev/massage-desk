@@ -56,17 +56,19 @@ class DomainEventRepositoryTests {
     void everyTypeAndActorPassesDatabaseChecks() {
         DomainEventTypeConverter typeConverter = new DomainEventTypeConverter();
         EventActorConverter actorConverter = new EventActorConverter();
+        UUID batch = UUID.randomUUID();
         int expected = 0;
         for (DomainEventType type : DomainEventType.values()) {
             for (EventActor actor : EventActor.values()) {
-                jdbc.update("insert into events (type, entity_type, actor) values (?, ?, ?)",
-                        typeConverter.convertToDatabaseColumn(type), type.entityType(),
+                jdbc.update("insert into events (type, entity_type, entity_id, actor) values (?, ?, ?, ?)",
+                        typeConverter.convertToDatabaseColumn(type), type.entityType(), batch,
                         actorConverter.convertToDatabaseColumn(actor));
                 expected++;
             }
         }
 
-        Integer count = jdbc.queryForObject("select count(*) from events", Integer.class);
+        Integer count = jdbc.queryForObject("select count(*) from events where entity_id = ?",
+                Integer.class, batch);
 
         assertThat(count).isEqualTo(expected);
     }

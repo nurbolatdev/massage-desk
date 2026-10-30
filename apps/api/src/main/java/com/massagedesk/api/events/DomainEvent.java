@@ -24,21 +24,21 @@ public class DomainEvent {
     private UUID id;
 
     @Convert(converter = DomainEventTypeConverter.class)
-    @Column(name = "type", nullable = false)
+    @Column(name = "type", nullable = false, updatable = false)
     private DomainEventType type;
 
-    @Column(name = "entity_type", nullable = false)
+    @Column(name = "entity_type", nullable = false, updatable = false)
     private String entityType;
 
-    @Column(name = "entity_id")
+    @Column(name = "entity_id", updatable = false)
     private UUID entityId;
 
     @Convert(converter = EventActorConverter.class)
-    @Column(name = "actor", nullable = false)
+    @Column(name = "actor", nullable = false, updatable = false)
     private EventActor actor;
 
     /** JSON object text. */
-    @Column(name = "payload", nullable = false, columnDefinition = "jsonb")
+    @Column(name = "payload", nullable = false, columnDefinition = "jsonb", updatable = false)
     @ColumnTransformer(write = "cast(? as jsonb)")
     private String payload;
 

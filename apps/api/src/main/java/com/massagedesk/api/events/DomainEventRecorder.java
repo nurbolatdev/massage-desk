@@ -13,6 +13,9 @@ import tools.jackson.databind.json.JsonMapper;
  * is committed or rolled back together with the change it describes.
  *
  * <p>Payload conventions: snake_case keys, times as ISO-8601 strings, no personal data.
+ *
+ * <p>The returned event has its id; {@code createdAt} is filled in only after the persistence context
+ * is flushed.
  */
 @Service
 public class DomainEventRecorder {
