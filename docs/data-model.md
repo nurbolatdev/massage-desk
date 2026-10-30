@@ -70,3 +70,4 @@ constraint appointments_no_overlap
 - `webhook_logs` — incoming WhatsApp webhooks: signature check, processing status, error, raw payload.
 
 All three are indexed by `created_at`. The API writes them; on Supabase staff can only read them (RLS policy `staff_read`).
+Domain events are written by `DomainEventRecorder` inside the caller's transaction (propagation `MANDATORY`).

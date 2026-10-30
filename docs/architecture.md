@@ -38,9 +38,10 @@ flowchart TB
 ```
 com.massagedesk.api
 ├── schedule     free slot calculation, working hours, time off
-├── booking      appointments, conflicts, domain events
+├── booking      appointments, conflicts
+├── events       domain event log, written in the caller's transaction
 ├── clients      clients and notes
-├── messaging    WhatsApp webhook and client
+├── messaging    WhatsApp webhook and client, delivery log
 ├── bot          conversation flow (buttons)
 ├── ai           AI assistant: model client, tools, guardrails, run log
 ├── reminders    scheduled reminders
