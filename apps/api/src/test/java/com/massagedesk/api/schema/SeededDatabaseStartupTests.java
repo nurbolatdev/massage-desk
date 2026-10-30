@@ -2,6 +2,7 @@ package com.massagedesk.api.schema;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Map;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,7 +18,8 @@ import org.testcontainers.utility.DockerImageName;
 class SeededDatabaseStartupTests {
 
     private static final PostgreSQLContainer POSTGRES =
-            new PostgreSQLContainer(DockerImageName.parse("postgres:17-alpine"));
+            new PostgreSQLContainer(DockerImageName.parse("postgres:17-alpine"))
+                    .withTmpFs(Map.of("/var/lib/postgresql/data", "rw"));
 
     static {
         POSTGRES.start();
