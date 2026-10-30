@@ -13,6 +13,9 @@ Source of truth: Flyway migrations in [`apps/api/src/main/resources/db`](../apps
 3. Run from `apps/api`: `./mvnw spring-boot:run -Dspring-boot.run.profiles=supabase,seed`.
    The `supabase` profile reads `.env` and applies both migration locations; `seed` adds the dev data.
    For prod use `supabase` only.
+4. Once per Supabase project, in the SQL editor, close Flyway's own table to the REST API:
+   `alter table public.flyway_schema_history enable row level security;` (no policies on purpose).
+   It cannot be a migration: Flyway holds a lock on that table while migrating, so the statement times out.
 
 All timestamps are `timestamptz` (UTC); apps display them in `settings.time_zone`.
 
