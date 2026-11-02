@@ -1233,6 +1233,10 @@
       "ScheduleConflictProblem" : {
         "type" : "object",
         "properties" : {
+          "code" : {
+            "type" : "string",
+            "description" : "machine-readable reason, always APPOINTMENT_CONFLICT here"
+          },
           "conflicts" : {
             "type" : "array",
             "description" : "the confirmed appointments in the way, ordered by start",
@@ -1257,7 +1261,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "conflicts", "detail", "status" ]
+        "required" : [ "code", "conflicts", "detail", "status" ]
       },
       "ServiceResponse" : {
         "type" : "object",

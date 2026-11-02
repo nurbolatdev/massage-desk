@@ -181,6 +181,7 @@ describe("generated /working-hours types", () => {
       end: string;
     }>();
     expectTypeOf<Conflict["detail"]>().toEqualTypeOf<string>();
+    expectTypeOf<Conflict["code"]>().toEqualTypeOf<string>();
     expect(true).toBe(true);
   });
 });
@@ -227,6 +228,7 @@ describe("generated /time-off conflict types", () => {
       end: string;
     }>();
     expectTypeOf<Conflict["detail"]>().toEqualTypeOf<string>();
+    expectTypeOf<Conflict["code"]>().toEqualTypeOf<string>();
     expect(true).toBe(true);
   });
 });

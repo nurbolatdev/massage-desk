@@ -18,6 +18,29 @@ Every staff request sends `Authorization: Bearer <Supabase access token>`. The t
 
 Errors from the endpoints below use RFC 9457 problem details (`application/problem+json`).
 
+### Errors
+
+A request refused by a domain rule answers a problem detail with the usual members (`type`, `title`, `status`, `detail`, `instance`) and a machine-readable `code`. Clients should branch on `code`, not on the `detail` text. Validation and parsing errors raised by the framework (malformed body, wrong type, missing field) are plain problem details with status `400` and no `code`.
+
+| `code` | Status | `detail` |
+|---|---|---|
+| `CLIENT_NOT_FOUND` | 404 | `client not found` |
+| `SERVICE_NOT_FOUND` | 404 | `service not found` |
+| `APPOINTMENT_NOT_FOUND` | 404 | `appointment not found` |
+| `TIME_OFF_NOT_FOUND` | 404 | `time off not found` |
+| `INVALID_PHONE` | 400 | `invalid phone number` |
+| `UNKNOWN_TIME_ZONE` | 400 | `unknown time zone` |
+| `OUTSIDE_SCHEDULE` | 422 | `time is outside working hours, in time off or in the past` |
+| `INVALID_HOURS` | 422 | `block must start before it ends`, `blocks of one day must not overlap or touch` |
+| `INVALID_TIME_OFF` | 422 | `time off must start before it ends`, or the period is out of range |
+| `TIME_TAKEN` | 409 | `time is already booked` |
+| `NOT_CONFIRMED` | 409 | `appointment is <status>` |
+| `NOT_STARTED` | 409 | `appointment has not started yet` |
+| `PHONE_TAKEN` | 409 | `client with this phone already exists` |
+| `APPOINTMENT_CONFLICT` | 409 | `time off overlaps confirmed appointments` or `confirmed appointments are outside the new working hours`, with `conflicts` |
+
+The `422` title is `Unprocessable Content` (RFC 9110 name); the status code is `422`.
+
 To add a staff member, create the user in Supabase Auth, then run:
 
 ```sql

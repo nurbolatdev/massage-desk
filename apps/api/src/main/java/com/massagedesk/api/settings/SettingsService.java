@@ -58,11 +58,11 @@ public class SettingsService {
 
     private static ZoneId region(String id) {
         if (!ZoneId.getAvailableZoneIds().contains(id)) {
-            throw new SettingsException("unknown time zone");
+            throw new SettingsException(SettingsException.Reason.UNKNOWN_TIME_ZONE, "unknown time zone");
         }
         ZoneId zone = ZoneId.of(id);
         if (zone.getRules().isFixedOffset()) {
-            throw new SettingsException("unknown time zone");
+            throw new SettingsException(SettingsException.Reason.UNKNOWN_TIME_ZONE, "unknown time zone");
         }
         return zone;
     }

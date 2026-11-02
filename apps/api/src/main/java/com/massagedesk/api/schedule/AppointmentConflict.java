@@ -17,7 +17,7 @@ public record AppointmentConflict(
                 description = "ISO-8601 with the master's UTC offset")
         OffsetDateTime end) {
 
-    static AppointmentConflict from(ScheduleException.Conflict c) {
+    public static AppointmentConflict from(ScheduleException.Conflict c) {
         return new AppointmentConflict(c.appointmentId(), c.clientName(), c.start(), c.end());
     }
 }

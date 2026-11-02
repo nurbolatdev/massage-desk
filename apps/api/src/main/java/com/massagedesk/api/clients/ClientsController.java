@@ -26,7 +26,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 
 /** Client list, search, creation and edits for the master's app. Rules live in the service. */
 @Tag(name = "clients")
@@ -64,11 +63,7 @@ class ClientsController {
                     schema = @Schema(implementation = ProblemDetail.class)))
     @GetMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     ClientResponse getClient(@Parameter(description = "client id") @PathVariable UUID id) {
-        try {
-            return ClientResponse.from(clients.get(id));
-        } catch (ClientException e) {
-            throw http(e);
-        }
+        return ClientResponse.from(clients.get(id));
     }
 
     @Operation(summary = "Add a client")
@@ -83,12 +78,8 @@ class ClientsController {
     @ResponseStatus(HttpStatus.CREATED)
     ClientResponse createClient(@Valid @RequestBody CreateClientRequest request,
             @Parameter(hidden = true) Authentication authentication) {
-        try {
-            return ClientResponse.from(clients.create(
-                    request.phone(), request.name(), request.notes(), StaffActors.of(authentication)));
-        } catch (ClientException e) {
-            throw http(e);
-        }
+        return ClientResponse.from(clients.create(
+                request.phone(), request.name(), request.notes(), StaffActors.of(authentication)));
     }
 
     @Operation(summary = "Change a client's name or notes")
@@ -104,20 +95,7 @@ class ClientsController {
     ClientResponse updateClient(@Parameter(description = "client id") @PathVariable UUID id,
             @Valid @RequestBody UpdateClientRequest request,
             @Parameter(hidden = true) Authentication authentication) {
-        try {
-            return ClientResponse.from(clients.update(
-                    id, request.name(), request.notes(), StaffActors.of(authentication)));
-        } catch (ClientException e) {
-            throw http(e);
-        }
-    }
-
-    private static ResponseStatusException http(ClientException e) {
-        HttpStatus status = switch (e.reason()) {
-            case CLIENT_NOT_FOUND -> HttpStatus.NOT_FOUND;
-            case INVALID_PHONE -> HttpStatus.BAD_REQUEST;
-            case PHONE_TAKEN -> HttpStatus.CONFLICT;
-        };
-        return new ResponseStatusException(status, e.getMessage(), e);
+        return ClientResponse.from(clients.update(
+                id, request.name(), request.notes(), StaffActors.of(authentication)));
     }
 }

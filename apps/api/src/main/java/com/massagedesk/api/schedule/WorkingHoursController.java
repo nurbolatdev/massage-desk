@@ -52,12 +52,8 @@ class WorkingHoursController {
     @PutMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     WorkingHoursResponse replaceWorkingHours(@Valid @RequestBody WorkingHoursRequest request,
             @Parameter(hidden = true) Authentication authentication) {
-        try {
-            return WorkingHoursResponse.from(service.replaceWeek(
-                    request.blocks().stream().map(WorkingBlock::toBlock).toList(),
-                    Boolean.TRUE.equals(request.force()), StaffActors.of(authentication)));
-        } catch (ScheduleException e) {
-            throw ScheduleErrors.http(e);
-        }
+        return WorkingHoursResponse.from(service.replaceWeek(
+                request.blocks().stream().map(WorkingBlock::toBlock).toList(),
+                Boolean.TRUE.equals(request.force()), StaffActors.of(authentication)));
     }
 }

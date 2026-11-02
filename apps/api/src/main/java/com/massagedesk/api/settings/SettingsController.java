@@ -8,7 +8,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.security.core.Authentication;
@@ -17,7 +16,6 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 
 /** Time zone, address and the bot switch. */
 @Tag(name = "settings")
@@ -46,12 +44,8 @@ class SettingsController {
     @PatchMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     SettingsResponse updateSettings(@Valid @RequestBody UpdateSettingsRequest request,
             @Parameter(hidden = true) Authentication authentication) {
-        try {
-            return SettingsResponse.from(
-                    service.update(request.timeZone(), request.address(), request.botEnabled(),
-                    StaffActors.of(authentication)));
-        } catch (SettingsException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
-        }
+        return SettingsResponse.from(
+                service.update(request.timeZone(), request.address(), request.botEnabled(),
+                StaffActors.of(authentication)));
     }
 }

@@ -19,7 +19,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 
 /** Appointment commands for the master's app. Rules live in the service; this maps them to HTTP. */
 @Tag(name = "booking")
@@ -52,13 +51,9 @@ class AppointmentsController {
     @ResponseStatus(HttpStatus.CREATED)
     AppointmentResponse createAppointment(@Valid @RequestBody CreateAppointmentRequest request,
             @Parameter(hidden = true) Authentication authentication) {
-        try {
-            return AppointmentResponse.from(appointments.create(
-                    request.clientId(), request.serviceId(), request.start().toInstant(),
-                    AppointmentSource.MANUAL, StaffActors.of(authentication)));
-        } catch (BookingException e) {
-            throw http(e);
-        }
+        return AppointmentResponse.from(appointments.create(
+                request.clientId(), request.serviceId(), request.start().toInstant(),
+                AppointmentSource.MANUAL, StaffActors.of(authentication)));
     }
 
     @Operation(summary = "Move an appointment to another start, keeping its length")
@@ -81,11 +76,7 @@ class AppointmentsController {
             @Parameter(description = "appointment id") @PathVariable UUID id,
             @Valid @RequestBody RescheduleAppointmentRequest request,
             @Parameter(hidden = true) Authentication authentication) {
-        try {
-            return AppointmentResponse.from(appointments.reschedule(id, request.start().toInstant(), StaffActors.of(authentication)));
-        } catch (BookingException e) {
-            throw http(e);
-        }
+        return AppointmentResponse.from(appointments.reschedule(id, request.start().toInstant(), StaffActors.of(authentication)));
     }
 
     @Operation(summary = "Cancel an appointment")
@@ -103,11 +94,7 @@ class AppointmentsController {
     AppointmentResponse cancelAppointment(
             @Parameter(description = "appointment id") @PathVariable UUID id,
             @Parameter(hidden = true) Authentication authentication) {
-        try {
-            return AppointmentResponse.from(appointments.cancel(id, StaffActors.of(authentication)));
-        } catch (BookingException e) {
-            throw http(e);
-        }
+        return AppointmentResponse.from(appointments.cancel(id, StaffActors.of(authentication)));
     }
 
     @Operation(summary = "Mark that the client did not come")
@@ -125,19 +112,6 @@ class AppointmentsController {
     AppointmentResponse markNoShow(
             @Parameter(description = "appointment id") @PathVariable UUID id,
             @Parameter(hidden = true) Authentication authentication) {
-        try {
-            return AppointmentResponse.from(appointments.markNoShow(id, StaffActors.of(authentication)));
-        } catch (BookingException e) {
-            throw http(e);
-        }
-    }
-
-    private static ResponseStatusException http(BookingException e) {
-        HttpStatus status = switch (e.reason()) {
-            case CLIENT_NOT_FOUND, SERVICE_NOT_FOUND, APPOINTMENT_NOT_FOUND -> HttpStatus.NOT_FOUND;
-            case OUTSIDE_SCHEDULE -> HttpStatus.UNPROCESSABLE_CONTENT;
-            case TIME_TAKEN, NOT_CONFIRMED, NOT_STARTED -> HttpStatus.CONFLICT;
-        };
-        return new ResponseStatusException(status, e.getMessage(), e);
+        return AppointmentResponse.from(appointments.markNoShow(id, StaffActors.of(authentication)));
     }
 }

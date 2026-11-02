@@ -376,6 +376,8 @@ export interface components {
             start: string;
         };
         ScheduleConflictProblem: {
+            /** @description machine-readable reason, always APPOINTMENT_CONFLICT here */
+            code: string;
             /** @description the confirmed appointments in the way, ordered by start */
             conflicts: components["schemas"]["AppointmentConflict"][];
             detail: string;

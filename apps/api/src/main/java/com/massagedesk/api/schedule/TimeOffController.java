@@ -83,13 +83,9 @@ class TimeOffController {
     @ResponseStatus(HttpStatus.CREATED)
     TimeOffResponse createTimeOff(@Valid @RequestBody CreateTimeOffRequest request,
             @Parameter(hidden = true) Authentication authentication) {
-        try {
-            return TimeOffResponse.from(service.create(
-                    request.start().toInstant(), request.end().toInstant(), request.reason(),
-                    Boolean.TRUE.equals(request.force()), StaffActors.of(authentication)));
-        } catch (ScheduleException e) {
-            throw ScheduleErrors.http(e);
-        }
+        return TimeOffResponse.from(service.create(
+                request.start().toInstant(), request.end().toInstant(), request.reason(),
+                Boolean.TRUE.equals(request.force()), StaffActors.of(authentication)));
     }
 
     @Operation(summary = "Remove time off")
@@ -104,10 +100,6 @@ class TimeOffController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void deleteTimeOff(@Parameter(description = "time off id") @PathVariable UUID id,
             @Parameter(hidden = true) Authentication authentication) {
-        try {
-            service.delete(id, StaffActors.of(authentication));
-        } catch (ScheduleException e) {
-            throw ScheduleErrors.http(e);
-        }
+        service.delete(id, StaffActors.of(authentication));
     }
 }

@@ -68,11 +68,7 @@ class ServicesController {
     ServiceResponse updateService(@Parameter(description = "service id") @PathVariable UUID id,
             @Valid @RequestBody UpdateServiceRequest request,
             @Parameter(hidden = true) Authentication authentication) {
-        try {
-            return ServiceResponse.from(catalog.update(id, request.name(), request.durationMin(),
-                    request.price(), request.sortOrder(), request.active(), StaffActors.of(authentication)));
-        } catch (ScheduleException e) {
-            throw ScheduleErrors.http(e);
-        }
+        return ServiceResponse.from(catalog.update(id, request.name(), request.durationMin(),
+                request.price(), request.sortOrder(), request.active(), StaffActors.of(authentication)));
     }
 }

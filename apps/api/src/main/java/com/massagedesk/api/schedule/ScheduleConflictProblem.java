@@ -14,6 +14,9 @@ public record ScheduleConflictProblem(
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String detail,
         String instance,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED,
+                description = "machine-readable reason, always APPOINTMENT_CONFLICT here")
+        String code,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED,
                 description = "the confirmed appointments in the way, ordered by start")
         List<AppointmentConflict> conflicts) {
 }
