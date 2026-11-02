@@ -143,6 +143,14 @@ class ServicesControllerTests {
     }
 
     @Test
+    void patchAcceptsANameWithALineBreakLikeCreate() throws Exception {
+        String name = "{\"name\":\"Line\\nbreak\",\"durationMin\":60,\"price\":10}";
+        postService(name).andExpect(status().isCreated());
+        String id = createId("{\"name\":\"Plain\",\"durationMin\":60,\"price\":10}");
+        patchService(id, "{\"name\":\"Line\\nbreak\"}").andExpect(status().isOk());
+    }
+
+    @Test
     void unknownServiceIsNotFound() throws Exception {
         patchService(UUID.randomUUID().toString(), "{\"active\":false}")
                 .andExpect(status().isNotFound())

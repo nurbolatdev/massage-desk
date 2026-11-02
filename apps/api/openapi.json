@@ -1313,7 +1313,7 @@
             "type" : "string",
             "maxLength" : 100,
             "minLength" : 1,
-            "pattern" : ".*\\S.*"
+            "pattern" : "[\\s\\S]*\\S[\\s\\S]*"
           },
           "price" : {
             "type" : "number",

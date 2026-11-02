@@ -157,14 +157,14 @@ There is no delete: appointments refer to services, so a service is deactivated 
 {"id":"<uuid>","start":"2026-11-03T00:00:00+05:00","end":"2026-11-04T00:00:00+05:00","reason":null}
 ```
 
-`GET /time-off?from=2026-11-03&to=2026-11-05` lists time off that touches the local days `from..to`, both inclusive, ordered by start (a vacation that began earlier is included). Both dates are required; at most 366 days.
+`GET /time-off?from=2026-11-03&to=2026-11-05` lists time off that touches the local days `from..to`, both inclusive, ordered by start (a vacation that began earlier is included). Both dates are required, must lie between 2000-01-01 and 2100-12-31, and cover at most 366 days.
 
 `DELETE /time-off/{id}` answers `204`. There is no edit: delete and create again.
 
 - Periods may overlap each other. Time off over confirmed appointments is allowed and the appointments are kept; the app warns the master and offers to move or cancel them.
 - Time off hides the time from `/slots` and refuses new appointments there at once.
 
-- `400` (`application/problem+json`): missing or invalid field, id or date; `from must not be after to`; `range must be at most 366 days`.
+- `400` (`application/problem+json`): missing or invalid field, id or date; `from must not be after to`; `range must be at most 366 days`; `dates must be within 2000-01-01..2100-12-31`.
 - `404` (`application/problem+json`): `time off not found`.
 - `422` (`application/problem+json`): `time off must start before it ends`; `time off must end in the future, start within two years and last at most 366 days`.
 
@@ -176,7 +176,7 @@ There is no delete: appointments refer to services, so a service is deactivated 
 {"timeZone":"Asia/Tashkent","address":null,"botEnabled":true}
 ```
 
-- `timeZone` must be a region id such as `Asia/Tashkent`. Fixed offsets like `+05:00` are refused because they ignore daylight saving.
+- `timeZone` must be a region id such as `Asia/Tashkent`. Fixed offsets (`+05:00`, `UTC`, `Etc/GMT+5`, `EST`) are refused because they ignore daylight saving.
 - Changing the zone keeps working hours as local times (the same 10:00 in the new zone) and does not move booked appointments, which keep their instants.
 - `botEnabled` is stored now; the bot uses it from M2.
 

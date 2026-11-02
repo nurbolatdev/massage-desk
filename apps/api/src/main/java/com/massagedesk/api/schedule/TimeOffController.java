@@ -33,6 +33,8 @@ import org.springframework.web.server.ResponseStatusException;
 class TimeOffController {
 
     private static final long MAX_RANGE_DAYS = 366;
+    private static final LocalDate MIN_DAY = LocalDate.of(2000, 1, 1);
+    private static final LocalDate MAX_DAY = LocalDate.of(2100, 12, 31);
 
     private final TimeOffService service;
 
@@ -51,6 +53,9 @@ class TimeOffController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @Parameter(description = "last local day, YYYY-MM-DD, inclusive")
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        if (from.isBefore(MIN_DAY) || to.isAfter(MAX_DAY)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "dates must be within 2000-01-01..2100-12-31");
+        }
         if (from.isAfter(to)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "from must not be after to");
         }
@@ -75,7 +80,7 @@ class TimeOffController {
             return TimeOffResponse.from(service.create(
                     request.start().toInstant(), request.end().toInstant(), request.reason()));
         } catch (ScheduleException e) {
-            throw http(e);
+            throw ScheduleErrors.http(e);
         }
     }
 
@@ -93,15 +98,7 @@ class TimeOffController {
         try {
             service.delete(id);
         } catch (ScheduleException e) {
-            throw http(e);
+            throw ScheduleErrors.http(e);
         }
-    }
-
-    private static ResponseStatusException http(ScheduleException e) {
-        HttpStatus status = switch (e.reason()) {
-            case SERVICE_NOT_FOUND, TIME_OFF_NOT_FOUND -> HttpStatus.NOT_FOUND;
-            case INVALID_HOURS, INVALID_TIME_OFF -> HttpStatus.UNPROCESSABLE_ENTITY;
-        };
-        return new ResponseStatusException(status, e.getMessage(), e);
     }
 }

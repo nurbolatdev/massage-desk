@@ -204,6 +204,16 @@ class TimeOffControllerTests {
     }
 
     @Test
+    void listDatesOutsideTheSaneWindowAreBadRequest() throws Exception {
+        list("?from=+999999999-12-31&to=+999999999-12-31").andExpect(status().isBadRequest());
+        list("?from=2101-01-01&to=2101-01-01")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("dates must be within 2000-01-01..2100-12-31"));
+        list("?from=1999-12-31&to=2000-01-01").andExpect(status().isBadRequest());
+        list("?from=2100-12-31&to=2100-12-31").andExpect(status().isOk());
+    }
+
+    @Test
     void noTokenIsUnauthorized() throws Exception {
         mvc.perform(get("/time-off?from=2026-11-03&to=2026-11-03")).andExpect(status().isUnauthorized());
     }

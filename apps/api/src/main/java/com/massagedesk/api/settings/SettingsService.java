@@ -1,6 +1,5 @@
 package com.massagedesk.api.settings;
 
-import java.time.DateTimeException;
 import java.time.ZoneId;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,10 +39,10 @@ public class SettingsService {
         if (!ZoneId.getAvailableZoneIds().contains(id)) {
             throw new SettingsException("unknown time zone");
         }
-        try {
-            return ZoneId.of(id);
-        } catch (DateTimeException e) {
+        ZoneId zone = ZoneId.of(id);
+        if (zone.getRules().isFixedOffset()) {
             throw new SettingsException("unknown time zone");
         }
+        return zone;
     }
 }

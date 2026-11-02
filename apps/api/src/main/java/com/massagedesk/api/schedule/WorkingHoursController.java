@@ -6,7 +6,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,7 +13,6 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 
 /** The weekly working hours, replaced as a whole. */
 @Tag(name = "schedule")
@@ -50,15 +48,7 @@ class WorkingHoursController {
             return WorkingHoursResponse.from(service.replaceWeek(
                     request.blocks().stream().map(WorkingBlock::toBlock).toList()));
         } catch (ScheduleException e) {
-            throw http(e);
+            throw ScheduleErrors.http(e);
         }
-    }
-
-    private static ResponseStatusException http(ScheduleException e) {
-        HttpStatus status = switch (e.reason()) {
-            case INVALID_HOURS, INVALID_TIME_OFF -> HttpStatus.UNPROCESSABLE_ENTITY;
-            case SERVICE_NOT_FOUND, TIME_OFF_NOT_FOUND -> HttpStatus.NOT_FOUND;
-        };
-        return new ResponseStatusException(status, e.getMessage(), e);
     }
 }

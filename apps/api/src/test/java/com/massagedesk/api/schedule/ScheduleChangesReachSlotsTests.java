@@ -51,11 +51,16 @@ class ScheduleChangesReachSlotsTests {
 
     private final List<String> serviceIds = new ArrayList<>();
     private final List<String> clientIds = new ArrayList<>();
+    private final List<String> appointmentIds = new ArrayList<>();
 
     @AfterEach
     void cleanUp() {
         jdbc.update("delete from working_hours");
         jdbc.update("delete from time_off");
+        for (String id : appointmentIds) {
+            jdbc.update("delete from events where entity_id = ?", UUID.fromString(id));
+            jdbc.update("delete from appointments where id = ?", UUID.fromString(id));
+        }
         jdbc.update("update settings set time_zone = 'Asia/Tashkent', address = null, bot_enabled = true");
         for (String id : clientIds) {
             jdbc.update("delete from appointments where client_id = ?", UUID.fromString(id));
@@ -95,6 +100,27 @@ class ScheduleChangesReachSlotsTests {
         return id;
     }
 
+    private static final String OUTSIDE_SCHEDULE =
+            "time is outside working hours, in time off or in the past";
+
+    private String book(String client, String service, String start) throws Exception {
+        String body = sendJson(post("/appointments"), """
+                {"clientId":"%s","serviceId":"%s","start":"%s"}
+                """.formatted(client, service, start))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        String id = JsonPath.read(body, "$.id");
+        appointmentIds.add(id);
+        return id;
+    }
+
+    private void bookingRefused(String client, String service, String start) throws Exception {
+        sendJson(post("/appointments"), """
+                {"clientId":"%s","serviceId":"%s","start":"%s"}
+                """.formatted(client, service, start))
+                .andExpect(status().isUnprocessableContent())
+                .andExpect(jsonPath("$.detail").value(OUTSIDE_SCHEDULE));
+    }
+
     private void putHours(String blocksJson) throws Exception {
         sendJson(put("/working-hours"), "{\"blocks\":" + blocksJson + "}").andExpect(status().isOk());
     }
@@ -110,6 +136,7 @@ class ScheduleChangesReachSlotsTests {
     @Test
     void workingHoursChangeAppliesImmediately() throws Exception {
         String service = createService(60);
+        String client = createClient();
         slots(service).andExpect(status().isOk()).andExpect(jsonPath("$.starts", empty()));
 
         putHours("[" + tuesday("10:00", "12:00") + "]");
@@ -121,6 +148,8 @@ class ScheduleChangesReachSlotsTests {
         putHours("[" + tuesday("14:00", "15:00") + "]");
         slots(service).andExpect(status().isOk()).andExpect(jsonPath("$.starts", contains(
                 "2026-11-03T14:00:00+05:00")));
+        bookingRefused(client, service, "2026-11-03T10:00:00+05:00");
+        book(client, service, "2026-11-03T14:00:00+05:00");
 
         putHours("[]");
         slots(service).andExpect(status().isOk()).andExpect(jsonPath("$.starts", empty()));
@@ -139,15 +168,14 @@ class ScheduleChangesReachSlotsTests {
 
         slots(service).andExpect(status().isOk()).andExpect(jsonPath("$.starts", contains(
                 "2026-11-03T11:00:00+05:00")));
-        sendJson(post("/appointments"), """
-                {"clientId":"%s","serviceId":"%s","start":"2026-11-03T10:00:00+05:00"}
-                """.formatted(client, service)).andExpect(status().isUnprocessableContent());
+        bookingRefused(client, service, "2026-11-03T10:00:00+05:00");
 
         send(delete("/time-off/" + timeOffId)).andExpect(status().isNoContent());
         slots(service).andExpect(status().isOk()).andExpect(jsonPath("$.starts", contains(
                 "2026-11-03T10:00:00+05:00",
                 "2026-11-03T10:30:00+05:00",
                 "2026-11-03T11:00:00+05:00")));
+        book(client, service, "2026-11-03T10:00:00+05:00");
     }
 
     @Test

@@ -20,7 +20,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 
 /** The master's service catalog. Services are deactivated, never deleted. */
 @Tag(name = "services")
@@ -69,15 +68,7 @@ class ServicesController {
             return ServiceResponse.from(catalog.update(id, request.name(), request.durationMin(),
                     request.price(), request.sortOrder(), request.active()));
         } catch (ScheduleException e) {
-            throw http(e);
+            throw ScheduleErrors.http(e);
         }
-    }
-
-    private static ResponseStatusException http(ScheduleException e) {
-        HttpStatus status = switch (e.reason()) {
-            case SERVICE_NOT_FOUND, TIME_OFF_NOT_FOUND -> HttpStatus.NOT_FOUND;
-            case INVALID_HOURS, INVALID_TIME_OFF -> HttpStatus.UNPROCESSABLE_ENTITY;
-        };
-        return new ResponseStatusException(status, e.getMessage(), e);
     }
 }

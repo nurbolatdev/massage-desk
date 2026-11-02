@@ -132,6 +132,9 @@ class SettingsControllerTests {
     @ValueSource(strings = {
             "{\"timeZone\":\"Mars/Base\"}",
             "{\"timeZone\":\"+05:00\"}",
+            "{\"timeZone\":\"UTC\"}",
+            "{\"timeZone\":\"Etc/GMT+5\"}",
+            "{\"timeZone\":\"EST\"}",
             "{\"timeZone\":\"\"}",
             "{\"botEnabled\":\"maybe\"}",
             "{not json"})
