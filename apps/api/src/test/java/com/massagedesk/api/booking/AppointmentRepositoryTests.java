@@ -12,6 +12,7 @@ import com.massagedesk.api.schedule.TimeRange;
 import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -133,5 +134,33 @@ class AppointmentRepositoryTests {
         Integer count = jdbc.queryForObject(
                 "select count(*) from appointments where client_id = ?", Integer.class, client.getId());
         assertThat(count).isEqualTo(AppointmentStatus.values().length);
+    }
+
+    @Test
+    void findsConfirmedAppointmentsOverlappingWindow() {
+        insertAppointment("2026-11-02 20:00+05", "2026-11-02 21:00+05", "confirmed");
+        insertAppointment("2026-11-02 23:30+05", "2026-11-03 00:30+05", "confirmed");
+        insertAppointment("2026-11-03 10:00+05", "2026-11-03 11:00+05", "confirmed");
+        insertAppointment("2026-11-03 23:30+05", "2026-11-04 00:30+05", "confirmed");
+        insertAppointment("2026-11-02 22:00+05", "2026-11-02 23:30+05", "confirmed");
+        insertAppointment("2026-11-03 10:00+05", "2026-11-03 11:00+05", "cancelled");
+        insertAppointment("2026-11-03 10:00+05", "2026-11-03 11:00+05", "no_show");
+        insertAppointment("2026-11-03 10:00+05", "2026-11-03 11:00+05", "done");
+        entityManager.clear();
+
+        List<Appointment> found = appointments.findConfirmedOverlapping(
+                Instant.parse("2026-11-02T19:00:00Z"), Instant.parse("2026-11-03T19:00:00Z"));
+
+        assertThat(found).extracting(Appointment::getPeriod).containsExactly(
+                range("2026-11-02T18:30:00Z", "2026-11-02T19:30:00Z"),
+                range("2026-11-03T05:00:00Z", "2026-11-03T06:00:00Z"),
+                range("2026-11-03T18:30:00Z", "2026-11-03T19:30:00Z"));
+    }
+
+    private void insertAppointment(String start, String end, String status) {
+        jdbc.update("""
+                insert into appointments (id, client_id, service_id, period, status)
+                values (?, ?, ?, tstzrange(?::timestamptz, ?::timestamptz), ?)
+                """, UUID.randomUUID(), client.getId(), service.getId(), start, end, status);
     }
 }
