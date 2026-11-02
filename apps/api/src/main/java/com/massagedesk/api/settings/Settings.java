@@ -5,6 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.ZoneId;
+import java.util.Objects;
 
 /** The single settings row created by the migration. */
 @Entity
@@ -41,5 +42,19 @@ public class Settings {
 
     public boolean isBotEnabled() {
         return botEnabled;
+    }
+
+    public void changeTimeZone(ZoneId zone) {
+        this.timeZone = Objects.requireNonNull(zone, "zone").getId();
+    }
+
+    /** Trims the text; a blank address is stored as null. */
+    public void changeAddress(String address) {
+        String trimmed = address == null ? null : address.trim();
+        this.address = trimmed == null || trimmed.isEmpty() ? null : trimmed;
+    }
+
+    public void changeBotEnabled(boolean botEnabled) {
+        this.botEnabled = botEnabled;
     }
 }

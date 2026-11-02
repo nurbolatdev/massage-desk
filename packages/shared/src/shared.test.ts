@@ -10,6 +10,13 @@ describe("normalizePhone", () => {
     expect(normalizePhone("12345")).toBeNull();
     expect(normalizePhone("привет")).toBeNull();
   });
+  it("matches the API rules at the boundaries", () => {
+    expect(normalizePhone("123456789")).toBe("+123456789");
+    expect(normalizePhone("12345678")).toBeNull();
+    expect(normalizePhone("123456789012345")).toBe("+123456789012345");
+    expect(normalizePhone("1234567890123456")).toBeNull();
+    expect(normalizePhone("٩٩٨٩٠١٢٣٤٥٦٧")).toBeNull();
+  });
   it("converts to WhatsApp id", () => {
     expect(toWhatsAppId("+998901234567")).toBe("998901234567");
   });

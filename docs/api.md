@@ -34,8 +34,20 @@ insert into profiles (user_id, role, display_name) values ('<auth user id>', 'ma
 | POST | `/appointments/{id}/reschedule` | ✅ M1 | Move, keeping the booked length |
 | POST | `/appointments/{id}/cancel` | ✅ M1 | Cancel; frees the time |
 | POST | `/appointments/{id}/no-show` | ✅ M1 | Mark a no-show after the start |
-| GET | `/clients` | M1 | List and search clients |
-| GET/PUT | `/settings/*` | M1 | Services, working hours, time off |
+| GET | `/clients?q&limit&offset` | ✅ M1 | List and search clients |
+| POST | `/clients` | ✅ M1 | Add a client; `409` when the phone exists |
+| GET | `/clients/{id}` | ✅ M1 | One client |
+| PATCH | `/clients/{id}` | ✅ M1 | Change name or notes |
+| GET | `/services` | ✅ M1 | All services, active and inactive |
+| POST | `/services` | ✅ M1 | Add a service |
+| PATCH | `/services/{id}` | ✅ M1 | Change or deactivate a service |
+| GET | `/working-hours` | ✅ M1 | The weekly working hours |
+| PUT | `/working-hours` | ✅ M1 | Replace the whole week |
+| GET | `/time-off?from&to` | ✅ M1 | Time off touching the local days |
+| POST | `/time-off` | ✅ M1 | Add a day off or vacation |
+| DELETE | `/time-off/{id}` | ✅ M1 | Remove time off |
+| GET | `/settings` | ✅ M1 | Time zone, address, bot switch |
+| PATCH | `/settings` | ✅ M1 | Change settings |
 | GET/POST | `/conversations/*` | M2 | Chats, master replies, take-over |
 | POST | `/devices` | M4 | Register a push token |
 | GET | `/admin/*` | M1–M5 | Statistics and diagnostics (admin only) |
@@ -83,3 +95,89 @@ Response `201`:
 - `POST /appointments/{id}/no-show` (no body) marks that the client did not come; allowed only once the visit has started, otherwise `409`. Errors: `400`, `404`, `409`.
 
 All three return the updated appointment (same shape as the create response). Any action on an appointment that is not `confirmed` gives `409` with `appointment is <status>`; repeated actions are not idempotent. Errors are `application/problem+json`.
+
+## Clients
+
+`GET /clients` returns a JSON array of clients. `q` (at most 100 characters) filters by name (case-insensitive substring) and, when it consists only of phone characters (digits, `+`, spaces, brackets, dashes), also by phone digits. A blank `q` lists everyone. Order: by name alphabetically, clients without a name last, then by phone. Paging: `limit` 1..200 (default 50), `offset` from 0 (default 0); there is no total count.
+
+```json
+{"id":"<uuid>","phone":"+998901234567","name":"Aziza","notes":null,"createdAt":"2026-11-02T10:15:00+05:00"}
+```
+
+`POST /clients` takes `{"phone":"+998 90 123-45-67","name":"Aziza","notes":"..."}`; only `phone` is required. The phone is normalised to E.164 (digits only, 9 to 15 of them, same rule as the apps) and cannot be changed later, because chats are matched by it. Response `201`.
+
+`PATCH /clients/{id}` takes `name` and/or `notes`. A missing or `null` field is left unchanged; a blank text clears the field. Text is trimmed.
+
+- `400` (`application/problem+json`): invalid field, query parameter or id; `invalid phone number`.
+- `404` (`application/problem+json`): `client not found`.
+- `409` (`application/problem+json`): `client with this phone already exists`.
+
+Clients cannot be deleted: appointments and chats refer to them.
+
+## Services
+
+`GET /services` returns every service, active and inactive, ordered by `sortOrder` then name. The booking screen filters by `active`.
+
+```json
+{"id":"<uuid>","name":"Classic","durationMin":60,"price":150000.5,"sortOrder":0,"active":true}
+```
+
+`POST /services` takes `name` (up to 100 characters), `durationMin` (5..480), `price` (not negative, up to 2 decimals) and optional `sortOrder` (0..10000; omitted means after the last one). Response `201`.
+
+`PATCH /services/{id}` takes any of `name`, `durationMin`, `price`, `sortOrder`, `active`. A missing or `null` field is left unchanged. Inactive services can be edited and re-enabled.
+
+There is no delete: appointments refer to services, so a service is deactivated with `active: false`. A deactivated service gives `404` on `/slots` and cannot be booked; appointments already made keep their service and their booked length, also after a duration change.
+
+- `400` (`application/problem+json`): invalid field or id.
+- `404` (`application/problem+json`): `service not found`.
+
+## Working hours
+
+`GET /working-hours` returns the week; `PUT /working-hours` replaces the whole week in one request and returns the stored blocks. Both use the same shape, ordered by weekday, then start.
+
+```json
+{"blocks":[{"weekday":1,"start":"09:00","end":"13:00"},{"weekday":1,"start":"14:00","end":"19:00"}]}
+```
+
+- `weekday` is the ISO number: 1 = Monday ... 7 = Sunday.
+- `start` and `end` are local times `HH:mm` in the master's time zone (`00:00`..`23:59`; no seconds, no `24:00`).
+- A weekday without blocks is a day off every week. `{"blocks":[]}` makes every day a day off.
+- A break is a gap between two blocks of one day. Blocks of one day must neither overlap nor touch (`09:00-13:00` and `13:00-17:00` must be sent as one block `09:00-17:00`).
+- The week is replaced atomically: either all blocks are stored or none. At most 50 blocks.
+- The new hours apply to `/slots` and to new appointments at once. Appointments already made are not touched, also when they fall outside the new hours.
+
+- `400` (`application/problem+json`): missing or invalid field.
+- `422` (`application/problem+json`): `block must start before it ends`; `blocks of one day must not overlap or touch`.
+
+## Time off
+
+`POST /time-off` takes `start` and `end` (ISO-8601 with an offset) and an optional `reason` (up to 200 characters). The period is half-open, `[start, end)`. A day off is local midnight to the next local midnight with the master's offset. Response `201`; times are answered in the master's offset.
+
+```json
+{"id":"<uuid>","start":"2026-11-03T00:00:00+05:00","end":"2026-11-04T00:00:00+05:00","reason":null}
+```
+
+`GET /time-off?from=2026-11-03&to=2026-11-05` lists time off that touches the local days `from..to`, both inclusive, ordered by start (a vacation that began earlier is included). Both dates are required, must lie between 2000-01-01 and 2100-12-31, and cover at most 366 days.
+
+`DELETE /time-off/{id}` answers `204`. There is no edit: delete and create again.
+
+- Periods may overlap each other. Time off over confirmed appointments is allowed and the appointments are kept; the app warns the master and offers to move or cancel them.
+- Time off hides the time from `/slots` and refuses new appointments there at once.
+
+- `400` (`application/problem+json`): missing or invalid field, id or date; `from must not be after to`; `range must be at most 366 days`; `dates must be within 2000-01-01..2100-12-31`.
+- `404` (`application/problem+json`): `time off not found`.
+- `422` (`application/problem+json`): `time off must start before it ends`; `time off must end in the future, start within two years and last at most 366 days`.
+
+## Settings
+
+`GET /settings` returns the business settings; `PATCH /settings` changes them. A field that is absent or `null` stays unchanged; a blank `address` clears it.
+
+```json
+{"timeZone":"Asia/Tashkent","address":null,"botEnabled":true}
+```
+
+- `timeZone` must be a region id such as `Asia/Tashkent`. Fixed offsets (`+05:00`, `UTC`, `Etc/GMT+5`, `EST`) are refused because they ignore daylight saving.
+- Changing the zone keeps working hours as local times (the same 10:00 in the new zone) and does not move booked appointments, which keep their instants.
+- `botEnabled` is stored now; the bot uses it from M2.
+
+- `400` (`application/problem+json`): invalid field or malformed JSON; `unknown time zone`.

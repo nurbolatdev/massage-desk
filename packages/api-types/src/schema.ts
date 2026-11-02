@@ -72,6 +72,95 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/clients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List clients or search them by name or phone */
+        get: operations["listClients"];
+        put?: never;
+        /** Add a client */
+        post: operations["createClient"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/clients/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get one client */
+        get: operations["getClient"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change a client's name or notes */
+        patch: operations["updateClient"];
+        trace?: never;
+    };
+    "/services": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List all services, active and inactive */
+        get: operations["listServices"];
+        put?: never;
+        /** Add a service */
+        post: operations["createService"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/services/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change or deactivate a service */
+        patch: operations["updateService"];
+        trace?: never;
+    };
+    "/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Business settings */
+        get: operations["getSettings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change settings; absent or null fields stay unchanged */
+        patch: operations["updateSettings"];
+        trace?: never;
+    };
     "/slots": {
         parameters: {
             query?: never;
@@ -89,6 +178,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/time-off": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Time off that touches the local days from..to */
+        get: operations["listTimeOff"];
+        put?: never;
+        /** Add time off */
+        post: operations["createTimeOff"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/time-off/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove time off */
+        delete: operations["deleteTimeOff"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/webhook/whatsapp": {
         parameters: {
             query?: never;
@@ -99,6 +223,24 @@ export interface paths {
         /** Meta webhook verification */
         get: operations["verify"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/working-hours": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The weekly working hours */
+        get: operations["getWorkingHours"];
+        /** Replace the whole week of working hours */
+        put: operations["replaceWorkingHours"];
         post?: never;
         delete?: never;
         options?: never;
@@ -132,6 +274,19 @@ export interface components {
             /** @enum {string} */
             status: "confirmed" | "cancelled" | "no_show" | "done";
         };
+        ClientResponse: {
+            /**
+             * Format: date-time
+             * @description ISO-8601 with the master's UTC offset
+             */
+            createdAt: string;
+            /** Format: uuid */
+            id: string;
+            name: string | null;
+            notes: string | null;
+            /** @description E.164, for example +998901234567 */
+            phone: string;
+        };
         CreateAppointmentRequest: {
             /**
              * Format: uuid
@@ -146,6 +301,39 @@ export interface components {
             /**
              * Format: date-time
              * @description ISO-8601 with offset; the end is start plus the service length
+             */
+            start: string;
+        };
+        CreateClientRequest: {
+            name?: string;
+            notes?: string;
+            /** @description any format; stored as E.164 */
+            phone: string;
+        };
+        CreateServiceRequest: {
+            /**
+             * Format: int32
+             * @description length in minutes, 5..480
+             */
+            durationMin: number;
+            name: string;
+            price: number;
+            /**
+             * Format: int32
+             * @description display order; omitted means last
+             */
+            sortOrder?: number;
+        };
+        CreateTimeOffRequest: {
+            /**
+             * Format: date-time
+             * @description ISO-8601 with offset, exclusive
+             */
+            end: string;
+            reason?: string;
+            /**
+             * Format: date-time
+             * @description ISO-8601 with offset; a day off starts at local midnight
              */
             start: string;
         };
@@ -169,6 +357,30 @@ export interface components {
              */
             start: string;
         };
+        ServiceResponse: {
+            /** @description inactive services cannot be booked */
+            active: boolean;
+            /**
+             * Format: int32
+             * @description length in minutes
+             */
+            durationMin: number;
+            /** Format: uuid */
+            id: string;
+            name: string;
+            price: number;
+            /**
+             * Format: int32
+             * @description display order, ascending
+             */
+            sortOrder: number;
+        };
+        SettingsResponse: {
+            address: string | null;
+            botEnabled: boolean;
+            /** @description IANA region id, e.g. Asia/Tashkent */
+            timeZone: string;
+        };
         SlotsResponse: {
             /** Format: date */
             day: string;
@@ -181,6 +393,64 @@ export interface components {
             starts: string[];
             /** @description IANA time zone of the master */
             timeZone: string;
+        };
+        TimeOffResponse: {
+            /**
+             * Format: date-time
+             * @description ISO-8601 with the master's UTC offset, exclusive
+             */
+            end: string;
+            /** Format: uuid */
+            id: string;
+            reason: string | null;
+            /**
+             * Format: date-time
+             * @description ISO-8601 with the master's UTC offset
+             */
+            start: string;
+        };
+        UpdateClientRequest: {
+            /** @description blank clears the name */
+            name?: string;
+            /** @description blank clears the notes */
+            notes?: string;
+        };
+        UpdateServiceRequest: {
+            /** @description false hides the service from booking */
+            active?: boolean;
+            /**
+             * Format: int32
+             * @description length in minutes, 5..480
+             */
+            durationMin?: number;
+            name?: string;
+            price?: number;
+            /** Format: int32 */
+            sortOrder?: number;
+        };
+        UpdateSettingsRequest: {
+            address?: string;
+            botEnabled?: boolean;
+            /** @description IANA region id; fixed offsets are refused */
+            timeZone?: string;
+        };
+        WorkingBlock: {
+            /** @description local time HH:mm in the master's time zone */
+            end: string;
+            /** @description local time HH:mm in the master's time zone */
+            start: string;
+            /**
+             * Format: int32
+             * @description ISO weekday, 1 = Monday … 7 = Sunday
+             */
+            weekday: number;
+        };
+        WorkingHoursRequest: {
+            /** @description every block of the week, at most 50 */
+            blocks: components["schemas"]["WorkingBlock"][];
+        };
+        WorkingHoursResponse: {
+            blocks: components["schemas"]["WorkingBlock"][];
         };
     };
     responses: never;
@@ -414,6 +684,321 @@ export interface operations {
             };
         };
     };
+    listClients: {
+        parameters: {
+            query?: {
+                /** @description name fragment or phone digits; blank lists everyone */
+                q?: string;
+                /** @description page size, 1..200 */
+                limit?: number;
+                /** @description rows to skip */
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description clients, alphabetically by name */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientResponse"][];
+                };
+            };
+            /** @description invalid query parameter */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    createClient: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateClientRequest"];
+            };
+        };
+        responses: {
+            /** @description client created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientResponse"];
+                };
+            };
+            /** @description missing or invalid field, or invalid phone number */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description a client with this phone already exists */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    getClient: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description client id */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description the client */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientResponse"];
+                };
+            };
+            /** @description invalid id */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description client not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    updateClient: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description client id */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateClientRequest"];
+            };
+        };
+        responses: {
+            /** @description client updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientResponse"];
+                };
+            };
+            /** @description invalid field or id */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description client not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    listServices: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description services in display order */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceResponse"][];
+                };
+            };
+        };
+    };
+    createService: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateServiceRequest"];
+            };
+        };
+        responses: {
+            /** @description service created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceResponse"];
+                };
+            };
+            /** @description missing or invalid field */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    updateService: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description service id */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateServiceRequest"];
+            };
+        };
+        responses: {
+            /** @description service updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceResponse"];
+                };
+            };
+            /** @description invalid field or id */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description service not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    getSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description current settings */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettingsResponse"];
+                };
+            };
+        };
+    };
+    updateSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSettingsRequest"];
+            };
+        };
+        responses: {
+            /** @description settings after the change */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettingsResponse"];
+                };
+            };
+            /** @description invalid field or unknown time zone */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
     slots: {
         parameters: {
             query: {
@@ -457,6 +1042,121 @@ export interface operations {
             };
         };
     };
+    listTimeOff: {
+        parameters: {
+            query: {
+                /** @description first local day, YYYY-MM-DD, inclusive */
+                from: string;
+                /** @description last local day, YYYY-MM-DD, inclusive */
+                to: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description time off ordered by start */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimeOffResponse"][];
+                };
+            };
+            /** @description missing or invalid date, or range too long */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    createTimeOff: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTimeOffRequest"];
+            };
+        };
+        responses: {
+            /** @description time off created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimeOffResponse"];
+                };
+            };
+            /** @description missing or invalid field */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description start is not before end, or the period is out of range */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    deleteTimeOff: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description time off id */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description time off removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description invalid id */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description time off not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
     verify: {
         parameters: {
             query?: {
@@ -486,6 +1186,68 @@ export interface operations {
                 };
                 content: {
                     "text/plain": string;
+                };
+            };
+        };
+    };
+    getWorkingHours: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description blocks ordered by weekday, then start */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkingHoursResponse"];
+                };
+            };
+        };
+    };
+    replaceWorkingHours: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkingHoursRequest"];
+            };
+        };
+        responses: {
+            /** @description the stored week */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkingHoursResponse"];
+                };
+            };
+            /** @description missing or invalid field */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description a block ends before it starts, or blocks of one day overlap or touch */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
         };

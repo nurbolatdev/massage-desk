@@ -39,18 +39,55 @@ public class MassageService {
     }
 
     public MassageService(String name, int durationMin, BigDecimal price, int sortOrder) {
-        this.name = Objects.requireNonNull(name, "name");
-        Objects.requireNonNull(price, "price");
+        this.name = requireName(name);
+        this.durationMin = requireDuration(durationMin);
+        this.price = requirePrice(price);
+        this.sortOrder = sortOrder;
+        this.active = true;
+    }
+
+    private static String requireName(String name) {
+        Objects.requireNonNull(name, "name");
+        return name;
+    }
+
+    private static int requireDuration(int durationMin) {
         if (durationMin <= 0) {
             throw new IllegalArgumentException("duration must be positive: " + durationMin);
         }
+        return durationMin;
+    }
+
+    private static BigDecimal requirePrice(BigDecimal price) {
+        Objects.requireNonNull(price, "price");
         if (price.signum() < 0) {
             throw new IllegalArgumentException("price must not be negative: " + price);
         }
-        this.durationMin = durationMin;
-        this.price = price;
-        this.sortOrder = sortOrder;
+        return price;
+    }
+
+    public void rename(String newName) {
+        this.name = requireName(newName);
+    }
+
+    public void changeDuration(int newDurationMin) {
+        this.durationMin = requireDuration(newDurationMin);
+    }
+
+    public void changePrice(BigDecimal newPrice) {
+        this.price = requirePrice(newPrice);
+    }
+
+    public void moveTo(int newSortOrder) {
+        this.sortOrder = newSortOrder;
+    }
+
+    public void activate() {
         this.active = true;
+    }
+
+    public void deactivate() {
+        this.active = false;
     }
 
     public UUID getId() {

@@ -86,3 +86,137 @@ describe("generated appointment command types", () => {
     expect(true).toBe(true);
   });
 });
+
+describe("generated /clients types", () => {
+  type ListGet = paths["/clients"]["get"];
+  type ListQuery = NonNullable<ListGet["parameters"]["query"]>;
+  type ListOk = ListGet["responses"][200]["content"]["application/json"];
+  type CreatePost = paths["/clients"]["post"];
+  type CreateBody = CreatePost["requestBody"]["content"]["application/json"];
+  type PatchBody = paths["/clients/{id}"]["patch"]["requestBody"]["content"]["application/json"];
+
+  it("types the list query", () => {
+    expectTypeOf<ListQuery["q"]>().toEqualTypeOf<string | undefined>();
+    expectTypeOf<ListQuery["limit"]>().toEqualTypeOf<number | undefined>();
+    expectTypeOf<ListQuery["offset"]>().toEqualTypeOf<number | undefined>();
+    expect(true).toBe(true);
+  });
+
+  it("types a client with nullable name and notes", () => {
+    type Item = ListOk[number];
+    expectTypeOf<Item["id"]>().toEqualTypeOf<string>();
+    expectTypeOf<Item["phone"]>().toEqualTypeOf<string>();
+    expectTypeOf<Item["createdAt"]>().toEqualTypeOf<string>();
+    expectTypeOf<Item["name"]>().toEqualTypeOf<string | null>();
+    expectTypeOf<Item["notes"]>().toEqualTypeOf<string | null>();
+    expect(true).toBe(true);
+  });
+
+  it("types the create body", () => {
+    expectTypeOf<CreateBody["phone"]>().toEqualTypeOf<string>();
+    expectTypeOf<CreateBody["name"]>().toEqualTypeOf<string | undefined>();
+    expectTypeOf<CreateBody["notes"]>().toEqualTypeOf<string | undefined>();
+    expect(true).toBe(true);
+  });
+
+  it("does not allow changing the phone", () => {
+    expectTypeOf<keyof PatchBody>().toEqualTypeOf<"name" | "notes">();
+    expect(true).toBe(true);
+  });
+});
+
+describe("generated /services types", () => {
+  type ListOk = paths["/services"]["get"]["responses"][200]["content"]["application/json"];
+  type CreateBody = paths["/services"]["post"]["requestBody"]["content"]["application/json"];
+  type PatchBody = paths["/services/{id}"]["patch"]["requestBody"]["content"]["application/json"];
+
+  it("types a service", () => {
+    type Item = ListOk[number];
+    expectTypeOf<Item["id"]>().toEqualTypeOf<string>();
+    expectTypeOf<Item["name"]>().toEqualTypeOf<string>();
+    expectTypeOf<Item["price"]>().toEqualTypeOf<number>();
+    expectTypeOf<Item["durationMin"]>().toEqualTypeOf<number>();
+    expectTypeOf<Item["sortOrder"]>().toEqualTypeOf<number>();
+    expectTypeOf<Item["active"]>().toEqualTypeOf<boolean>();
+    expect(true).toBe(true);
+  });
+
+  it("types the create body", () => {
+    expectTypeOf<CreateBody["name"]>().toEqualTypeOf<string>();
+    expectTypeOf<CreateBody["durationMin"]>().toEqualTypeOf<number>();
+    expectTypeOf<CreateBody["price"]>().toEqualTypeOf<number>();
+    expectTypeOf<CreateBody["sortOrder"]>().toEqualTypeOf<number | undefined>();
+    expect(true).toBe(true);
+  });
+
+  it("types the patch body with optional fields", () => {
+    expectTypeOf<PatchBody["active"]>().toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<PatchBody["price"]>().toEqualTypeOf<number | undefined>();
+    expect(true).toBe(true);
+  });
+});
+
+describe("generated /working-hours types", () => {
+  type GetOk = paths["/working-hours"]["get"]["responses"][200]["content"]["application/json"];
+  type PutBody = paths["/working-hours"]["put"]["requestBody"]["content"]["application/json"];
+  type Block = { weekday: number; start: string; end: string };
+
+  it("types the blocks of the response", () => {
+    expectTypeOf<GetOk["blocks"][number]>().toEqualTypeOf<Block>();
+    expect(true).toBe(true);
+  });
+
+  it("types the blocks of the request", () => {
+    expectTypeOf<PutBody["blocks"][number]>().toEqualTypeOf<Block>();
+    expect(true).toBe(true);
+  });
+});
+
+
+describe("generated /time-off types", () => {
+  type ListGet = paths["/time-off"]["get"];
+  type Created = paths["/time-off"]["post"]["responses"][201]["content"]["application/json"];
+  type CreateBody = paths["/time-off"]["post"]["requestBody"]["content"]["application/json"];
+  type DeletePath = paths["/time-off/{id}"]["delete"]["parameters"]["path"];
+
+  it("types the required list window", () => {
+    expectTypeOf<ListGet["parameters"]["query"]["from"]>().toEqualTypeOf<string>();
+    expectTypeOf<ListGet["parameters"]["query"]["to"]>().toEqualTypeOf<string>();
+    expect(true).toBe(true);
+  });
+
+  it("types a time off period", () => {
+    expectTypeOf<Created["id"]>().toEqualTypeOf<string>();
+    expectTypeOf<Created["start"]>().toEqualTypeOf<string>();
+    expectTypeOf<Created["end"]>().toEqualTypeOf<string>();
+    expectTypeOf<Created["reason"]>().toEqualTypeOf<string | null>();
+    expect(true).toBe(true);
+  });
+
+  it("types the create body and the delete path", () => {
+    expectTypeOf<CreateBody["start"]>().toEqualTypeOf<string>();
+    expectTypeOf<CreateBody["end"]>().toEqualTypeOf<string>();
+    expectTypeOf<CreateBody["reason"]>().toEqualTypeOf<string | undefined>();
+    expectTypeOf<DeletePath["id"]>().toEqualTypeOf<string>();
+    expect(true).toBe(true);
+  });
+});
+
+describe("generated /settings types", () => {
+  type GetOk = paths["/settings"]["get"]["responses"][200]["content"]["application/json"];
+  type PatchBody = paths["/settings"]["patch"]["requestBody"]["content"]["application/json"];
+
+  it("types the settings", () => {
+    expectTypeOf<GetOk["timeZone"]>().toEqualTypeOf<string>();
+    expectTypeOf<GetOk["address"]>().toEqualTypeOf<string | null>();
+    expectTypeOf<GetOk["botEnabled"]>().toEqualTypeOf<boolean>();
+    expect(true).toBe(true);
+  });
+
+  it("makes every patch field optional", () => {
+    expectTypeOf<PatchBody["timeZone"]>().toEqualTypeOf<string | undefined>();
+    expectTypeOf<PatchBody["address"]>().toEqualTypeOf<string | undefined>();
+    expectTypeOf<PatchBody["botEnabled"]>().toEqualTypeOf<boolean | undefined>();
+    expect(true).toBe(true);
+  });
+});
