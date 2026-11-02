@@ -53,6 +53,10 @@ app:
     url: ${SUPABASE_URL:http://127.0.0.1:54321}
   whatsapp:
     verify-token: ${WHATSAPP_VERIFY_TOKEN:}
+  slots:
+    # grid of offered start times and how far ahead the first one is; overridable by APP_SLOTS_STEP / APP_SLOTS_MIN_NOTICE
+    step: 30m
+    min-notice: 0m
 
 # Flyway locations by profile: "supabase" adds Supabase-only migrations,
 # "seed" adds development seed data (never enable it on prod).
