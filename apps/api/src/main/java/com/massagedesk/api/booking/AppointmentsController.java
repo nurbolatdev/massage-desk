@@ -1,5 +1,6 @@
 package com.massagedesk.api.booking;
 
+import com.massagedesk.api.errors.ApiProblem;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -11,7 +12,6 @@ import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.http.ProblemDetail;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -36,17 +36,17 @@ class AppointmentsController {
     @ApiResponse(responseCode = "201", description = "appointment created")
     @ApiResponse(responseCode = "400", description = "missing or invalid field",
             content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
-                    schema = @Schema(implementation = ProblemDetail.class)))
+                    schema = @Schema(implementation = ApiProblem.class)))
     @ApiResponse(responseCode = "404", description = "client or service not found, or service inactive",
             content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
-                    schema = @Schema(implementation = ProblemDetail.class)))
+                    schema = @Schema(implementation = ApiProblem.class)))
     @ApiResponse(responseCode = "409", description = "the time is already booked",
             content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
-                    schema = @Schema(implementation = ProblemDetail.class)))
+                    schema = @Schema(implementation = ApiProblem.class)))
     @ApiResponse(responseCode = "422",
             description = "outside working hours, in time off or in the past",
             content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
-                    schema = @Schema(implementation = ProblemDetail.class)))
+                    schema = @Schema(implementation = ApiProblem.class)))
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
     AppointmentResponse createAppointment(@Valid @RequestBody CreateAppointmentRequest request,
@@ -60,16 +60,16 @@ class AppointmentsController {
     @ApiResponse(responseCode = "200", description = "appointment moved")
     @ApiResponse(responseCode = "400", description = "missing or invalid field or id",
             content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
-                    schema = @Schema(implementation = ProblemDetail.class)))
+                    schema = @Schema(implementation = ApiProblem.class)))
     @ApiResponse(responseCode = "404", description = "appointment not found",
             content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
-                    schema = @Schema(implementation = ProblemDetail.class)))
+                    schema = @Schema(implementation = ApiProblem.class)))
     @ApiResponse(responseCode = "409", description = "the time is already booked, or the appointment is not confirmed",
             content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
-                    schema = @Schema(implementation = ProblemDetail.class)))
+                    schema = @Schema(implementation = ApiProblem.class)))
     @ApiResponse(responseCode = "422", description = "outside working hours, in time off or in the past",
             content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
-                    schema = @Schema(implementation = ProblemDetail.class)))
+                    schema = @Schema(implementation = ApiProblem.class)))
     @PostMapping(value = "/{id}/reschedule", consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE)
     AppointmentResponse rescheduleAppointment(
@@ -83,13 +83,13 @@ class AppointmentsController {
     @ApiResponse(responseCode = "200", description = "appointment cancelled")
     @ApiResponse(responseCode = "400", description = "invalid id",
             content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
-                    schema = @Schema(implementation = ProblemDetail.class)))
+                    schema = @Schema(implementation = ApiProblem.class)))
     @ApiResponse(responseCode = "404", description = "appointment not found",
             content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
-                    schema = @Schema(implementation = ProblemDetail.class)))
+                    schema = @Schema(implementation = ApiProblem.class)))
     @ApiResponse(responseCode = "409", description = "the appointment is not confirmed",
             content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
-                    schema = @Schema(implementation = ProblemDetail.class)))
+                    schema = @Schema(implementation = ApiProblem.class)))
     @PostMapping(value = "/{id}/cancel", produces = MediaType.APPLICATION_JSON_VALUE)
     AppointmentResponse cancelAppointment(
             @Parameter(description = "appointment id") @PathVariable UUID id,
@@ -101,13 +101,13 @@ class AppointmentsController {
     @ApiResponse(responseCode = "200", description = "appointment marked as no-show")
     @ApiResponse(responseCode = "400", description = "invalid id",
             content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
-                    schema = @Schema(implementation = ProblemDetail.class)))
+                    schema = @Schema(implementation = ApiProblem.class)))
     @ApiResponse(responseCode = "404", description = "appointment not found",
             content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
-                    schema = @Schema(implementation = ProblemDetail.class)))
+                    schema = @Schema(implementation = ApiProblem.class)))
     @ApiResponse(responseCode = "409", description = "the appointment is not confirmed or has not started yet",
             content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
-                    schema = @Schema(implementation = ProblemDetail.class)))
+                    schema = @Schema(implementation = ApiProblem.class)))
     @PostMapping(value = "/{id}/no-show", produces = MediaType.APPLICATION_JSON_VALUE)
     AppointmentResponse markNoShow(
             @Parameter(description = "appointment id") @PathVariable UUID id,

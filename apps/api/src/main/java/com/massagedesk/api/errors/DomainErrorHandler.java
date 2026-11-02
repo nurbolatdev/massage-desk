@@ -6,20 +6,27 @@ import com.massagedesk.api.schedule.AppointmentConflict;
 import com.massagedesk.api.schedule.ScheduleException;
 import com.massagedesk.api.settings.SettingsException;
 import io.swagger.v3.oas.annotations.Hidden;
+import org.jspecify.annotations.Nullable;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 /**
- * Maps every domain error to one problem detail: the status of the rule, the message as
- * {@code detail} and a machine-readable {@code code} (the name of the reason).
+ * The one place that maps errors to problem details. A domain error gets the status of its
+ * rule, the message as {@code detail} and a machine-readable {@code code}. Client errors raised
+ * by the web framework keep the framework's status and text and get the code
+ * {@link ErrorCode#INVALID_REQUEST}. Extending the framework's handler (instead of leaving it to
+ * the default one) is what lets {@link #createResponseEntity} add that code.
  */
 @Hidden
 @RestControllerAdvice
-class DomainErrorHandler {
+class DomainErrorHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(BookingException.class)
     ResponseEntity<ProblemDetail> booking(BookingException e) {
@@ -28,7 +35,7 @@ class DomainErrorHandler {
             case OUTSIDE_SCHEDULE -> HttpStatus.UNPROCESSABLE_CONTENT;
             case TIME_TAKEN, NOT_CONFIRMED, NOT_STARTED -> HttpStatus.CONFLICT;
         };
-        return problem(status, e.getMessage(), e.reason().name());
+        return problem(status, e.getMessage(), code(e.reason()));
     }
 
     @ExceptionHandler(ClientException.class)
@@ -38,7 +45,7 @@ class DomainErrorHandler {
             case INVALID_PHONE -> HttpStatus.BAD_REQUEST;
             case PHONE_TAKEN -> HttpStatus.CONFLICT;
         };
-        return problem(status, e.getMessage(), e.reason().name());
+        return problem(status, e.getMessage(), code(e.reason()));
     }
 
     @ExceptionHandler(ScheduleException.class)
@@ -48,7 +55,7 @@ class DomainErrorHandler {
             case INVALID_HOURS, INVALID_TIME_OFF -> HttpStatus.UNPROCESSABLE_CONTENT;
             case APPOINTMENT_CONFLICT -> HttpStatus.CONFLICT;
         };
-        ResponseEntity<ProblemDetail> response = problem(status, e.getMessage(), e.reason().name());
+        ResponseEntity<ProblemDetail> response = problem(status, e.getMessage(), code(e.reason()));
         if (e.reason() == ScheduleException.Reason.APPOINTMENT_CONFLICT) {
             response.getBody().setProperty("conflicts",
                     e.conflicts().stream().map(AppointmentConflict::from).toList());
@@ -61,12 +68,26 @@ class DomainErrorHandler {
         HttpStatus status = switch (e.reason()) {
             case UNKNOWN_TIME_ZONE -> HttpStatus.BAD_REQUEST;
         };
-        return problem(status, e.getMessage(), e.reason().name());
+        return problem(status, e.getMessage(), code(e.reason()));
     }
 
-    private static ResponseEntity<ProblemDetail> problem(HttpStatusCode status, String detail, String code) {
+    @Override
+    protected ResponseEntity<Object> createResponseEntity(@Nullable Object body, HttpHeaders headers,
+            HttpStatusCode statusCode, WebRequest request) {
+        if (body instanceof ProblemDetail problem && statusCode.is4xxClientError()
+                && (problem.getProperties() == null || !problem.getProperties().containsKey("code"))) {
+            problem.setProperty("code", ErrorCode.INVALID_REQUEST.name());
+        }
+        return super.createResponseEntity(body, headers, statusCode, request);
+    }
+
+    private static ErrorCode code(Enum<?> reason) {
+        return ErrorCode.valueOf(reason.name());
+    }
+
+    private static ResponseEntity<ProblemDetail> problem(HttpStatusCode status, String detail, ErrorCode code) {
         ProblemDetail body = ProblemDetail.forStatusAndDetail(status, detail);
-        body.setProperty("code", code);
+        body.setProperty("code", code.name());
         return ResponseEntity.status(status).body(body);
     }
 }

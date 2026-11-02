@@ -1,5 +1,6 @@
 package com.massagedesk.api.clients;
 
+import com.massagedesk.api.errors.ApiProblem;
 import com.massagedesk.api.security.StaffActors;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -15,7 +16,6 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.http.ProblemDetail;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -43,7 +43,7 @@ class ClientsController {
     @ApiResponse(responseCode = "200", description = "clients, alphabetically by name")
     @ApiResponse(responseCode = "400", description = "invalid query parameter",
             content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
-                    schema = @Schema(implementation = ProblemDetail.class)))
+                    schema = @Schema(implementation = ApiProblem.class)))
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     List<ClientResponse> listClients(
             @Parameter(description = "name fragment or phone digits; blank lists everyone")
@@ -57,10 +57,10 @@ class ClientsController {
     @ApiResponse(responseCode = "200", description = "the client")
     @ApiResponse(responseCode = "400", description = "invalid id",
             content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
-                    schema = @Schema(implementation = ProblemDetail.class)))
+                    schema = @Schema(implementation = ApiProblem.class)))
     @ApiResponse(responseCode = "404", description = "client not found",
             content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
-                    schema = @Schema(implementation = ProblemDetail.class)))
+                    schema = @Schema(implementation = ApiProblem.class)))
     @GetMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     ClientResponse getClient(@Parameter(description = "client id") @PathVariable UUID id) {
         return ClientResponse.from(clients.get(id));
@@ -70,10 +70,10 @@ class ClientsController {
     @ApiResponse(responseCode = "201", description = "client created")
     @ApiResponse(responseCode = "400", description = "missing or invalid field, or invalid phone number",
             content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
-                    schema = @Schema(implementation = ProblemDetail.class)))
+                    schema = @Schema(implementation = ApiProblem.class)))
     @ApiResponse(responseCode = "409", description = "a client with this phone already exists",
             content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
-                    schema = @Schema(implementation = ProblemDetail.class)))
+                    schema = @Schema(implementation = ApiProblem.class)))
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
     ClientResponse createClient(@Valid @RequestBody CreateClientRequest request,
@@ -86,10 +86,10 @@ class ClientsController {
     @ApiResponse(responseCode = "200", description = "client updated")
     @ApiResponse(responseCode = "400", description = "invalid field or id",
             content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
-                    schema = @Schema(implementation = ProblemDetail.class)))
+                    schema = @Schema(implementation = ApiProblem.class)))
     @ApiResponse(responseCode = "404", description = "client not found",
             content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
-                    schema = @Schema(implementation = ProblemDetail.class)))
+                    schema = @Schema(implementation = ApiProblem.class)))
     @PatchMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE)
     ClientResponse updateClient(@Parameter(description = "client id") @PathVariable UUID id,

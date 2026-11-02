@@ -1,5 +1,6 @@
 package com.massagedesk.api.errors;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -10,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.jayway.jsonpath.JsonPath;
 import com.massagedesk.api.TestcontainersConfiguration;
 import com.massagedesk.api.clients.Client;
 import com.massagedesk.api.clients.ClientRepository;
@@ -19,15 +21,21 @@ import com.massagedesk.api.schedule.MassageServiceRepository;
 import com.massagedesk.api.schedule.WorkingHours;
 import com.massagedesk.api.schedule.WorkingHoursRepository;
 import com.massagedesk.api.security.StaffRole;
+import java.lang.reflect.RecordComponent;
 import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.LocalTime;
+import java.util.Arrays;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -36,6 +44,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 /** Every domain rule that can refuse a request answers a problem detail with the same shape and a code. */
 @SpringBootTest
@@ -48,6 +57,9 @@ class ProblemResponsesTests {
 
     @Autowired
     private MockMvc mvc;
+
+    @Autowired
+    private ApplicationContext context;
 
     @Autowired
     private JdbcTemplate jdbc;
@@ -82,8 +94,19 @@ class ProblemResponsesTests {
         return mvc.perform(builder);
     }
 
+    private static void assertDocumentedMembers(ResultActions result) throws Exception {
+        String json = result.andReturn().getResponse().getContentAsString();
+        Map<String, Object> parsed = JsonPath.read(json, "$");
+        Set<String> documented = Arrays.stream(ApiProblem.class.getRecordComponents())
+                .map(RecordComponent::getName).collect(Collectors.toSet());
+        Set<String> required = Set.of("title", "status", "detail", "instance", "code");
+        assertThat(documented).containsAll(parsed.keySet());
+        assertThat(parsed.keySet()).containsAll(required);
+    }
+
     private static ResultActions problem(ResultActions result, int status, String title, String detail,
             String instance, String code) throws Exception {
+        assertDocumentedMembers(result);
         return result
                 .andExpect(status().is(status))
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
@@ -190,6 +213,111 @@ class ProblemResponsesTests {
                 409, "Conflict", "time off overlaps confirmed appointments", "/time-off",
                 "APPOINTMENT_CONFLICT")
                 .andExpect(jsonPath("$.conflicts.length()").value(1));
+    }
+
+    @Test
+    void slotsServiceNotFound() throws Exception {
+        problem(send(get("/slots?serviceId=" + UUID.randomUUID() + "&day=2026-11-03"), null),
+                404, "Not Found", "service not found", "/slots", "SERVICE_NOT_FOUND");
+    }
+
+    @Test
+    void bookingServiceNotFound() throws Exception {
+        String json = "{\"clientId\":\"%s\",\"serviceId\":\"%s\",\"start\":\"%s\"}"
+                .formatted(client.getId(), UUID.randomUUID(), TUESDAY_10);
+        problem(send(post("/appointments"), json),
+                404, "Not Found", "service not found", "/appointments", "SERVICE_NOT_FOUND");
+    }
+
+    @Test
+    void bookingAppointmentNotFound() throws Exception {
+        String id = UUID.randomUUID().toString();
+        problem(send(post("/appointments/" + id + "/cancel"), null),
+                404, "Not Found", "appointment not found", "/appointments/" + id + "/cancel",
+                "APPOINTMENT_NOT_FOUND");
+    }
+
+    @Test
+    void bookingNotStarted() throws Exception {
+        String id = book(TUESDAY_10);
+        problem(send(post("/appointments/" + id + "/no-show"), null),
+                409, "Conflict", "appointment has not started yet", "/appointments/" + id + "/no-show",
+                "NOT_STARTED");
+    }
+
+    @Test
+    void malformedJson() throws Exception {
+        frameworkProblem(send(post("/appointments"), "{"), 400, "Bad Request", "/appointments");
+    }
+
+    @Test
+    void beanValidation() throws Exception {
+        frameworkProblem(send(post("/appointments"), "{}"), 400, "Bad Request", "/appointments");
+    }
+
+    @Test
+    void invalidId() throws Exception {
+        frameworkProblem(send(post("/appointments/not-a-uuid/cancel"), null), 400, "Bad Request",
+                "/appointments/not-a-uuid/cancel");
+    }
+
+    @Test
+    void missingParameter() throws Exception {
+        frameworkProblem(send(get("/slots?day=2026-11-03"), null), 400, "Bad Request", "/slots");
+    }
+
+    @Test
+    void timeOffRangeCheck() throws Exception {
+        frameworkProblem(send(get("/time-off?from=2026-11-05&to=2026-11-03"), null), 400, "Bad Request",
+                "/time-off")
+                .andExpect(jsonPath("$.detail").value("from must not be after to"));
+    }
+
+    @Test
+    void unknownPath() throws Exception {
+        frameworkProblem(send(get("/no-such-path"), null), 404, "Not Found", "/no-such-path");
+    }
+
+    @Test
+    void unsupportedMediaType() throws Exception {
+        ResultActions result = mvc.perform(post("/appointments")
+                .with(jwt().authorities(new SimpleGrantedAuthority(StaffRole.MASTER.authority())))
+                .contentType(MediaType.TEXT_PLAIN).content("x"));
+        frameworkProblem(result, 415, "Unsupported Media Type", "/appointments");
+    }
+
+    @Test
+    void methodNotAllowed() throws Exception {
+        String id = UUID.randomUUID().toString();
+        frameworkProblem(send(get("/appointments/" + id + "/cancel"), null), 405, "Method Not Allowed",
+                "/appointments/" + id + "/cancel");
+    }
+
+    @Test
+    void notAcceptable() throws Exception {
+        frameworkProblem(send(get("/clients").accept(MediaType.TEXT_PLAIN), null), 406, "Not Acceptable",
+                "/clients");
+    }
+
+    @Test
+    void oneExceptionHandlerBean() {
+        assertThat(context.getBeansOfType(ResponseEntityExceptionHandler.class).values())
+                .hasSize(1)
+                .allSatisfy(handler -> assertThat(handler.getClass().getSimpleName())
+                        .isEqualTo("DomainErrorHandler"));
+    }
+
+    private static ResultActions frameworkProblem(ResultActions result, int status, String title, String instance)
+            throws Exception {
+        assertDocumentedMembers(result);
+        return result
+                .andExpect(status().is(status))
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+                .andExpect(jsonPath("$.title").value(title))
+                .andExpect(jsonPath("$.status").value(status))
+                .andExpect(jsonPath("$.detail").exists())
+                .andExpect(jsonPath("$.instance").value(instance))
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
     }
 
     @Test

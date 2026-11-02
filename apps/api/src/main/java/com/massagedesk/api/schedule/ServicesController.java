@@ -1,5 +1,6 @@
 package com.massagedesk.api.schedule;
 
+import com.massagedesk.api.errors.ApiProblem;
 import com.massagedesk.api.security.StaffActors;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -12,7 +13,6 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.http.ProblemDetail;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -46,7 +46,7 @@ class ServicesController {
     @ApiResponse(responseCode = "201", description = "service created")
     @ApiResponse(responseCode = "400", description = "missing or invalid field",
             content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
-                    schema = @Schema(implementation = ProblemDetail.class)))
+                    schema = @Schema(implementation = ApiProblem.class)))
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
     ServiceResponse createService(@Valid @RequestBody CreateServiceRequest request,
@@ -59,10 +59,10 @@ class ServicesController {
     @ApiResponse(responseCode = "200", description = "service updated")
     @ApiResponse(responseCode = "400", description = "invalid field or id",
             content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
-                    schema = @Schema(implementation = ProblemDetail.class)))
+                    schema = @Schema(implementation = ApiProblem.class)))
     @ApiResponse(responseCode = "404", description = "service not found",
             content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
-                    schema = @Schema(implementation = ProblemDetail.class)))
+                    schema = @Schema(implementation = ApiProblem.class)))
     @PatchMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE)
     ServiceResponse updateService(@Parameter(description = "service id") @PathVariable UUID id,

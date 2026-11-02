@@ -13,6 +13,7 @@ import com.jayway.jsonpath.JsonPath;
 import com.massagedesk.api.TestcontainersConfiguration;
 import com.massagedesk.api.clients.Client;
 import com.massagedesk.api.clients.ClientRepository;
+import com.massagedesk.api.errors.ApiProblem;
 import com.massagedesk.api.security.StaffRole;
 import java.lang.reflect.RecordComponent;
 import java.math.BigDecimal;
@@ -280,7 +281,7 @@ class TimeOffControllerTests {
         Map<String, Object> parsed = JsonPath.read(json, "$");
 
         // "type" is left out of the body while it is the default "about:blank"
-        Set<String> documented = new HashSet<>(Arrays.stream(ScheduleConflictProblem.class.getRecordComponents())
+        Set<String> documented = new HashSet<>(Arrays.stream(ApiProblem.class.getRecordComponents())
                 .map(RecordComponent::getName).toList());
         documented.remove("type");
         assertThat(parsed.keySet()).isEqualTo(documented);

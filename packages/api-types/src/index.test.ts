@@ -1,5 +1,5 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
-import type { paths } from "./index.js";
+import type { ApiProblem, components, ErrorCode, paths } from "./index.js";
 
 type VerifyGet = paths["/webhook/whatsapp"]["get"];
 type VerifyQuery = NonNullable<VerifyGet["parameters"]["query"]>;
@@ -174,14 +174,14 @@ describe("generated /working-hours types", () => {
 
   it("types the 409 conflicts", () => {
     type Conflict = paths["/working-hours"]["put"]["responses"][409]["content"]["application/problem+json"];
-    expectTypeOf<Conflict["conflicts"][number]>().toEqualTypeOf<{
+    expectTypeOf<NonNullable<Conflict["conflicts"]>[number]>().toEqualTypeOf<{
       appointmentId: string;
       clientName: string | null;
       start: string;
       end: string;
     }>();
     expectTypeOf<Conflict["detail"]>().toEqualTypeOf<string>();
-    expectTypeOf<Conflict["code"]>().toEqualTypeOf<string>();
+    expectTypeOf<Conflict["code"]>().toEqualTypeOf<components["schemas"]["ErrorCode"]>();
     expect(true).toBe(true);
   });
 });
@@ -221,14 +221,14 @@ describe("generated /time-off conflict types", () => {
   type Conflict = paths["/time-off"]["post"]["responses"][409]["content"]["application/problem+json"];
 
   it("types the 409 conflicts", () => {
-    expectTypeOf<Conflict["conflicts"][number]>().toEqualTypeOf<{
+    expectTypeOf<NonNullable<Conflict["conflicts"]>[number]>().toEqualTypeOf<{
       appointmentId: string;
       clientName: string | null;
       start: string;
       end: string;
     }>();
     expectTypeOf<Conflict["detail"]>().toEqualTypeOf<string>();
-    expectTypeOf<Conflict["code"]>().toEqualTypeOf<string>();
+    expectTypeOf<Conflict["code"]>().toEqualTypeOf<components["schemas"]["ErrorCode"]>();
     expect(true).toBe(true);
   });
 });
@@ -248,6 +248,104 @@ describe("generated /settings types", () => {
     expectTypeOf<PatchBody["timeZone"]>().toEqualTypeOf<string | undefined>();
     expectTypeOf<PatchBody["address"]>().toEqualTypeOf<string | undefined>();
     expectTypeOf<PatchBody["botEnabled"]>().toEqualTypeOf<boolean | undefined>();
+    expect(true).toBe(true);
+  });
+});
+
+describe("error types", () => {
+  type Problem<Op extends { responses: object }, S extends number> = Op["responses"] extends Record<
+    S,
+    { content: { "application/problem+json": infer P } }
+  >
+    ? P
+    : never;
+
+  it("lists the exact error codes", () => {
+    expectTypeOf<ErrorCode>().toEqualTypeOf<
+      | "APPOINTMENT_CONFLICT"
+      | "APPOINTMENT_NOT_FOUND"
+      | "CLIENT_NOT_FOUND"
+      | "INVALID_HOURS"
+      | "INVALID_PHONE"
+      | "INVALID_REQUEST"
+      | "INVALID_TIME_OFF"
+      | "NOT_CONFIRMED"
+      | "NOT_STARTED"
+      | "OUTSIDE_SCHEDULE"
+      | "PHONE_TAKEN"
+      | "SERVICE_NOT_FOUND"
+      | "TIME_OFF_NOT_FOUND"
+      | "TIME_TAKEN"
+      | "UNKNOWN_TIME_ZONE"
+    >();
+    expect(true).toBe(true);
+  });
+
+  it("types the problem members", () => {
+    expectTypeOf<keyof ApiProblem>().toEqualTypeOf<
+      "type" | "title" | "status" | "detail" | "instance" | "code" | "conflicts"
+    >();
+    expectTypeOf<ApiProblem["title"]>().toEqualTypeOf<string>();
+    expectTypeOf<ApiProblem["detail"]>().toEqualTypeOf<string>();
+    expectTypeOf<ApiProblem["instance"]>().toEqualTypeOf<string>();
+    expectTypeOf<ApiProblem["status"]>().toEqualTypeOf<number>();
+    expectTypeOf<ApiProblem["code"]>().toEqualTypeOf<ErrorCode>();
+    expectTypeOf<ApiProblem["type"]>().toEqualTypeOf<string | undefined>();
+    expectTypeOf<ApiProblem["conflicts"]>().toEqualTypeOf<
+      { appointmentId: string; clientName: string | null; start: string; end: string }[] | undefined
+    >();
+    expect(true).toBe(true);
+  });
+
+  it("uses ApiProblem for every appointment error", () => {
+    expectTypeOf<Problem<paths["/appointments"]["post"], 400>>().toEqualTypeOf<ApiProblem>();
+    expectTypeOf<Problem<paths["/appointments"]["post"], 404>>().toEqualTypeOf<ApiProblem>();
+    expectTypeOf<Problem<paths["/appointments"]["post"], 409>>().toEqualTypeOf<ApiProblem>();
+    expectTypeOf<Problem<paths["/appointments"]["post"], 422>>().toEqualTypeOf<ApiProblem>();
+    expectTypeOf<Problem<paths["/appointments/{id}/reschedule"]["post"], 400>>().toEqualTypeOf<ApiProblem>();
+    expectTypeOf<Problem<paths["/appointments/{id}/reschedule"]["post"], 404>>().toEqualTypeOf<ApiProblem>();
+    expectTypeOf<Problem<paths["/appointments/{id}/reschedule"]["post"], 409>>().toEqualTypeOf<ApiProblem>();
+    expectTypeOf<Problem<paths["/appointments/{id}/reschedule"]["post"], 422>>().toEqualTypeOf<ApiProblem>();
+    expectTypeOf<Problem<paths["/appointments/{id}/cancel"]["post"], 400>>().toEqualTypeOf<ApiProblem>();
+    expectTypeOf<Problem<paths["/appointments/{id}/cancel"]["post"], 404>>().toEqualTypeOf<ApiProblem>();
+    expectTypeOf<Problem<paths["/appointments/{id}/cancel"]["post"], 409>>().toEqualTypeOf<ApiProblem>();
+    expectTypeOf<Problem<paths["/appointments/{id}/no-show"]["post"], 400>>().toEqualTypeOf<ApiProblem>();
+    expectTypeOf<Problem<paths["/appointments/{id}/no-show"]["post"], 404>>().toEqualTypeOf<ApiProblem>();
+    expectTypeOf<Problem<paths["/appointments/{id}/no-show"]["post"], 409>>().toEqualTypeOf<ApiProblem>();
+    expect(true).toBe(true);
+  });
+
+  it("uses ApiProblem for every client error", () => {
+    expectTypeOf<Problem<paths["/clients"]["get"], 400>>().toEqualTypeOf<ApiProblem>();
+    expectTypeOf<Problem<paths["/clients"]["post"], 400>>().toEqualTypeOf<ApiProblem>();
+    expectTypeOf<Problem<paths["/clients"]["post"], 409>>().toEqualTypeOf<ApiProblem>();
+    expectTypeOf<Problem<paths["/clients/{id}"]["get"], 400>>().toEqualTypeOf<ApiProblem>();
+    expectTypeOf<Problem<paths["/clients/{id}"]["get"], 404>>().toEqualTypeOf<ApiProblem>();
+    expectTypeOf<Problem<paths["/clients/{id}"]["patch"], 400>>().toEqualTypeOf<ApiProblem>();
+    expectTypeOf<Problem<paths["/clients/{id}"]["patch"], 404>>().toEqualTypeOf<ApiProblem>();
+    expect(true).toBe(true);
+  });
+
+  it("uses ApiProblem for every service and settings error", () => {
+    expectTypeOf<Problem<paths["/services"]["post"], 400>>().toEqualTypeOf<ApiProblem>();
+    expectTypeOf<Problem<paths["/services/{id}"]["patch"], 400>>().toEqualTypeOf<ApiProblem>();
+    expectTypeOf<Problem<paths["/services/{id}"]["patch"], 404>>().toEqualTypeOf<ApiProblem>();
+    expectTypeOf<Problem<paths["/settings"]["patch"], 400>>().toEqualTypeOf<ApiProblem>();
+    expect(true).toBe(true);
+  });
+
+  it("uses ApiProblem for every schedule error", () => {
+    expectTypeOf<Problem<paths["/slots"]["get"], 400>>().toEqualTypeOf<ApiProblem>();
+    expectTypeOf<Problem<paths["/slots"]["get"], 404>>().toEqualTypeOf<ApiProblem>();
+    expectTypeOf<Problem<paths["/time-off"]["get"], 400>>().toEqualTypeOf<ApiProblem>();
+    expectTypeOf<Problem<paths["/time-off"]["post"], 400>>().toEqualTypeOf<ApiProblem>();
+    expectTypeOf<Problem<paths["/time-off"]["post"], 409>>().toEqualTypeOf<ApiProblem>();
+    expectTypeOf<Problem<paths["/time-off"]["post"], 422>>().toEqualTypeOf<ApiProblem>();
+    expectTypeOf<Problem<paths["/time-off/{id}"]["delete"], 400>>().toEqualTypeOf<ApiProblem>();
+    expectTypeOf<Problem<paths["/time-off/{id}"]["delete"], 404>>().toEqualTypeOf<ApiProblem>();
+    expectTypeOf<Problem<paths["/working-hours"]["put"], 400>>().toEqualTypeOf<ApiProblem>();
+    expectTypeOf<Problem<paths["/working-hours"]["put"], 409>>().toEqualTypeOf<ApiProblem>();
+    expectTypeOf<Problem<paths["/working-hours"]["put"], 422>>().toEqualTypeOf<ApiProblem>();
     expect(true).toBe(true);
   });
 });
