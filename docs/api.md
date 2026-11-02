@@ -1,6 +1,6 @@
 # API
 
-Spring Boot, `apps/api`. The OpenAPI document is published from M1.
+Spring Boot, `apps/api`. The OpenAPI 3.1 document is served at `GET /v3/api-docs` (staff token required, no Swagger UI). The committed copy is `apps/api/openapi.json`, refreshed by `npm run api:openapi` (needs Docker), and `./mvnw verify` fails when it is out of date.
 
 ## Authentication
 

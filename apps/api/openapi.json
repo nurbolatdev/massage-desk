@@ -1,0 +1,77 @@
+{
+  "openapi" : "3.1.0",
+  "info" : {
+    "description" : "REST API for the massage-desk app and admin panel",
+    "title" : "massage-desk API",
+    "version" : "v1"
+  },
+  "servers" : [ {
+    "url" : "/"
+  } ],
+  "security" : [ {
+    "bearerAuth" : [ ]
+  } ],
+  "paths" : {
+    "/webhook/whatsapp" : {
+      "get" : {
+        "operationId" : "verify",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "hub.mode",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "hub.verify_token",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "hub.challenge",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "text/plain" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "challenge echoed"
+          },
+          "403" : {
+            "content" : {
+              "text/plain" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "wrong or missing verify token"
+          }
+        },
+        "security" : [ ],
+        "summary" : "Meta webhook verification",
+        "tags" : [ "webhook" ]
+      }
+    }
+  },
+  "components" : {
+    "securitySchemes" : {
+      "bearerAuth" : {
+        "bearerFormat" : "JWT",
+        "scheme" : "bearer",
+        "type" : "http"
+      }
+    }
+  }
+}

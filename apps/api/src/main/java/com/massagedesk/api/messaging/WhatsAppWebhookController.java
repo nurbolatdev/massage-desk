@@ -2,6 +2,10 @@ package com.massagedesk.api.messaging;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -17,6 +21,8 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>GET — Meta verifies the endpoint: answer with {@code hub.challenge} when the token matches.
  * POST (incoming messages) is added together with the bot logic.
  */
+@Tag(name = "webhook")
+@SecurityRequirements
 @RestController
 @RequestMapping("/webhook/whatsapp")
 class WhatsAppWebhookController {
@@ -27,6 +33,9 @@ class WhatsAppWebhookController {
         this.verifyToken = verifyToken;
     }
 
+    @Operation(summary = "Meta webhook verification")
+    @ApiResponse(responseCode = "200", description = "challenge echoed")
+    @ApiResponse(responseCode = "403", description = "wrong or missing verify token")
     @GetMapping(produces = MediaType.TEXT_PLAIN_VALUE)
     ResponseEntity<String> verify(
             @RequestParam(name = "hub.mode", required = false) String mode,

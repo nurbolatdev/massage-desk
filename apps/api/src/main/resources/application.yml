@@ -23,6 +23,13 @@ spring:
           audiences: authenticated
           jws-algorithms: ES256,RS256
 
+# stable output: apps/api/openapi.json is compared in tests
+springdoc:
+  api-docs:
+    version: openapi_3_1
+  writer-with-order-by-keys: true
+  writer-with-default-pretty-printer: true
+
 server:
   port: ${PORT:8080}
   shutdown: graceful
