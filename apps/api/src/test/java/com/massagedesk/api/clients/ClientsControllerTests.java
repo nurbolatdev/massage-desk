@@ -214,6 +214,15 @@ class ClientsControllerTests {
     }
 
     @Test
+    void createsClientFromALocalNumber() throws Exception {
+        postClient("""
+                {"phone":"90 000 08 19"}
+                """)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.phone").value("+998900000819"));
+    }
+
+    @Test
     void malformedJsonIsBadRequest() throws Exception {
         postClient("{not json")
                 .andExpect(status().isBadRequest())

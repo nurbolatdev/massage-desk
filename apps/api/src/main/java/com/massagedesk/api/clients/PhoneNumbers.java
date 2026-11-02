@@ -1,11 +1,17 @@
 package com.massagedesk.api.clients;
 
+import com.google.i18n.phonenumbers.NumberParseException;
+import com.google.i18n.phonenumbers.PhoneNumberUtil;
+import com.google.i18n.phonenumbers.Phonenumber.PhoneNumber;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
 /**
- * Phone number rules. Same rules as {@code normalizePhone} in the shared TypeScript package;
- * keep both in sync.
+ * Phone number rules. Same rules as {@code normalizePhone} in the shared TypeScript package,
+ * checked against the shared fixture {@code packages/shared/fixtures/phones.json}; keep both in sync.
+ *
+ * <p>Not for WhatsApp ids: they are digits without a plus and always international, so convert
+ * them with {@code "+" + waId} first.
  */
 public final class PhoneNumbers {
 
@@ -14,16 +20,25 @@ public final class PhoneNumbers {
     private PhoneNumbers() {
     }
 
-    /** Drops every non-digit, accepts 9..15 digits and returns them with a leading plus. */
-    public static Optional<String> normalize(String input) {
-        if (input == null) {
+    /**
+     * Parses the input (read in {@code defaultRegion} when it has no plus sign), accepts only valid
+     * numbers and returns them in E.164 form.
+     */
+    public static Optional<String> normalize(String input, String defaultRegion) {
+        if (input == null || input.isBlank()) {
             return Optional.empty();
         }
-        String digits = input.replaceAll("\\D", "");
-        if (digits.length() < 9 || digits.length() > 15) {
+        PhoneNumberUtil util = PhoneNumberUtil.getInstance();
+        try {
+            PhoneNumber number = util.parse(input, defaultRegion);
+            if (!util.isValidNumber(number)) {
+                return Optional.empty();
+            }
+            String e164 = util.format(number, PhoneNumberUtil.PhoneNumberFormat.E164);
+            return isE164(e164) ? Optional.of(e164) : Optional.empty();
+        } catch (NumberParseException e) {
             return Optional.empty();
         }
-        return Optional.of("+" + digits);
     }
 
     public static boolean isE164(String phone) {

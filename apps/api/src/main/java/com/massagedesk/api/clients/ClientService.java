@@ -28,16 +28,22 @@ public class ClientService {
     private final ClientRepository clients;
     private final SettingsRepository settings;
     private final DomainEventRecorder recorder;
+    private final PhoneProperties phoneProperties;
 
-    public ClientService(ClientRepository clients, SettingsRepository settings, DomainEventRecorder recorder) {
+    public ClientService(
+            ClientRepository clients,
+            SettingsRepository settings,
+            DomainEventRecorder recorder,
+            PhoneProperties phoneProperties) {
         this.clients = clients;
         this.settings = settings;
         this.recorder = recorder;
+        this.phoneProperties = phoneProperties;
     }
 
     @Transactional
     public ClientView create(String rawPhone, String name, String notes, EventActor actor) {
-        String phone = PhoneNumbers.normalize(rawPhone)
+        String phone = PhoneNumbers.normalize(rawPhone, phoneProperties.defaultRegion())
                 .orElseThrow(() -> new ClientException(ClientException.Reason.INVALID_PHONE, "invalid phone number"));
         Client saved;
         try {
