@@ -8,6 +8,7 @@ import com.massagedesk.api.events.DomainEventType;
 import com.massagedesk.api.events.EventActor;
 import com.massagedesk.api.schedule.MassageService;
 import com.massagedesk.api.schedule.MassageServiceRepository;
+import com.massagedesk.api.schedule.ScheduleLock;
 import com.massagedesk.api.schedule.SlotService;
 import com.massagedesk.api.schedule.TimeRange;
 import com.massagedesk.api.settings.SettingsRepository;
@@ -30,9 +31,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AppointmentService {
 
-    /** Key of the advisory lock that orders all writes of confirmed periods (one master). */
-    private static final long APPOINTMENT_WRITE_LOCK = 7_301_001L;
-
     /** An appointment as seen by callers; {@code zone} is the master's zone for display. */
     public record AppointmentView(
             UUID id,
@@ -51,6 +49,7 @@ public class AppointmentService {
     private final SettingsRepository settings;
     private final Clock clock;
     private final DomainEventRecorder recorder;
+    private final ScheduleLock scheduleLock;
 
     public AppointmentService(
             AppointmentRepository appointments,
@@ -59,7 +58,8 @@ public class AppointmentService {
             SlotService slotService,
             SettingsRepository settings,
             Clock clock,
-            DomainEventRecorder recorder) {
+            DomainEventRecorder recorder,
+            ScheduleLock scheduleLock) {
         this.appointments = appointments;
         this.clients = clients;
         this.services = services;
@@ -67,12 +67,13 @@ public class AppointmentService {
         this.settings = settings;
         this.clock = clock;
         this.recorder = recorder;
+        this.scheduleLock = scheduleLock;
     }
 
     /** Books the service for the client; the end is the start plus the service length. */
     @Transactional
     public AppointmentView create(UUID clientId, UUID serviceId, Instant start, AppointmentSource source, EventActor actor) {
-        appointments.lockWrites(APPOINTMENT_WRITE_LOCK);
+        scheduleLock.acquire();
         Client client = clients.findById(clientId)
                 .orElseThrow(() -> new BookingException(Reason.CLIENT_NOT_FOUND, "client not found"));
         MassageService service = services.findByIdAndActiveTrue(serviceId)
@@ -89,10 +90,13 @@ public class AppointmentService {
         return view(saved);
     }
 
-    /** Moves a confirmed appointment, keeping its booked length. */
+    /**
+     * Moves a confirmed appointment, keeping its booked length. Lock order: the schedule lock
+     * first, then the row lock ({@code locked(id)}); never the other way round.
+     */
     @Transactional
     public AppointmentView reschedule(UUID id, Instant start, EventActor actor) {
-        appointments.lockWrites(APPOINTMENT_WRITE_LOCK);
+        scheduleLock.acquire();
         Appointment appointment = locked(id);
         appointment.requireConfirmed();
         TimeRange old = appointment.getPeriod();

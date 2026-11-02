@@ -82,7 +82,7 @@ The API validates first (400/422); the constraints guard direct writes. Covered 
 constraint appointments_no_overlap
     exclude using gist (period with &&) where (status = 'confirmed')
 ```
-`[start, end)` ranges allow back-to-back appointments; cancelled ones free the time. Covered by `AppointmentOverlapConstraintTests`. Creating or moving an appointment first takes a transaction-scoped advisory lock, so parallel overlapping writes queue up instead of deadlocking; the constraint still decides the conflict.
+`[start, end)` ranges allow back-to-back appointments; cancelled ones free the time. Covered by `AppointmentOverlapConstraintTests`. One schedule lock (a transaction-scoped advisory lock) orders booking, rescheduling, adding time off and replacing working hours, so parallel writes queue up instead of deadlocking and never check each other's uncommitted rows; the constraint still decides overlaps.
 
 ## Observability (append-only)
 - `events` — domain event log: `type` (e.g. `appointment_created`), `entity_type`, `entity_id`, `actor` (client, bot, master, admin, system), `payload` (jsonb object).

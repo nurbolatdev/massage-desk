@@ -18,9 +18,11 @@ public class WorkingHoursService {
     }
 
     private final WorkingHoursRepository workingHours;
+    private final ScheduleLock scheduleLock;
 
-    public WorkingHoursService(WorkingHoursRepository workingHours) {
+    public WorkingHoursService(WorkingHoursRepository workingHours, ScheduleLock scheduleLock) {
         this.workingHours = workingHours;
+        this.scheduleLock = scheduleLock;
     }
 
     /** The whole week ordered by weekday, then start. */
@@ -31,16 +33,16 @@ public class WorkingHoursService {
 
     /**
      * Replaces the whole week in one transaction. The rules are checked over the complete set
-     * before anything is written. An advisory lock orders parallel replacements: in READ COMMITTED
-     * two replacements would otherwise both delete the old rows and both insert, leaving the union
-     * of two weeks or a constraint failure. The old rows go with a bulk delete that runs at once;
+     * before anything is written. The schedule lock orders parallel replacements and also orders the
+     * week against bookings and time off: in READ COMMITTED two replacements would otherwise both
+     * delete the old rows and both insert, leaving the union of two weeks or a constraint failure. The old rows go with a bulk delete that runs at once;
      * {@code deleteAll()} would let Hibernate flush the inserts first, and the new rows would hit
      * the exclusion constraint against the old ones.
      */
     @Transactional
     public List<WorkingHours> replaceWeek(List<Block> blocks) {
         validate(blocks);
-        workingHours.lockWrites();
+        scheduleLock.acquire();
         workingHours.deleteAllInBatch();
         workingHours.saveAll(blocks.stream()
                 .map(b -> new WorkingHours(b.weekday(), b.start(), b.end()))

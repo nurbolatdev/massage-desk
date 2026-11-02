@@ -25,8 +25,11 @@ public class TimeOffService {
     private final TimeOffRepository timeOff;
     private final SettingsRepository settings;
     private final Clock clock;
+    private final ScheduleLock scheduleLock;
 
-    public TimeOffService(TimeOffRepository timeOff, SettingsRepository settings, Clock clock) {
+    public TimeOffService(
+            TimeOffRepository timeOff, SettingsRepository settings, Clock clock, ScheduleLock scheduleLock) {
+        this.scheduleLock = scheduleLock;
         this.timeOff = timeOff;
         this.settings = settings;
         this.clock = clock;
@@ -42,6 +45,7 @@ public class TimeOffService {
                 || Duration.between(start, end).compareTo(MAX_LENGTH) > 0) {
             throw invalid("time off must end in the future, start within two years and last at most 366 days");
         }
+        scheduleLock.acquire();
         String cleaned = reason == null || reason.isBlank() ? null : reason.trim();
         TimeOff saved = timeOff.saveAndFlush(new TimeOff(new TimeRange(start, end), cleaned));
         return view(saved, settings.get().getTimeZone());
