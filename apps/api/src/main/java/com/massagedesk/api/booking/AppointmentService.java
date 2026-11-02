@@ -30,6 +30,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AppointmentService {
 
+    /** Key of the advisory lock that orders all writes of confirmed periods (one master). */
+    private static final long APPOINTMENT_WRITE_LOCK = 7_301_001L;
+
     /** An appointment as seen by callers; {@code zone} is the master's zone for display. */
     public record AppointmentView(
             UUID id,
@@ -69,6 +72,7 @@ public class AppointmentService {
     /** Books the service for the client; the end is the start plus the service length. */
     @Transactional
     public AppointmentView create(UUID clientId, UUID serviceId, Instant start, AppointmentSource source, EventActor actor) {
+        appointments.lockWrites(APPOINTMENT_WRITE_LOCK);
         Client client = clients.findById(clientId)
                 .orElseThrow(() -> new BookingException(Reason.CLIENT_NOT_FOUND, "client not found"));
         MassageService service = services.findByIdAndActiveTrue(serviceId)
@@ -88,6 +92,7 @@ public class AppointmentService {
     /** Moves a confirmed appointment, keeping its booked length. */
     @Transactional
     public AppointmentView reschedule(UUID id, Instant start, EventActor actor) {
+        appointments.lockWrites(APPOINTMENT_WRITE_LOCK);
         Appointment appointment = locked(id);
         appointment.requireConfirmed();
         TimeRange old = appointment.getPeriod();

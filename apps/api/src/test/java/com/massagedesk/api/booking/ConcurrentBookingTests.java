@@ -86,10 +86,7 @@ class ConcurrentBookingTests {
 
     @AfterEach
     void cleanUp() {
-        jdbc.update("""
-                delete from events where entity_id in (select id from appointments where client_id = ?)
-                """, clientId);
-        jdbc.update("delete from appointments where client_id = ?", clientId);
+        deleteAppointments();
         jdbc.update("delete from clients where id = ?", clientId);
         jdbc.update("delete from services where id = ?", serviceId);
         jdbc.update("delete from working_hours where id = ?", hoursId);
@@ -119,14 +116,25 @@ class ConcurrentBookingTests {
 
     @Test
     void overlappingParallelBookingsConflict() throws Exception {
-        List<Callable<Outcome>> tasks = List.of(
-                () -> create("2026-11-03T10:00:00+05:00"),
-                () -> create("2026-11-03T10:30:00+05:00"));
+        for (int round = 0; round < 20; round++) {
+            int base = 10 + round % 3;
+            List<Callable<Outcome>> tasks = new ArrayList<>();
+            for (int i = 0; i < 4; i++) {
+                String start = "2026-11-03T%02d:%02d:00+05:00".formatted(base, i * 15);
+                tasks.add(() -> create(start));
+            }
 
-        List<Outcome> outcomes = runParallel(tasks);
+            List<Outcome> outcomes = runParallel(tasks);
 
-        assertThat(outcomes).filteredOn(o -> o.status() == 201).hasSize(1);
-        assertThat(outcomes).filteredOn(o -> o.status() == 409).hasSize(1);
+            assertThat(outcomes).as("round %d", round).noneMatch(o -> o.status() >= 500);
+            assertThat(outcomes).as("round %d", round).filteredOn(o -> o.status() == 201).hasSize(1);
+            assertThat(outcomes).as("round %d", round).filteredOn(o -> o.status() == 409)
+                    .hasSize(3)
+                    .allSatisfy(o -> assertThat(o.detail()).isEqualTo(TAKEN));
+            assertThat(count("select count(*) from appointments where client_id = ? and status = 'confirmed'"))
+                    .as("round %d", round).isEqualTo(1);
+            deleteAppointments();
+        }
     }
 
     @Test
@@ -150,6 +158,13 @@ class ConcurrentBookingTests {
         assertThat(jdbc.queryForObject(
                 "select count(*) from events where entity_id = ? and type = 'appointment_cancelled'",
                 Integer.class, id)).isEqualTo(1);
+    }
+
+    private void deleteAppointments() {
+        jdbc.update("""
+                delete from events where entity_id in (select id from appointments where client_id = ?)
+                """, clientId);
+        jdbc.update("delete from appointments where client_id = ?", clientId);
     }
 
     private Outcome create(String start) throws Exception {

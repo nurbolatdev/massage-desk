@@ -64,7 +64,7 @@ Also: `working_hours` (ISO weekday 1–7, several blocks per day for breaks), `t
 constraint appointments_no_overlap
     exclude using gist (period with &&) where (status = 'confirmed')
 ```
-`[start, end)` ranges allow back-to-back appointments; cancelled ones free the time. Covered by `AppointmentOverlapConstraintTests`.
+`[start, end)` ranges allow back-to-back appointments; cancelled ones free the time. Covered by `AppointmentOverlapConstraintTests`. Creating or moving an appointment first takes a transaction-scoped advisory lock, so parallel overlapping writes queue up instead of deadlocking; the constraint still decides the conflict.
 
 ## Observability (append-only)
 - `events` — domain event log: `type` (e.g. `appointment_created`), `entity_type`, `entity_id`, `actor` (client, bot, master, admin, system), `payload` (jsonb object).
