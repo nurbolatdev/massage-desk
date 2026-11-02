@@ -49,6 +49,7 @@ flowchart LR
 | `apps/mobile` | Android app for the master: today, calendar, chats, settings | Expo SDK 58, React Native, Expo Router, TypeScript |
 | `apps/admin` | Admin panel: schedule, clients, conversations, AI diagnostics, reports, system *(M1)* | React, Vite, TanStack, shadcn/ui, Recharts |
 | `packages/shared` | TypeScript helpers shared by the app and the admin panel | TypeScript, zod |
+| `packages/api-types` | TypeScript types generated from the API contract | openapi-typescript |
 | `assets/brand` | Logo sources and generated images | SVG, `npm run brand` |
 
 ## Getting started
@@ -58,6 +59,7 @@ Requirements: Java 21, Node 22+, Docker (local database and tests).
 ```bash
 npm install                      # TypeScript workspaces (builds packages/shared)
 npm run check                    # quality gate: API verify + lint, typecheck, tests
+npm run api:types                # regenerate apps/api/openapi.json and packages/api-types (needs Docker)
 
 cd apps/api && ./mvnw spring-boot:run   # API on http://localhost:8080 — Postgres starts from compose.yaml
 npm run dev:mobile                      # Expo dev server — open in Expo Go on Android

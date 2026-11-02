@@ -2,6 +2,10 @@
 
 Spring Boot, `apps/api`. The OpenAPI 3.1 document is served at `GET /v3/api-docs` (staff token required, no Swagger UI). The committed copy is `apps/api/openapi.json`, refreshed by `npm run api:openapi` (needs Docker), and `./mvnw verify` fails when it is out of date.
 
+## Contract
+
+`packages/api-types` exports `paths`, `components` and `operations` generated from `openapi.json`. Clients use `import type` only and never hand-write API types. After changing an endpoint, run `npm run api:types` and commit both files.
+
 ## Authentication
 
 Every staff request sends `Authorization: Bearer <Supabase access token>`. The token is verified with the project JWKS (`${SUPABASE_URL}/auth/v1/.well-known/jwks.json`), algorithms ES256 and RS256, issuer `${SUPABASE_URL}/auth/v1`, audience `authenticated`. The Supabase project must use JWT signing keys (dashboard, JWT Keys); the legacy shared secret is not supported, and with it every request gets `401`.
