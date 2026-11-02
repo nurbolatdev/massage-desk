@@ -46,7 +46,8 @@ insert into profiles (user_id, role, display_name) values ('<auth user id>', 'ma
 | GET | `/time-off?from&to` | ✅ M1 | Time off touching the local days |
 | POST | `/time-off` | ✅ M1 | Add a day off or vacation |
 | DELETE | `/time-off/{id}` | ✅ M1 | Remove time off |
-| GET/PUT | `/settings/*` | M1 | Business settings |
+| GET | `/settings` | ✅ M1 | Time zone, address, bot switch |
+| PATCH | `/settings` | ✅ M1 | Change settings |
 | GET/POST | `/conversations/*` | M2 | Chats, master replies, take-over |
 | POST | `/devices` | M4 | Register a push token |
 | GET | `/admin/*` | M1–M5 | Statistics and diagnostics (admin only) |
@@ -166,3 +167,17 @@ There is no delete: appointments refer to services, so a service is deactivated 
 - `400` (`application/problem+json`): missing or invalid field, id or date; `from must not be after to`; `range must be at most 366 days`.
 - `404` (`application/problem+json`): `time off not found`.
 - `422` (`application/problem+json`): `time off must start before it ends`; `time off must end in the future, start within two years and last at most 366 days`.
+
+## Settings
+
+`GET /settings` returns the business settings; `PATCH /settings` changes them. A field that is absent or `null` stays unchanged; a blank `address` clears it.
+
+```json
+{"timeZone":"Asia/Tashkent","address":null,"botEnabled":true}
+```
+
+- `timeZone` must be a region id such as `Asia/Tashkent`. Fixed offsets like `+05:00` are refused because they ignore daylight saving.
+- Changing the zone keeps working hours as local times (the same 10:00 in the new zone) and does not move booked appointments, which keep their instants.
+- `botEnabled` is stored now; the bot uses it from M2.
+
+- `400` (`application/problem+json`): invalid field or malformed JSON; `unknown time zone`.

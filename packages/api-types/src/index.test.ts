@@ -201,3 +201,22 @@ describe("generated /time-off types", () => {
     expect(true).toBe(true);
   });
 });
+
+describe("generated /settings types", () => {
+  type GetOk = paths["/settings"]["get"]["responses"][200]["content"]["application/json"];
+  type PatchBody = paths["/settings"]["patch"]["requestBody"]["content"]["application/json"];
+
+  it("types the settings", () => {
+    expectTypeOf<GetOk["timeZone"]>().toEqualTypeOf<string>();
+    expectTypeOf<GetOk["address"]>().toEqualTypeOf<string | null>();
+    expectTypeOf<GetOk["botEnabled"]>().toEqualTypeOf<boolean>();
+    expect(true).toBe(true);
+  });
+
+  it("makes every patch field optional", () => {
+    expectTypeOf<PatchBody["timeZone"]>().toEqualTypeOf<string | undefined>();
+    expectTypeOf<PatchBody["address"]>().toEqualTypeOf<string | undefined>();
+    expectTypeOf<PatchBody["botEnabled"]>().toEqualTypeOf<boolean | undefined>();
+    expect(true).toBe(true);
+  });
+});

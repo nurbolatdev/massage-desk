@@ -143,6 +143,24 @@ export interface paths {
         patch: operations["updateService"];
         trace?: never;
     };
+    "/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Business settings */
+        get: operations["getSettings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change settings; absent or null fields stay unchanged */
+        patch: operations["updateSettings"];
+        trace?: never;
+    };
     "/slots": {
         parameters: {
             query?: never;
@@ -357,6 +375,12 @@ export interface components {
              */
             sortOrder: number;
         };
+        SettingsResponse: {
+            address: string | null;
+            botEnabled: boolean;
+            /** @description IANA region id, e.g. Asia/Tashkent */
+            timeZone: string;
+        };
         SlotsResponse: {
             /** Format: date */
             day: string;
@@ -403,6 +427,12 @@ export interface components {
             price?: number;
             /** Format: int32 */
             sortOrder?: number;
+        };
+        UpdateSettingsRequest: {
+            address?: string;
+            botEnabled?: boolean;
+            /** @description IANA region id; fixed offsets are refused */
+            timeZone?: string;
         };
         WorkingBlock: {
             /** @description local time HH:mm in the master's time zone */
@@ -907,6 +937,59 @@ export interface operations {
             };
             /** @description service not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    getSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description current settings */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettingsResponse"];
+                };
+            };
+        };
+    };
+    updateSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSettingsRequest"];
+            };
+        };
+        responses: {
+            /** @description settings after the change */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettingsResponse"];
+                };
+            };
+            /** @description invalid field or unknown time zone */
+            400: {
                 headers: {
                     [name: string]: unknown;
                 };
