@@ -94,8 +94,7 @@ class ProblemResponsesTests {
         return mvc.perform(builder);
     }
 
-    private static ResultActions problem(ResultActions result, int status, String title, String detail,
-            String instance, String code) throws Exception {
+    private static void assertDocumentedMembers(ResultActions result) throws Exception {
         String json = result.andReturn().getResponse().getContentAsString();
         Map<String, Object> parsed = JsonPath.read(json, "$");
         Set<String> documented = Arrays.stream(ApiProblem.class.getRecordComponents())
@@ -103,6 +102,11 @@ class ProblemResponsesTests {
         Set<String> required = Set.of("title", "status", "detail", "instance", "code");
         assertThat(documented).containsAll(parsed.keySet());
         assertThat(parsed.keySet()).containsAll(required);
+    }
+
+    private static ResultActions problem(ResultActions result, int status, String title, String detail,
+            String instance, String code) throws Exception {
+        assertDocumentedMembers(result);
         return result
                 .andExpect(status().is(status))
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
@@ -283,6 +287,19 @@ class ProblemResponsesTests {
     }
 
     @Test
+    void methodNotAllowed() throws Exception {
+        String id = UUID.randomUUID().toString();
+        frameworkProblem(send(get("/appointments/" + id + "/cancel"), null), 405, "Method Not Allowed",
+                "/appointments/" + id + "/cancel");
+    }
+
+    @Test
+    void notAcceptable() throws Exception {
+        frameworkProblem(send(get("/clients").accept(MediaType.TEXT_PLAIN), null), 406, "Not Acceptable",
+                "/clients");
+    }
+
+    @Test
     void oneExceptionHandlerBean() {
         assertThat(context.getBeansOfType(ResponseEntityExceptionHandler.class).values())
                 .hasSize(1)
@@ -292,6 +309,7 @@ class ProblemResponsesTests {
 
     private static ResultActions frameworkProblem(ResultActions result, int status, String title, String instance)
             throws Exception {
+        assertDocumentedMembers(result);
         return result
                 .andExpect(status().is(status))
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"))

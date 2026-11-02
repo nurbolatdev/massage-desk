@@ -9,24 +9,34 @@ import io.swagger.v3.oas.annotations.media.Schema;
  */
 @Schema(enumAsRef = true, description = "machine-readable reason of an error response")
 public enum ErrorCode {
-    // Domain rules: conflicts with existing data.
+    /** Confirmed appointments are in the way of the change. */
     APPOINTMENT_CONFLICT,
-    // Domain rules: something that was asked for does not exist.
+    /** No appointment with this id. */
     APPOINTMENT_NOT_FOUND,
+    /** No client with this id. */
     CLIENT_NOT_FOUND,
-    // Domain rules: input the rules refuse.
+    /** A working-hours block is not valid. */
     INVALID_HOURS,
+    /** The phone number is not valid. */
     INVALID_PHONE,
-    // Framework: malformed, mistyped or incomplete request, unknown path, wrong method or media type.
+    /** Framework / request checks; every other constant is a domain reason name. */
     INVALID_REQUEST,
+    /** The time off period is not valid. */
     INVALID_TIME_OFF,
-    // Domain rules: appointment state.
+    /** The appointment is not confirmed any more. */
     NOT_CONFIRMED,
+    /** The appointment has not started yet. */
     NOT_STARTED,
+    /** The time is outside working hours, in time off or in the past. */
     OUTSIDE_SCHEDULE,
+    /** Another client already has this phone number. */
     PHONE_TAKEN,
+    /** No service with this id. */
     SERVICE_NOT_FOUND,
+    /** No time off with this id. */
     TIME_OFF_NOT_FOUND,
+    /** The time is already booked. */
     TIME_TAKEN,
+    /** The time zone is not known. */
     UNKNOWN_TIME_ZONE
 }

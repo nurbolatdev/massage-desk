@@ -1,5 +1,6 @@
 package com.massagedesk.api.schedule;
 
+import com.massagedesk.api.errors.ApiProblem;
 import com.massagedesk.api.security.StaffActors;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -15,7 +16,6 @@ import java.util.UUID;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import com.massagedesk.api.errors.ApiProblem;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;

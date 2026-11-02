@@ -11,6 +11,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
@@ -18,7 +19,7 @@ import org.junit.jupiter.api.Test;
 class ErrorCodeTests {
 
     private static Set<String> names(Enum<?>[] values) {
-        return Arrays.stream(values).map(Enum::name).collect(java.util.stream.Collectors.toSet());
+        return Arrays.stream(values).map(Enum::name).collect(Collectors.toSet());
     }
 
     private static Set<String> codes() {
