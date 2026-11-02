@@ -163,23 +163,100 @@ class SupabasePoliciesTests {
 		}
 	}
 
-	@ParameterizedTest
-	@ValueSource(strings = {"clients", "services", "working_hours", "time_off", "appointments", "conversations",
-			"messages", "profiles", "devices", "settings", "events", "ai_runs", "webhook_logs"})
-	void everyTableHasRowLevelSecurity(String table) throws SQLException {
+	private static final String HISTORY_TABLE = "flyway_schema_history";
+
+	private static Set<String> strings(Connection connection, String sql) throws SQLException {
+		Set<String> found = new HashSet<>();
+		try (Statement statement = connection.createStatement(); ResultSet rows = statement.executeQuery(sql)) {
+			while (rows.next()) {
+				found.add(rows.getString(1));
+			}
+		}
+		return found;
+	}
+
+	@Test
+	void everyTableInPublicHasRowLevelSecurity() throws SQLException {
+		Set<String> checked = new HashSet<>();
 		try (Connection connection = superuser();
-				PreparedStatement statement = connection.prepareStatement("""
-						select c.relrowsecurity, c.relforcerowsecurity, r.rolname
+				Statement statement = connection.createStatement();
+				ResultSet rows = statement.executeQuery("""
+						select c.relname, c.relrowsecurity, c.relforcerowsecurity, r.rolname
 						from pg_class c join pg_roles r on r.oid = c.relowner
-						where c.relnamespace = 'public'::regnamespace and c.relname = ?""")) {
-			statement.setString(1, table);
-			try (ResultSet rows = statement.executeQuery()) {
-				assertThat(rows.next()).as(table).isTrue();
+						where c.relnamespace = 'public'::regnamespace and c.relkind in ('r', 'p')
+						  and c.relname <> '%s'""".formatted(HISTORY_TABLE))) {
+			while (rows.next()) {
+				String table = rows.getString("relname");
 				assertThat(rows.getBoolean("relrowsecurity")).as(table + " rls").isTrue();
 				assertThat(rows.getBoolean("relforcerowsecurity")).as(table + " forced").isFalse();
 				assertThat(rows.getString("rolname")).as(table + " owner").isEqualTo("api_owner");
+				checked.add(table);
 			}
 		}
+		assertThat(checked).hasSizeGreaterThanOrEqualTo(13);
+	}
+
+	@Test
+	void noViewsInPublic() throws SQLException {
+		try (Connection connection = superuser()) {
+			assertThat(strings(connection, "select viewname from pg_views where schemaname = 'public'")).isEmpty();
+			assertThat(strings(connection, "select matviewname from pg_matviews where schemaname = 'public'"))
+					.isEmpty();
+		}
+	}
+
+	@Test
+	void flywayHistoryIsOpenUntilTheManualStepClosesIt() throws SQLException {
+		String rls = "select relrowsecurity::text from pg_class where relnamespace = 'public'::regnamespace"
+				+ " and relname = '" + HISTORY_TABLE + "'";
+		try (Connection connection = superuser()) {
+			assertThat(strings(connection, rls)).containsExactly("false");
+			assertThat(strings(connection,
+					"select has_table_privilege('authenticated', 'public." + HISTORY_TABLE + "', 'SELECT')::text"))
+							.containsExactly("true");
+		}
+		try (Connection connection = superuser()) {
+			connection.setAutoCommit(false);
+			try (Statement statement = connection.createStatement()) {
+				statement.execute("alter table public." + HISTORY_TABLE + " enable row level security");
+				assertThat(strings(connection, rls)).containsExactly("true");
+				statement.execute("set local role authenticated");
+				assertThat(count(connection, "select count(*) from public." + HISTORY_TABLE)).isZero();
+			} finally {
+				connection.rollback();
+			}
+		}
+	}
+
+	@Test
+	void realtimePublishesTheChatAndScheduleTables() throws SQLException {
+		try (Connection connection = superuser()) {
+			Set<String> published = strings(connection,
+					"select tablename from pg_publication_tables where pubname = 'supabase_realtime'");
+			assertThat(published).containsExactlyInAnyOrder("appointments", "messages", "conversations");
+			Set<String> readable = strings(connection, """
+					select tablename from pg_policies
+					where schemaname = 'public' and cmd = 'SELECT' and roles = '{authenticated}'""");
+			assertThat(readable).containsAll(published);
+		}
+	}
+
+	@Test
+	void isStaffIgnoresTemporaryTables() throws SQLException {
+		try (Connection connection = superuser()) {
+			assertThat(strings(connection, """
+					select array_to_string(proconfig, ',') from pg_proc
+					where proname = 'is_staff' and pronamespace = 'public'::regnamespace""").iterator().next())
+							.contains("search_path=public, pg_temp");
+		}
+		boolean staff = as("authenticated", STRANGER, c -> {
+			try (Statement statement = c.createStatement()) {
+				statement.execute("create temp table profiles (user_id uuid)");
+				statement.execute("insert into pg_temp.profiles values ('" + STRANGER + "')");
+			}
+			return count(c, "select count(*) from public.clients") > 0;
+		});
+		assertThat(staff).isFalse();
 	}
 
 	@Test
@@ -242,13 +319,21 @@ class SupabasePoliciesTests {
 
 	@ParameterizedTest(name = "{0}")
 	@MethodSource("inserts")
-	void staffCannotInsert(String table, String insert) {
+	void staffCannotInsert(String table, String insert) throws SQLException {
 		assertThatThrownBy(() -> as("authenticated", STAFF, c -> {
 			try (Statement statement = c.createStatement()) {
 				return statement.executeUpdate(insert);
 			}
 		})).as(table).isInstanceOfSatisfying(SQLException.class,
 				e -> assertThat(e.getSQLState()).isEqualTo("42501"));
+	}
+
+	private static boolean hasInsertPrivilege(String table) throws SQLException {
+		try (Connection connection = superuser()) {
+			return strings(connection,
+					"select has_table_privilege('authenticated', 'public." + table + "', 'INSERT')::text")
+							.contains("true");
+		}
 	}
 
 	@ParameterizedTest(name = "{0}.{1}")

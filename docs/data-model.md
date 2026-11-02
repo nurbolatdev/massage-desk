@@ -66,6 +66,8 @@ Only with profile `supabase` (`migration-supabase/`). Every policy is select-onl
 
 There are no insert/update/delete policies: an insert through the Supabase REST API fails (SQLState `42501`), an update or delete changes no rows. Every write goes through the API, which connects as the table owner and is not limited by RLS. `flyway_schema_history` is closed manually (see step 4 above).
 
+The comments in `V1_1` ("API is not limited") and `V3` ("staff may write these tables directly") are outdated: the current rule is read-only RLS from `V3_1`. Applied migrations are not edited because of Flyway checksums. `V3_1` also pins `is_staff()` to `search_path = public, pg_temp`.
+
 Covered by `SupabasePoliciesTests` on a stand-in database (roles, `auth.uid()` and the realtime publication recreated by a script). It does not cover JWT verification and role switching by PostgREST, the exact grants of a real project, Realtime's own checks, or which role the API uses on Supabase dev and prod.
 
 ## Schedule constraints

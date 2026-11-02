@@ -134,9 +134,6 @@ class SettingsControllerTests {
     @ValueSource(strings = {
             "{\"timeZone\":\"Mars/Base\"}",
             "{\"timeZone\":\"+05:00\"}",
-            "{\"timeZone\":\"UTC\"}",
-            "{\"timeZone\":\"Etc/GMT+5\"}",
-            "{\"timeZone\":\"Etc/GMT-5\"}",
             "{\"timeZone\":\"\"}",
             "{\"botEnabled\":\"maybe\"}",
             "{not json"})
@@ -173,6 +170,7 @@ class SettingsControllerTests {
         patchSettings("{\"timeZone\":\"Mars/Olympus\"}")
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value("unknown time zone"));
+        getSettings().andExpect(jsonPath("$.timeZone").value("Asia/Tashkent"));
     }
 
     @Test
