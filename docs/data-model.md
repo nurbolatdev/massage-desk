@@ -59,6 +59,13 @@ erDiagram
 
 Also: `working_hours` (ISO weekday 1–7, several blocks per day for breaks), `time_off`, `settings` (single row), `profiles` (roles `master` / `admin`), `devices` (push tokens).
 
+## Schedule constraints
+- `clients_phone_e164` — phones are stored in E.164 (`+` and 9 to 15 digits).
+- `time_off_period_bounded` — a time off period is a finite half-open range `[start, end)`.
+- `working_hours_no_overlap` — working hour blocks of one day neither overlap nor touch.
+
+The API validates first (400/422); the constraints guard direct writes. Covered by `ScheduleConstraintsTests`.
+
 ## No double booking
 ```sql
 constraint appointments_no_overlap
