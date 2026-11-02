@@ -9,7 +9,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
-import org.springframework.http.ProblemDetail;
+import com.massagedesk.api.errors.ApiProblem;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -40,15 +40,15 @@ class WorkingHoursController {
     @ApiResponse(responseCode = "200", description = "the stored week")
     @ApiResponse(responseCode = "400", description = "missing or invalid field",
             content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
-                    schema = @Schema(implementation = ProblemDetail.class)))
+                    schema = @Schema(implementation = ApiProblem.class)))
     @ApiResponse(responseCode = "422", description = "a block ends before it starts, or blocks of one day"
             + " overlap or touch",
             content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
-                    schema = @Schema(implementation = ProblemDetail.class)))
+                    schema = @Schema(implementation = ApiProblem.class)))
     @ApiResponse(responseCode = "409",
             description = "confirmed appointments are outside the new hours; send force to store anyway",
             content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
-                    schema = @Schema(implementation = ScheduleConflictProblem.class)))
+                    schema = @Schema(implementation = ApiProblem.class)))
     @PutMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     WorkingHoursResponse replaceWorkingHours(@Valid @RequestBody WorkingHoursRequest request,
             @Parameter(hidden = true) Authentication authentication) {

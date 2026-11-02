@@ -10,7 +10,7 @@ import java.time.LocalDate;
 import java.util.UUID;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.MediaType;
-import org.springframework.http.ProblemDetail;
+import com.massagedesk.api.errors.ApiProblem;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -32,10 +32,10 @@ class SlotsController {
     @ApiResponse(responseCode = "200", description = "free start times, possibly empty")
     @ApiResponse(responseCode = "400", description = "invalid or missing serviceId or day",
             content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
-                    schema = @Schema(implementation = ProblemDetail.class)))
+                    schema = @Schema(implementation = ApiProblem.class)))
     @ApiResponse(responseCode = "404", description = "service not found or inactive",
             content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
-                    schema = @Schema(implementation = ProblemDetail.class)))
+                    schema = @Schema(implementation = ApiProblem.class)))
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     SlotsResponse slots(
             @Parameter(description = "id of an active service")

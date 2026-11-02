@@ -1,10 +1,13 @@
 package com.massagedesk.api.errors;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * Machine-readable reason of an error response. Domain codes carry the name of the reason of
  * the exception that caused them; {@link #INVALID_REQUEST} is the code of every client error
  * raised by the web framework or by request checks.
  */
+@Schema(enumAsRef = true, description = "machine-readable reason of an error response")
 public enum ErrorCode {
     // Domain rules: conflicts with existing data.
     APPOINTMENT_CONFLICT,

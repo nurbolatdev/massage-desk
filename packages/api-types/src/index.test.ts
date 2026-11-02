@@ -1,5 +1,5 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
-import type { paths } from "./index.js";
+import type { components, paths } from "./index.js";
 
 type VerifyGet = paths["/webhook/whatsapp"]["get"];
 type VerifyQuery = NonNullable<VerifyGet["parameters"]["query"]>;
@@ -174,14 +174,14 @@ describe("generated /working-hours types", () => {
 
   it("types the 409 conflicts", () => {
     type Conflict = paths["/working-hours"]["put"]["responses"][409]["content"]["application/problem+json"];
-    expectTypeOf<Conflict["conflicts"][number]>().toEqualTypeOf<{
+    expectTypeOf<NonNullable<Conflict["conflicts"]>[number]>().toEqualTypeOf<{
       appointmentId: string;
       clientName: string | null;
       start: string;
       end: string;
     }>();
     expectTypeOf<Conflict["detail"]>().toEqualTypeOf<string>();
-    expectTypeOf<Conflict["code"]>().toEqualTypeOf<string>();
+    expectTypeOf<Conflict["code"]>().toEqualTypeOf<components["schemas"]["ErrorCode"]>();
     expect(true).toBe(true);
   });
 });
@@ -221,14 +221,14 @@ describe("generated /time-off conflict types", () => {
   type Conflict = paths["/time-off"]["post"]["responses"][409]["content"]["application/problem+json"];
 
   it("types the 409 conflicts", () => {
-    expectTypeOf<Conflict["conflicts"][number]>().toEqualTypeOf<{
+    expectTypeOf<NonNullable<Conflict["conflicts"]>[number]>().toEqualTypeOf<{
       appointmentId: string;
       clientName: string | null;
       start: string;
       end: string;
     }>();
     expectTypeOf<Conflict["detail"]>().toEqualTypeOf<string>();
-    expectTypeOf<Conflict["code"]>().toEqualTypeOf<string>();
+    expectTypeOf<Conflict["code"]>().toEqualTypeOf<components["schemas"]["ErrorCode"]>();
     expect(true).toBe(true);
   });
 });

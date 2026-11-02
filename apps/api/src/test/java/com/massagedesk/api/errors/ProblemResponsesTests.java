@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.jayway.jsonpath.JsonPath;
 import com.massagedesk.api.TestcontainersConfiguration;
 import com.massagedesk.api.clients.Client;
 import com.massagedesk.api.clients.ClientRepository;
@@ -20,10 +21,15 @@ import com.massagedesk.api.schedule.MassageServiceRepository;
 import com.massagedesk.api.schedule.WorkingHours;
 import com.massagedesk.api.schedule.WorkingHoursRepository;
 import com.massagedesk.api.security.StaffRole;
+import java.lang.reflect.RecordComponent;
 import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.LocalTime;
+import java.util.Arrays;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -90,6 +96,13 @@ class ProblemResponsesTests {
 
     private static ResultActions problem(ResultActions result, int status, String title, String detail,
             String instance, String code) throws Exception {
+        String json = result.andReturn().getResponse().getContentAsString();
+        Map<String, Object> parsed = JsonPath.read(json, "$");
+        Set<String> documented = Arrays.stream(ApiProblem.class.getRecordComponents())
+                .map(RecordComponent::getName).collect(Collectors.toSet());
+        Set<String> required = Set.of("title", "status", "detail", "instance", "code");
+        assertThat(documented).containsAll(parsed.keySet());
+        assertThat(parsed.keySet()).containsAll(required);
         return result
                 .andExpect(status().is(status))
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"))

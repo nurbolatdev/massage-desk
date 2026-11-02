@@ -252,6 +252,21 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        ApiProblem: {
+            /** @description branch on this */
+            code: components["schemas"]["ErrorCode"];
+            /** @description only with APPOINTMENT_CONFLICT: the confirmed appointments in the way, ordered by start */
+            conflicts?: components["schemas"]["AppointmentConflict"][];
+            /** @description human-readable; do not branch on it */
+            detail: string;
+            /** @description the request path */
+            instance: string;
+            /** Format: int32 */
+            status: number;
+            title: string;
+            /** @description absent while it is about:blank */
+            type?: string;
+        };
         AppointmentConflict: {
             /** Format: uuid */
             appointmentId: string;
@@ -355,37 +370,17 @@ export interface components {
              */
             start: string;
         };
-        ProblemDetail: {
-            detail?: string;
-            /** Format: uri */
-            instance?: string;
-            properties?: {
-                [key: string]: unknown;
-            };
-            /** Format: int32 */
-            status?: number;
-            title?: string;
-            /** Format: uri */
-            type?: string;
-        };
+        /**
+         * @description machine-readable reason of an error response
+         * @enum {string}
+         */
+        ErrorCode: "APPOINTMENT_CONFLICT" | "APPOINTMENT_NOT_FOUND" | "CLIENT_NOT_FOUND" | "INVALID_HOURS" | "INVALID_PHONE" | "INVALID_REQUEST" | "INVALID_TIME_OFF" | "NOT_CONFIRMED" | "NOT_STARTED" | "OUTSIDE_SCHEDULE" | "PHONE_TAKEN" | "SERVICE_NOT_FOUND" | "TIME_OFF_NOT_FOUND" | "TIME_TAKEN" | "UNKNOWN_TIME_ZONE";
         RescheduleAppointmentRequest: {
             /**
              * Format: date-time
              * @description ISO-8601 with offset; the booked length is kept
              */
             start: string;
-        };
-        ScheduleConflictProblem: {
-            /** @description machine-readable reason, always APPOINTMENT_CONFLICT here */
-            code: string;
-            /** @description the confirmed appointments in the way, ordered by start */
-            conflicts: components["schemas"]["AppointmentConflict"][];
-            detail: string;
-            instance?: string;
-            /** Format: int32 */
-            status: number;
-            title?: string;
-            type?: string;
         };
         ServiceResponse: {
             /** @description inactive services cannot be booked */
@@ -521,7 +516,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                    "application/problem+json": components["schemas"]["ApiProblem"];
                 };
             };
             /** @description client or service not found, or service inactive */
@@ -530,7 +525,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                    "application/problem+json": components["schemas"]["ApiProblem"];
                 };
             };
             /** @description the time is already booked */
@@ -539,7 +534,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                    "application/problem+json": components["schemas"]["ApiProblem"];
                 };
             };
             /** @description outside working hours, in time off or in the past */
@@ -548,7 +543,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                    "application/problem+json": components["schemas"]["ApiProblem"];
                 };
             };
         };
@@ -580,7 +575,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                    "application/problem+json": components["schemas"]["ApiProblem"];
                 };
             };
             /** @description appointment not found */
@@ -589,7 +584,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                    "application/problem+json": components["schemas"]["ApiProblem"];
                 };
             };
             /** @description the appointment is not confirmed */
@@ -598,7 +593,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                    "application/problem+json": components["schemas"]["ApiProblem"];
                 };
             };
         };
@@ -630,7 +625,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                    "application/problem+json": components["schemas"]["ApiProblem"];
                 };
             };
             /** @description appointment not found */
@@ -639,7 +634,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                    "application/problem+json": components["schemas"]["ApiProblem"];
                 };
             };
             /** @description the appointment is not confirmed or has not started yet */
@@ -648,7 +643,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                    "application/problem+json": components["schemas"]["ApiProblem"];
                 };
             };
         };
@@ -684,7 +679,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                    "application/problem+json": components["schemas"]["ApiProblem"];
                 };
             };
             /** @description appointment not found */
@@ -693,7 +688,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                    "application/problem+json": components["schemas"]["ApiProblem"];
                 };
             };
             /** @description the time is already booked, or the appointment is not confirmed */
@@ -702,7 +697,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                    "application/problem+json": components["schemas"]["ApiProblem"];
                 };
             };
             /** @description outside working hours, in time off or in the past */
@@ -711,7 +706,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                    "application/problem+json": components["schemas"]["ApiProblem"];
                 };
             };
         };
@@ -747,7 +742,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                    "application/problem+json": components["schemas"]["ApiProblem"];
                 };
             };
         };
@@ -780,7 +775,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                    "application/problem+json": components["schemas"]["ApiProblem"];
                 };
             };
             /** @description a client with this phone already exists */
@@ -789,7 +784,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                    "application/problem+json": components["schemas"]["ApiProblem"];
                 };
             };
         };
@@ -821,7 +816,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                    "application/problem+json": components["schemas"]["ApiProblem"];
                 };
             };
             /** @description client not found */
@@ -830,7 +825,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                    "application/problem+json": components["schemas"]["ApiProblem"];
                 };
             };
         };
@@ -866,7 +861,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                    "application/problem+json": components["schemas"]["ApiProblem"];
                 };
             };
             /** @description client not found */
@@ -875,7 +870,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                    "application/problem+json": components["schemas"]["ApiProblem"];
                 };
             };
         };
@@ -928,7 +923,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                    "application/problem+json": components["schemas"]["ApiProblem"];
                 };
             };
         };
@@ -964,7 +959,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                    "application/problem+json": components["schemas"]["ApiProblem"];
                 };
             };
             /** @description service not found */
@@ -973,7 +968,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                    "application/problem+json": components["schemas"]["ApiProblem"];
                 };
             };
         };
@@ -1026,7 +1021,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                    "application/problem+json": components["schemas"]["ApiProblem"];
                 };
             };
         };
@@ -1060,7 +1055,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                    "application/problem+json": components["schemas"]["ApiProblem"];
                 };
             };
             /** @description service not found or inactive */
@@ -1069,7 +1064,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                    "application/problem+json": components["schemas"]["ApiProblem"];
                 };
             };
         };
@@ -1103,7 +1098,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                    "application/problem+json": components["schemas"]["ApiProblem"];
                 };
             };
         };
@@ -1136,7 +1131,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                    "application/problem+json": components["schemas"]["ApiProblem"];
                 };
             };
             /** @description confirmed appointments overlap the period; send force to store anyway */
@@ -1145,7 +1140,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ScheduleConflictProblem"];
+                    "application/problem+json": components["schemas"]["ApiProblem"];
                 };
             };
             /** @description start is not before end, or the period is out of range */
@@ -1154,7 +1149,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                    "application/problem+json": components["schemas"]["ApiProblem"];
                 };
             };
         };
@@ -1184,7 +1179,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                    "application/problem+json": components["schemas"]["ApiProblem"];
                 };
             };
             /** @description time off not found */
@@ -1193,7 +1188,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                    "application/problem+json": components["schemas"]["ApiProblem"];
                 };
             };
         };
@@ -1279,7 +1274,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                    "application/problem+json": components["schemas"]["ApiProblem"];
                 };
             };
             /** @description confirmed appointments are outside the new hours; send force to store anyway */
@@ -1288,7 +1283,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ScheduleConflictProblem"];
+                    "application/problem+json": components["schemas"]["ApiProblem"];
                 };
             };
             /** @description a block ends before it starts, or blocks of one day overlap or touch */
@@ -1297,7 +1292,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                    "application/problem+json": components["schemas"]["ApiProblem"];
                 };
             };
         };

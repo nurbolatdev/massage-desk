@@ -9,7 +9,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
-import org.springframework.http.ProblemDetail;
+import com.massagedesk.api.errors.ApiProblem;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -40,7 +40,7 @@ class SettingsController {
     @ApiResponse(responseCode = "200", description = "settings after the change")
     @ApiResponse(responseCode = "400", description = "invalid field or unknown time zone",
             content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
-                    schema = @Schema(implementation = ProblemDetail.class)))
+                    schema = @Schema(implementation = ApiProblem.class)))
     @PatchMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     SettingsResponse updateSettings(@Valid @RequestBody UpdateSettingsRequest request,
             @Parameter(hidden = true) Authentication authentication) {
