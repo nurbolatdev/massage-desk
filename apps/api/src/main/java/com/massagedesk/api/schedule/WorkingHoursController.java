@@ -1,6 +1,8 @@
 package com.massagedesk.api.schedule;
 
+import com.massagedesk.api.security.StaffActors;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -8,6 +10,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -42,13 +45,15 @@ class WorkingHoursController {
             + " overlap or touch",
             content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
                     schema = @Schema(implementation = ProblemDetail.class)))
+    @ApiResponse(responseCode = "409",
+            description = "confirmed appointments are outside the new hours; send force to store anyway",
+            content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                    schema = @Schema(implementation = ScheduleConflictProblem.class)))
     @PutMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    WorkingHoursResponse replaceWorkingHours(@Valid @RequestBody WorkingHoursRequest request) {
-        try {
-            return WorkingHoursResponse.from(service.replaceWeek(
-                    request.blocks().stream().map(WorkingBlock::toBlock).toList()));
-        } catch (ScheduleException e) {
-            throw ScheduleErrors.http(e);
-        }
+    WorkingHoursResponse replaceWorkingHours(@Valid @RequestBody WorkingHoursRequest request,
+            @Parameter(hidden = true) Authentication authentication) {
+        return WorkingHoursResponse.from(service.replaceWeek(
+                request.blocks().stream().map(WorkingBlock::toBlock).toList(),
+                Boolean.TRUE.equals(request.force()), StaffActors.of(authentication)));
     }
 }

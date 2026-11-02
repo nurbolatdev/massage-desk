@@ -103,7 +103,7 @@ class ClientServiceTests {
     void updatesNameAndNotes() {
         UUID id = create("+998900000801", "Old").id();
 
-        ClientView view = service.update(id, "  New ", " note ");
+        ClientView view = service.update(id, "  New ", " note ", EventActor.MASTER);
 
         assertThat(view.name()).isEqualTo("New");
         assertThat(view.notes()).isEqualTo("note");
@@ -114,7 +114,7 @@ class ClientServiceTests {
     void nullLeavesFieldUnchanged() {
         UUID id = service.create("+998900000801", "Name", "Notes", EventActor.MASTER).id();
 
-        ClientView view = service.update(id, null, null);
+        ClientView view = service.update(id, null, null, EventActor.MASTER);
 
         assertThat(view.name()).isEqualTo("Name");
         assertThat(view.notes()).isEqualTo("Notes");
@@ -124,7 +124,7 @@ class ClientServiceTests {
     void blankClearsField() {
         UUID id = service.create("+998900000801", "Name", "Notes", EventActor.MASTER).id();
 
-        ClientView view = service.update(id, "  ", "");
+        ClientView view = service.update(id, "  ", "", EventActor.MASTER);
 
         assertThat(view.name()).isNull();
         assertThat(view.notes()).isNull();
@@ -139,7 +139,7 @@ class ClientServiceTests {
                     assertThat(e.reason()).isEqualTo(ClientException.Reason.CLIENT_NOT_FOUND);
                     assertThat(e).hasMessage("client not found");
                 });
-        assertThatThrownBy(() -> service.update(id, "x", null))
+        assertThatThrownBy(() -> service.update(id, "x", null, EventActor.MASTER))
                 .isInstanceOfSatisfying(ClientException.class,
                         e -> assertThat(e.reason()).isEqualTo(ClientException.Reason.CLIENT_NOT_FOUND));
     }

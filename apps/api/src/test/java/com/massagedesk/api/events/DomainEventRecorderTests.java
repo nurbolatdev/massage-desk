@@ -60,6 +60,19 @@ class DomainEventRecorderTests {
     }
 
     @Test
+    void storesEventWithoutEntityId() {
+        DomainEvent event = recorder.record(DomainEventType.SETTINGS_CHANGED, EventActor.ADMIN, Map.of("k", "v"));
+        entityManager.flush();
+
+        Map<String, Object> row = jdbc.queryForMap(
+                "select entity_id, entity_type, type, actor from events where id = ?", event.getId());
+        assertThat(row).containsEntry("entity_id", null)
+                .containsEntry("entity_type", "settings")
+                .containsEntry("type", "settings_changed")
+                .containsEntry("actor", "admin");
+    }
+
+    @Test
     void rejectsNullArguments() {
         UUID id = UUID.randomUUID();
         assertThatThrownBy(() -> recorder.record(null, id, EventActor.BOT, Map.of()))

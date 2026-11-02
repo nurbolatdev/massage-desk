@@ -1,5 +1,6 @@
 package com.massagedesk.api.schedule;
 
+import com.massagedesk.api.security.StaffActors;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -15,6 +16,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -73,15 +75,17 @@ class TimeOffController {
     @ApiResponse(responseCode = "422", description = "start is not before end, or the period is out of range",
             content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
                     schema = @Schema(implementation = ProblemDetail.class)))
+    @ApiResponse(responseCode = "409",
+            description = "confirmed appointments overlap the period; send force to store anyway",
+            content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                    schema = @Schema(implementation = ScheduleConflictProblem.class)))
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
-    TimeOffResponse createTimeOff(@Valid @RequestBody CreateTimeOffRequest request) {
-        try {
-            return TimeOffResponse.from(service.create(
-                    request.start().toInstant(), request.end().toInstant(), request.reason()));
-        } catch (ScheduleException e) {
-            throw ScheduleErrors.http(e);
-        }
+    TimeOffResponse createTimeOff(@Valid @RequestBody CreateTimeOffRequest request,
+            @Parameter(hidden = true) Authentication authentication) {
+        return TimeOffResponse.from(service.create(
+                request.start().toInstant(), request.end().toInstant(), request.reason(),
+                Boolean.TRUE.equals(request.force()), StaffActors.of(authentication)));
     }
 
     @Operation(summary = "Remove time off")
@@ -94,11 +98,8 @@ class TimeOffController {
                     schema = @Schema(implementation = ProblemDetail.class)))
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    void deleteTimeOff(@Parameter(description = "time off id") @PathVariable UUID id) {
-        try {
-            service.delete(id);
-        } catch (ScheduleException e) {
-            throw ScheduleErrors.http(e);
-        }
+    void deleteTimeOff(@Parameter(description = "time off id") @PathVariable UUID id,
+            @Parameter(hidden = true) Authentication authentication) {
+        service.delete(id, StaffActors.of(authentication));
     }
 }

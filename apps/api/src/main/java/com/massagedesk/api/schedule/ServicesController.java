@@ -1,5 +1,6 @@
 package com.massagedesk.api.schedule;
 
+import com.massagedesk.api.security.StaffActors;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -12,6 +13,7 @@ import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -47,9 +49,10 @@ class ServicesController {
                     schema = @Schema(implementation = ProblemDetail.class)))
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
-    ServiceResponse createService(@Valid @RequestBody CreateServiceRequest request) {
-        return ServiceResponse.from(catalog.create(
-                request.name(), request.durationMin(), request.price(), request.sortOrder()));
+    ServiceResponse createService(@Valid @RequestBody CreateServiceRequest request,
+            @Parameter(hidden = true) Authentication authentication) {
+        return ServiceResponse.from(catalog.create(request.name(), request.durationMin(), request.price(),
+                request.sortOrder(), StaffActors.of(authentication)));
     }
 
     @Operation(summary = "Change or deactivate a service")
@@ -63,12 +66,9 @@ class ServicesController {
     @PatchMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE)
     ServiceResponse updateService(@Parameter(description = "service id") @PathVariable UUID id,
-            @Valid @RequestBody UpdateServiceRequest request) {
-        try {
-            return ServiceResponse.from(catalog.update(id, request.name(), request.durationMin(),
-                    request.price(), request.sortOrder(), request.active()));
-        } catch (ScheduleException e) {
-            throw ScheduleErrors.http(e);
-        }
+            @Valid @RequestBody UpdateServiceRequest request,
+            @Parameter(hidden = true) Authentication authentication) {
+        return ServiceResponse.from(catalog.update(id, request.name(), request.durationMin(),
+                request.price(), request.sortOrder(), request.active(), StaffActors.of(authentication)));
     }
 }

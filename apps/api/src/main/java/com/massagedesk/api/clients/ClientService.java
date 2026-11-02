@@ -1,5 +1,6 @@
 package com.massagedesk.api.clients;
 
+import com.massagedesk.api.events.Changes;
 import com.massagedesk.api.events.DomainEventRecorder;
 import com.massagedesk.api.events.DomainEventType;
 import com.massagedesk.api.events.EventActor;
@@ -65,15 +66,24 @@ public class ClientService {
     }
 
     @Transactional
-    public ClientView update(UUID id, String name, String notes) {
+    public ClientView update(UUID id, String name, String notes, EventActor actor) {
         Client client = find(id);
+        String oldName = client.getName();
+        String oldNotes = client.getNotes();
         if (name != null) {
             client.rename(name);
         }
         if (notes != null) {
             client.changeNotes(notes);
         }
-        return view(clients.saveAndFlush(client));
+        Client saved = clients.saveAndFlush(client);
+        Changes changes = new Changes()
+                .personal("name", oldName, saved.getName())
+                .personal("notes", oldNotes, saved.getNotes());
+        if (!changes.isEmpty()) {
+            recorder.record(DomainEventType.CLIENT_UPDATED, saved.getId(), actor, changes.payload());
+        }
+        return view(saved);
     }
 
     @Transactional(readOnly = true)

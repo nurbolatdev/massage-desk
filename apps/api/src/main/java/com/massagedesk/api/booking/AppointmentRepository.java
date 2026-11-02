@@ -30,12 +30,4 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID> 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select a from Appointment a where a.id = :id")
     Optional<Appointment> findByIdForUpdate(@Param("id") UUID id);
-
-    /**
-     * Takes a transaction-scoped advisory lock, released at commit or rollback. It only orders
-     * writers of confirmed periods so the database never has to resolve a mutual wait between
-     * overlapping inserts; the exclusion constraint stays the real guard.
-     */
-    @Query(nativeQuery = true, value = "select cast(pg_advisory_xact_lock(:key) as text)")
-    String lockWrites(@Param("key") long key);
 }

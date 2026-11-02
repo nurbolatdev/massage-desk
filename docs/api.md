@@ -18,6 +18,29 @@ Every staff request sends `Authorization: Bearer <Supabase access token>`. The t
 
 Errors from the endpoints below use RFC 9457 problem details (`application/problem+json`).
 
+### Errors
+
+A request refused by a domain rule answers a problem detail with the usual members (`type`, `title`, `status`, `detail`, `instance`) and a machine-readable `code`. Clients should branch on `code`, not on the `detail` text. Validation and parsing errors raised by the framework (malformed body, wrong type, missing field) are plain problem details with status `400` and no `code`.
+
+| `code` | Status | `detail` |
+|---|---|---|
+| `CLIENT_NOT_FOUND` | 404 | `client not found` |
+| `SERVICE_NOT_FOUND` | 404 | `service not found` |
+| `APPOINTMENT_NOT_FOUND` | 404 | `appointment not found` |
+| `TIME_OFF_NOT_FOUND` | 404 | `time off not found` |
+| `INVALID_PHONE` | 400 | `invalid phone number` |
+| `UNKNOWN_TIME_ZONE` | 400 | `unknown time zone` |
+| `OUTSIDE_SCHEDULE` | 422 | `time is outside working hours, in time off or in the past` |
+| `INVALID_HOURS` | 422 | `block must start before it ends`, `blocks of one day must not overlap or touch` |
+| `INVALID_TIME_OFF` | 422 | `time off must start before it ends`, or the period is out of range |
+| `TIME_TAKEN` | 409 | `time is already booked` |
+| `NOT_CONFIRMED` | 409 | `appointment is <status>` |
+| `NOT_STARTED` | 409 | `appointment has not started yet` |
+| `PHONE_TAKEN` | 409 | `client with this phone already exists` |
+| `APPOINTMENT_CONFLICT` | 409 | `time off overlaps confirmed appointments` or `confirmed appointments are outside the new working hours`, with `conflicts` |
+
+The `422` title is `Unprocessable Content` (RFC 9110 name); the status code is `422`.
+
 To add a staff member, create the user in Supabase Auth, then run:
 
 ```sql
@@ -144,14 +167,20 @@ There is no delete: appointments refer to services, so a service is deactivated 
 - A weekday without blocks is a day off every week. `{"blocks":[]}` makes every day a day off.
 - A break is a gap between two blocks of one day. Blocks of one day must neither overlap nor touch (`09:00-13:00` and `13:00-17:00` must be sent as one block `09:00-17:00`).
 - The week is replaced atomically: either all blocks are stored or none. At most 50 blocks.
-- The new hours apply to `/slots` and to new appointments at once. Appointments already made are not touched, also when they fall outside the new hours.
+- The new hours apply to `/slots` and to new appointments at once. Appointments already made are never changed or cancelled.
+- Optional `force` (boolean, default `false`). If confirmed appointments that start from now within the next 60 days do not fit inside one block of the new week, the request answers `409` with `conflicts` (`appointmentId`, `clientName` or `null`, `start`, `end` in the master's offset, ordered by start), and the old week stays. With `"force": true` the week is stored anyway. Appointments that have already started and appointments further than 60 days ahead are not checked.
+
+```json
+{"blocks":[{"weekday":2,"start":"10:00","end":"13:00"}],"force":true}
+```
 
 - `400` (`application/problem+json`): missing or invalid field.
+- `409` (`application/problem+json`): `confirmed appointments are outside the new working hours`, with `conflicts`.
 - `422` (`application/problem+json`): `block must start before it ends`; `blocks of one day must not overlap or touch`.
 
 ## Time off
 
-`POST /time-off` takes `start` and `end` (ISO-8601 with an offset) and an optional `reason` (up to 200 characters). The period is half-open, `[start, end)`. A day off is local midnight to the next local midnight with the master's offset. Response `201`; times are answered in the master's offset.
+`POST /time-off` takes `start` and `end` (ISO-8601 with an offset), an optional `reason` (up to 200 characters) and an optional `force` (boolean, default `false`). The period is half-open, `[start, end)`. A day off is local midnight to the next local midnight with the master's offset. Response `201`; times are answered in the master's offset.
 
 ```json
 {"id":"<uuid>","start":"2026-11-03T00:00:00+05:00","end":"2026-11-04T00:00:00+05:00","reason":null}
@@ -161,11 +190,19 @@ There is no delete: appointments refer to services, so a service is deactivated 
 
 `DELETE /time-off/{id}` answers `204`. There is no edit: delete and create again.
 
-- Periods may overlap each other. Time off over confirmed appointments is allowed and the appointments are kept; the app warns the master and offers to move or cancel them.
+- Periods may overlap each other.
+- Time off over confirmed appointments answers `409` with the list of those appointments, unless `force` is `true`. An appointment that ends exactly when the time off starts is not a conflict. With `force: true` the time off is stored and the appointments are never changed or cancelled; the app shows the list so the master can move or cancel them.
 - Time off hides the time from `/slots` and refuses new appointments there at once.
 
 - `400` (`application/problem+json`): missing or invalid field, id or date; `from must not be after to`; `range must be at most 366 days`; `dates must be within 2000-01-01..2100-12-31`.
 - `404` (`application/problem+json`): `time off not found`.
+- `409` (`application/problem+json`): `time off overlaps confirmed appointments`. Besides the usual members the body has `conflicts`, ordered by start:
+
+```json
+{"title":"Conflict","status":409,"detail":"time off overlaps confirmed appointments","instance":"/time-off","code":"APPOINTMENT_CONFLICT","conflicts":[{"appointmentId":"<uuid>","clientName":"Aigul","start":"2026-11-03T10:00:00+05:00","end":"2026-11-03T11:00:00+05:00"}]}
+```
+
+  `clientName` is `null` when the client has no name.
 - `422` (`application/problem+json`): `time off must start before it ends`; `time off must end in the future, start within two years and last at most 366 days`.
 
 ## Settings

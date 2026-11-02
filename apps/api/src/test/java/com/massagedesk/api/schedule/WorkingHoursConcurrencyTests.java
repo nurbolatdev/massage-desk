@@ -3,6 +3,7 @@ package com.massagedesk.api.schedule;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.massagedesk.api.TestcontainersConfiguration;
+import com.massagedesk.api.events.EventActor;
 import com.massagedesk.api.schedule.WorkingHoursService.Block;
 import java.time.DayOfWeek;
 import java.time.LocalTime;
@@ -42,6 +43,7 @@ class WorkingHoursConcurrencyTests {
     @AfterEach
     void cleanUp() {
         jdbc.update("delete from working_hours");
+        jdbc.update("delete from events where type = 'working_hours_replaced'");
     }
 
     @Test
@@ -55,17 +57,22 @@ class WorkingHoursConcurrencyTests {
         ExecutorService pool = Executors.newFixedThreadPool(TUESDAY.length);
         try {
             CountDownLatch start = new CountDownLatch(1);
-            List<Future<?>> futures = new ArrayList<>();
+            List<Future<List<WorkingHours>>> futures = new ArrayList<>();
+            List<String> submitted = new ArrayList<>();
             for (String[] times : TUESDAY) {
+                submitted.add(times[0] + "-" + times[1]);
                 futures.add(pool.submit(() -> {
                     start.await();
                     return service.replaceWeek(List.of(new Block(
-                            DayOfWeek.TUESDAY, LocalTime.parse(times[0]), LocalTime.parse(times[1]))));
+                            DayOfWeek.TUESDAY, LocalTime.parse(times[0]), LocalTime.parse(times[1]))), false, EventActor.MASTER);
                 }));
             }
             start.countDown();
-            for (Future<?> future : futures) {
-                future.get(30, TimeUnit.SECONDS);
+            for (int i = 0; i < futures.size(); i++) {
+                List<WorkingHours> returned = futures.get(i).get(30, TimeUnit.SECONDS);
+                assertThat(returned).hasSize(1);
+                assertThat(returned.get(0).getStartTime() + "-" + returned.get(0).getEndTime())
+                        .isEqualTo(submitted.get(i));
             }
         } finally {
             pool.shutdownNow();
@@ -74,7 +81,9 @@ class WorkingHoursConcurrencyTests {
                 .map(w -> w.getStartTime() + "-" + w.getEndTime())
                 .toList();
         assertThat(rows).hasSize(1);
-        assertThat(List.of("10:00-12:00", "10:30-12:30", "11:00-13:00", "11:30-13:30"))
-                .containsAnyElementsOf(rows);
+        assertThat(jdbc.queryForObject("select count(*) from working_hours", Integer.class)).isEqualTo(1);
+        String row = jdbc.queryForObject(
+                "select start_time::text || '-' || end_time::text from working_hours", String.class);
+        assertThat(row).isIn("10:00:00-12:00:00", "10:30:00-12:30:00", "11:00:00-13:00:00", "11:30:00-13:30:00");
     }
 }
