@@ -26,6 +26,20 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID> 
     List<Appointment> findConfirmedOverlapping(
             @Param("windowStart") Instant windowStart, @Param("windowEnd") Instant windowEnd);
 
+    /**
+     * Confirmed appointments that start at or after {@code from}, with no upper bound. Only
+     * confirmed appointments hold time; appointments already in progress are excluded. The open
+     * range overlap lets the index on {@code period} serve the query.
+     */
+    @Query(nativeQuery = true, value = """
+            select a.* from appointments a
+            where a.status = 'confirmed'
+              and a.period && tstzrange(cast(:from as timestamptz), null, '[)')
+              and lower(a.period) >= cast(:from as timestamptz)
+            order by lower(a.period)
+            """)
+    List<Appointment> findConfirmedStartingFrom(@Param("from") Instant from);
+
     /** Loads the appointment with a row lock; serialises status changes of one appointment. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select a from Appointment a where a.id = :id")

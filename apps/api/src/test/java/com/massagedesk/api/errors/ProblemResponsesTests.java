@@ -216,6 +216,15 @@ class ProblemResponsesTests {
     }
 
     @Test
+    void settingsTimeZoneConflict() throws Exception {
+        book(TUESDAY_10);
+        problem(send(patch("/settings"), "{\"timeZone\":\"America/New_York\"}"),
+                409, "Conflict", "confirmed appointments are outside the working hours in the new time zone",
+                "/settings", "APPOINTMENT_CONFLICT")
+                .andExpect(jsonPath("$.conflicts.length()").value(1));
+    }
+
+    @Test
     void slotsServiceNotFound() throws Exception {
         problem(send(get("/slots?serviceId=" + UUID.randomUUID() + "&day=2026-11-03"), null),
                 404, "Not Found", "service not found", "/slots", "SERVICE_NOT_FOUND");

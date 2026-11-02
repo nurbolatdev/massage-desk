@@ -31,7 +31,7 @@ import org.springframework.test.web.servlet.MockMvc;
 class ErrorSchemaDocumentTests {
 
     private static final String PROBLEM_REF = "#/components/schemas/ApiProblem";
-    private static final int DOCUMENTED_ERROR_RESPONSES = 36;
+    private static final int DOCUMENTED_ERROR_RESPONSES = 37;
 
     @Autowired
     private MockMvc mvc;

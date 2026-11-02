@@ -143,7 +143,7 @@ class ScheduleLockTests {
             case "workingHours" -> workingHours.replaceWeek(List.of(
                     new Block(DayOfWeek.TUESDAY, LocalTime.of(10, 0), LocalTime.of(16, 0)),
                     new Block(DayOfWeek.WEDNESDAY, LocalTime.of(10, 0), LocalTime.of(12, 0))), false, EventActor.MASTER);
-            case "timeZone" -> settingsService.update("America/New_York", null, null, EventActor.MASTER);
+            case "timeZone" -> settingsService.update("Asia/Samarkand", null, null, false, EventActor.MASTER);
             default -> throw new IllegalArgumentException(operation);
         }
     }

@@ -52,7 +52,7 @@ Client errors raised by the framework (malformed body, wrong type, missing field
 | `NOT_CONFIRMED` | 409 | `appointment is <status>` |
 | `NOT_STARTED` | 409 | `appointment has not started yet` |
 | `PHONE_TAKEN` | 409 | `client with this phone already exists` |
-| `APPOINTMENT_CONFLICT` | 409 | `time off overlaps confirmed appointments` or `confirmed appointments are outside the new working hours`, with `conflicts` |
+| `APPOINTMENT_CONFLICT` | 409 | `time off overlaps confirmed appointments`, `confirmed appointments are outside the new working hours` or `confirmed appointments are outside the working hours in the new time zone`, with `conflicts` |
 
 The `422` title is `Unprocessable Content` (RFC 9110 name); the status code is `422`.
 
@@ -183,7 +183,7 @@ There is no delete: appointments refer to services, so a service is deactivated 
 - A break is a gap between two blocks of one day. Blocks of one day must neither overlap nor touch (`09:00-13:00` and `13:00-17:00` must be sent as one block `09:00-17:00`).
 - The week is replaced atomically: either all blocks are stored or none. At most 50 blocks.
 - The new hours apply to `/slots` and to new appointments at once. Appointments already made are never changed or cancelled.
-- Optional `force` (boolean, default `false`). If confirmed appointments that start from now within the next 60 days do not fit inside one block of the new week, the request answers `409` with `conflicts` (`appointmentId`, `clientName` or `null`, `start`, `end` in the master's offset, ordered by start), and the old week stays. With `"force": true` the week is stored anyway. Appointments that have already started and appointments further than 60 days ahead are not checked.
+- Optional `force` (boolean, default `false`). If confirmed appointments that start from now on do not fit inside one block of the new week, the request answers `409` with `conflicts` (`appointmentId`, `clientName` or `null`, `start`, `end` in the master's offset, ordered by start), and the old week stays. With `"force": true` the week is stored anyway. Appointments that have already started are not checked.
 
 ```json
 {"blocks":[{"weekday":2,"start":"10:00","end":"13:00"}],"force":true}
@@ -231,5 +231,8 @@ There is no delete: appointments refer to services, so a service is deactivated 
 - `timeZone` must be a region id such as `Asia/Tashkent`. Fixed offsets (`+05:00`, `UTC`, `Etc/GMT+5`) are refused because they ignore daylight saving.
 - Changing the zone keeps working hours as local times (the same 10:00 in the new zone) and does not move booked appointments, which keep their instants.
 - `botEnabled` is stored now; the bot uses it from M2.
+- A zone change that differs from the stored zone checks every confirmed appointment that starts from now on against the stored week in the new zone. If one does not fit inside a block, the whole request is refused with `409` and `conflicts`, and nothing of it is stored (not even `address` or `botEnabled`). The times in `conflicts` use the offset of the new zone. The same zone is not checked.
+- `force: true` (optional) stores the zone anyway. Appointments are never cancelled, moved or messaged.
 
 - `400` (`application/problem+json`): invalid field or malformed JSON; `unknown time zone`.
+- `409` (`application/problem+json`): `confirmed appointments are outside the working hours in the new time zone`, with `conflicts`; send `force: true` to store the zone anyway.

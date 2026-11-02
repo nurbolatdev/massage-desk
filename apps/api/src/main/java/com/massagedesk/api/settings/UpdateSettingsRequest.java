@@ -8,5 +8,8 @@ public record UpdateSettingsRequest(
         @Size(min = 1, max = 64) @Schema(description = "IANA region id; fixed offsets are refused")
         String timeZone,
         @Size(max = 300) String address,
-        Boolean botEnabled) {
+        Boolean botEnabled,
+        @Schema(requiredMode = Schema.RequiredMode.NOT_REQUIRED,
+                description = "store even if confirmed appointments conflict; the appointments are kept")
+        Boolean force) {
 }
