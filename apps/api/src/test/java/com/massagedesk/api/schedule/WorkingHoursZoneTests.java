@@ -9,6 +9,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.massagedesk.api.TestcontainersConfiguration;
 import com.massagedesk.api.security.StaffRole;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
@@ -41,6 +43,9 @@ class WorkingHoursZoneTests {
 
     @Autowired
     private JdbcTemplate jdbc;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @BeforeEach
     void clearHours() {
@@ -90,8 +95,18 @@ class WorkingHoursZoneTests {
                 .andExpect(jsonPath("$.blocks[0].start").value("03:00"))
                 .andExpect(jsonPath("$.blocks[0].end").value("06:00"));
 
+        entityManager.flush();
+        entityManager.clear();
+
+        List<Map<String, Object>> rows =
+                jdbc.queryForList("select start_time::text as s, end_time::text as e from working_hours");
+        assertThat(rows).hasSize(1);
+        assertThat(rows.get(0)).containsEntry("s", "03:00:00").containsEntry("e", "06:00:00");
+
         mvc.perform(get("/working-hours")
                         .with(jwt().authorities(new SimpleGrantedAuthority(StaffRole.MASTER.authority()))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.blocks.length()").value(1))
                 .andExpect(jsonPath("$.blocks[0].start").value("03:00"))
                 .andExpect(jsonPath("$.blocks[0].end").value("06:00"));
     }

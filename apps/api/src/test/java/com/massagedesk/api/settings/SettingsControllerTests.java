@@ -1,5 +1,6 @@
 package com.massagedesk.api.settings;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -17,6 +18,7 @@ import com.massagedesk.api.schedule.WorkingHoursRepository;
 import com.massagedesk.api.security.StaffRole;
 import java.math.BigDecimal;
 import java.time.DayOfWeek;
+import java.time.ZoneId;
 import java.time.LocalTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -134,7 +136,7 @@ class SettingsControllerTests {
             "{\"timeZone\":\"+05:00\"}",
             "{\"timeZone\":\"UTC\"}",
             "{\"timeZone\":\"Etc/GMT+5\"}",
-            "{\"timeZone\":\"EST\"}",
+            "{\"timeZone\":\"Etc/GMT-5\"}",
             "{\"timeZone\":\"\"}",
             "{\"botEnabled\":\"maybe\"}",
             "{not json"})
@@ -147,6 +149,28 @@ class SettingsControllerTests {
     @Test
     void unknownZoneHasAClearDetail() throws Exception {
         patchSettings("{\"timeZone\":\"Mars/Base\"}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("unknown time zone"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"UTC", "Etc/GMT+5", "Etc/GMT-5"})
+    void fixedOffsetZonesAreRefused(String id) throws Exception {
+        assertThat(ZoneId.getAvailableZoneIds()).contains(id);
+        assertThat(ZoneId.of(id).getRules().isFixedOffset()).isTrue();
+
+        patchSettings("{\"timeZone\":\"" + id + "\"}")
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+                .andExpect(jsonPath("$.detail").value("unknown time zone"));
+        getSettings().andExpect(jsonPath("$.timeZone").value("Asia/Tashkent"));
+    }
+
+    @Test
+    void unknownRegionIdIsRefused() throws Exception {
+        assertThat(ZoneId.getAvailableZoneIds()).doesNotContain("Mars/Olympus");
+
+        patchSettings("{\"timeZone\":\"Mars/Olympus\"}")
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value("unknown time zone"));
     }
