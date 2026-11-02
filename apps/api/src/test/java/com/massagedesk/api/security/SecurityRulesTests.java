@@ -85,6 +85,11 @@ class SecurityRulesTests {
     }
 
     @Test
+    void unknownPathWithoutTokenIsUnauthorized() throws Exception {
+        mvc.perform(get("/no-such-path")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void tokenSignedWithForeignKeyIsUnauthorized() throws Exception {
         UUID id = staff(StaffRole.MASTER);
         mvc.perform(get("/probe").header(HttpHeaders.AUTHORIZATION, bearer(JWKS.foreignKeyToken(id))))

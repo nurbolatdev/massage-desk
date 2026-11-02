@@ -14,5 +14,5 @@ spring:
 
 app:
   supabase:
-    # required: no default, startup fails without it
+    # required: no default, startup fails without it (see SupabaseUrlConfig); no trailing slash
     url: ${SUPABASE_URL}

@@ -4,7 +4,7 @@ Spring Boot, `apps/api`. The OpenAPI document is published from M1.
 
 ## Authentication
 
-Every request sends `Authorization: Bearer <Supabase access token>`. The token is verified with the project JWKS (`${SUPABASE_URL}/auth/v1/.well-known/jwks.json`), algorithms ES256 and RS256, issuer `${SUPABASE_URL}/auth/v1`, audience `authenticated`. The Supabase project must use JWT signing keys (dashboard, JWT Keys); the legacy shared secret is not supported, and with it every request gets `401`.
+Every staff request sends `Authorization: Bearer <Supabase access token>`. The token is verified with the project JWKS (`${SUPABASE_URL}/auth/v1/.well-known/jwks.json`), algorithms ES256 and RS256, issuer `${SUPABASE_URL}/auth/v1`, audience `authenticated`. The Supabase project must use JWT signing keys (dashboard, JWT Keys); the legacy shared secret is not supported, and with it every request gets `401`.
 
 - Open without a token: `/health`, `/health/*`, `/webhook/whatsapp`.
 - Staff is a row in `profiles` whose `user_id` equals the token `sub`; its `role` is `master` or `admin`. The role is read from the database on every request, never from token claims.

@@ -7,6 +7,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -27,7 +29,7 @@ class StaffAuthenticationConverterTests {
                 .build();
     }
 
-    private static java.util.List<String> names(java.util.Collection<? extends GrantedAuthority> authorities) {
+    private static List<String> names(Collection<? extends GrantedAuthority> authorities) {
         return AuthorityUtils.authorityListToSet(authorities).stream().sorted().toList();
     }
 
