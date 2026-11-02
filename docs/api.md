@@ -20,10 +20,11 @@ Errors from the endpoints below use RFC 9457 problem details (`application/probl
 
 ### Errors
 
-A request refused by a domain rule answers a problem detail with the usual members (`type`, `title`, `status`, `detail`, `instance`) and a machine-readable `code`. Clients should branch on `code`, not on the `detail` text. Validation and parsing errors raised by the framework (malformed body, wrong type, missing field) are plain problem details with status `400` and no `code`.
+A request refused by a domain rule answers a problem detail with the usual members (`type`, `title`, `status`, `detail`, `instance`) and a machine-readable `code`. Clients should branch on `code`, not on the `detail` text. Client errors raised by the framework (malformed body, wrong type, missing field or parameter, unknown path, wrong method or media type) carry the code `INVALID_REQUEST` and the framework's `detail`.
 
 | `code` | Status | `detail` |
 |---|---|---|
+| `INVALID_REQUEST` | 400, 404, 405, 406, 415 | the framework's text |
 | `CLIENT_NOT_FOUND` | 404 | `client not found` |
 | `SERVICE_NOT_FOUND` | 404 | `service not found` |
 | `APPOINTMENT_NOT_FOUND` | 404 | `appointment not found` |
