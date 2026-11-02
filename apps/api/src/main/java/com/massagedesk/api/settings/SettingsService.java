@@ -35,14 +35,15 @@ public class SettingsService {
      * {@code settings_changed} event (the address is only named, never copied). Working hours are
      * stored in local time, so a time zone change moves free time like a new week: it takes the
      * schedule lock first, before the settings row is read (the advisory lock always comes before
-     * row locks). An update without a time zone does not take it.
+     * row locks). An update without a time zone does not take it and only locks the settings row.
+     * Lock order: schedule lock (only with a time zone), then the settings row.
      */
     @Transactional
     public Settings update(String timeZone, String address, Boolean botEnabled, EventActor actor) {
         if (timeZone != null) {
             scheduleLock.acquire();
         }
-        Settings row = settings.get();
+        Settings row = settings.getForUpdate();
         ZoneId oldZone = row.getTimeZone();
         String oldAddress = row.getAddress();
         boolean oldBot = row.isBotEnabled();
