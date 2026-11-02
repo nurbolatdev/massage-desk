@@ -57,6 +57,9 @@ app:
     url: ${SUPABASE_URL:http://127.0.0.1:54321}
   whatsapp:
     verify-token: ${WHATSAPP_VERIFY_TOKEN:}
+  phone:
+    # country used to read phone numbers typed without a plus sign
+    default-region: UZ
   slots:
     # grid of offered start times and how far ahead the first one is; overridable by APP_SLOTS_STEP / APP_SLOTS_MIN_NOTICE
     step: 30m

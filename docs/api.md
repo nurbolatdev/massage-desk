@@ -104,7 +104,7 @@ All three return the updated appointment (same shape as the create response). An
 {"id":"<uuid>","phone":"+998901234567","name":"Aziza","notes":null,"createdAt":"2026-11-02T10:15:00+05:00"}
 ```
 
-`POST /clients` takes `{"phone":"+998 90 123-45-67","name":"Aziza","notes":"..."}`; only `phone` is required. The phone is normalised to E.164 (digits only, 9 to 15 of them, same rule as the apps) and cannot be changed later, because chats are matched by it. Response `201`.
+`POST /clients` takes `{"phone":"+998 90 123-45-67","name":"Aziza","notes":"..."}`; only `phone` is required. The phone is parsed with phone number rules (same as the apps): a number without `+` is read as a number of the default country (`app.phone.default-region`, `UZ`), only valid numbers are accepted, and the result is stored as E.164 (9 to 15 digits) and cannot be changed later, because chats are matched by it. Response `201`.
 
 `PATCH /clients/{id}` takes `name` and/or `notes`. A missing or `null` field is left unchanged; a blank text clears the field. Text is trimmed.
 
@@ -176,7 +176,7 @@ There is no delete: appointments refer to services, so a service is deactivated 
 {"timeZone":"Asia/Tashkent","address":null,"botEnabled":true}
 ```
 
-- `timeZone` must be a region id such as `Asia/Tashkent`. Fixed offsets (`+05:00`, `UTC`, `Etc/GMT+5`, `EST`) are refused because they ignore daylight saving.
+- `timeZone` must be a region id such as `Asia/Tashkent`. Fixed offsets (`+05:00`, `UTC`, `Etc/GMT+5`) are refused because they ignore daylight saving.
 - Changing the zone keeps working hours as local times (the same 10:00 in the new zone) and does not move booked appointments, which keep their instants.
 - `botEnabled` is stored now; the bot uses it from M2.
 
