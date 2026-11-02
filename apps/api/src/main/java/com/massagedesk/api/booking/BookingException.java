@@ -13,7 +13,9 @@ public class BookingException extends RuntimeException {
         SERVICE_NOT_FOUND,
         APPOINTMENT_NOT_FOUND,
         OUTSIDE_SCHEDULE,
-        TIME_TAKEN
+        TIME_TAKEN,
+        NOT_CONFIRMED,
+        NOT_STARTED
     }
 
     private final Reason reason;

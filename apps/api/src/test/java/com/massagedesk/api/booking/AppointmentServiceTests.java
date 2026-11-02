@@ -20,6 +20,7 @@ import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalTime;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -159,6 +160,140 @@ class AppointmentServiceTests {
                     assertThat(e.getMessage()).isEqualTo("time is already booked");
                     assertThat(sqlState(e)).isEqualTo("23P01");
                 });
+    }
+
+    private static final Instant TUE_13 = Instant.parse("2026-11-03T08:00:00Z");
+
+    private AppointmentView book(Instant start) {
+        return service.create(client.getId(), classic.getId(), start, AppointmentSource.MANUAL);
+    }
+
+    private Map<String, Object> periodOf(UUID id) {
+        entityManager.flush();
+        return jdbc.queryForMap(
+                "select lower(period) as s, upper(period) as e, status from appointments where id = ?", id);
+    }
+
+    @Test
+    void rescheduleMovesAndKeepsLength() {
+        AppointmentView created = book(TUE_10);
+
+        AppointmentView moved = service.reschedule(created.id(), TUE_13);
+
+        assertThat(moved.period().start()).isEqualTo(TUE_13);
+        assertThat(moved.period().end()).isEqualTo(TUE_13.plusSeconds(3600));
+        Map<String, Object> row = periodOf(created.id());
+        assertThat(((java.sql.Timestamp) row.get("s")).toInstant()).isEqualTo(TUE_13);
+        assertThat(((java.sql.Timestamp) row.get("e")).toInstant()).isEqualTo(TUE_13.plusSeconds(3600));
+    }
+
+    @Test
+    void rescheduleKeepsBookedLengthAfterServiceChange() {
+        AppointmentView created = book(TUE_10);
+        jdbc.update("update services set duration_min = 90 where id = ?", classic.getId());
+        entityManager.clear();
+
+        AppointmentView moved = service.reschedule(created.id(), TUE_13);
+
+        assertThat(moved.period().end()).isEqualTo(TUE_13.plusSeconds(3600));
+    }
+
+    @Test
+    void rescheduleOverOwnOldTime() {
+        AppointmentView created = book(TUE_10);
+
+        AppointmentView moved = service.reschedule(created.id(), TUE_10.plusSeconds(1800));
+
+        assertThat(moved.period().start()).isEqualTo(TUE_10.plusSeconds(1800));
+    }
+
+    @Test
+    void rescheduleOutsideSchedule() {
+        AppointmentView created = book(TUE_10);
+
+        assertThatThrownBy(() -> service.reschedule(created.id(), Instant.parse("2026-11-03T10:30:00Z")))
+                .isInstanceOfSatisfying(BookingException.class,
+                        e -> assertThat(e.reason()).isEqualTo(Reason.OUTSIDE_SCHEDULE));
+        Map<String, Object> row = periodOf(created.id());
+        assertThat(((java.sql.Timestamp) row.get("s")).toInstant()).isEqualTo(TUE_10);
+    }
+
+    @Test
+    void rescheduleIntoTakenTime() {
+        AppointmentView created = book(TUE_10);
+        insertConfirmed("2026-11-03 13:00+05", "2026-11-03 14:00+05");
+
+        // last statement of the test: the database transaction is aborted after the conflict
+        assertThatThrownBy(() -> service.reschedule(created.id(), TUE_13))
+                .isInstanceOfSatisfying(BookingException.class, e -> {
+                    assertThat(e.reason()).isEqualTo(Reason.TIME_TAKEN);
+                    assertThat(sqlState(e)).isEqualTo("23P01");
+                });
+    }
+
+    @Test
+    void cancelFreesTheTime() {
+        AppointmentView created = book(TUE_10);
+
+        AppointmentView cancelled = service.cancel(created.id());
+
+        assertThat(cancelled.status()).isEqualTo(AppointmentStatus.CANCELLED);
+        assertThat(book(TUE_10).id()).isNotEqualTo(created.id());
+    }
+
+    @Test
+    void actionsOnCancelledAreRefused() {
+        AppointmentView created = book(TUE_10);
+        service.cancel(created.id());
+        Instant outside = Instant.parse("2026-11-03T04:00:00Z");
+
+        for (Runnable action : new Runnable[] {
+                () -> service.cancel(created.id()),
+                () -> service.markNoShow(created.id()),
+                () -> service.reschedule(created.id(), outside)}) {
+            assertThatThrownBy(action::run).isInstanceOfSatisfying(BookingException.class, e -> {
+                assertThat(e.reason()).isEqualTo(Reason.NOT_CONFIRMED);
+                assertThat(e.getMessage()).isEqualTo("appointment is cancelled");
+            });
+        }
+    }
+
+    @Test
+    void noShowAfterStart() {
+        insertConfirmed("2026-11-02 09:00+05", "2026-11-02 10:00+05");
+        insertConfirmed("2026-11-02 10:00+05", "2026-11-02 11:00+05");
+        entityManager.clear();
+        List<UUID> ids = jdbc.queryForList(
+                "select id from appointments where client_id = ?", UUID.class, client.getId());
+
+        assertThat(ids).hasSize(2);
+        for (UUID id : ids) {
+            assertThat(service.markNoShow(id).status()).isEqualTo(AppointmentStatus.NO_SHOW);
+        }
+    }
+
+    @Test
+    void noShowBeforeStart() {
+        AppointmentView created = book(TUE_10);
+
+        assertThatThrownBy(() -> service.markNoShow(created.id()))
+                .isInstanceOfSatisfying(BookingException.class, e -> {
+                    assertThat(e.reason()).isEqualTo(Reason.NOT_STARTED);
+                    assertThat(e.getMessage()).isEqualTo("appointment has not started yet");
+                });
+    }
+
+    @Test
+    void unknownAppointment() {
+        UUID id = UUID.randomUUID();
+
+        for (Runnable action : new Runnable[] {
+                () -> service.reschedule(id, TUE_10),
+                () -> service.cancel(id),
+                () -> service.markNoShow(id)}) {
+            assertThatThrownBy(action::run).isInstanceOfSatisfying(BookingException.class,
+                    e -> assertThat(e.reason()).isEqualTo(Reason.APPOINTMENT_NOT_FOUND));
+        }
     }
 
     private static String sqlState(Throwable e) {

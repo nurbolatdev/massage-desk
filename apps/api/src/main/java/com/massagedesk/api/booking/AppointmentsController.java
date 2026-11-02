@@ -59,7 +59,7 @@ class AppointmentsController {
         HttpStatus status = switch (e.reason()) {
             case CLIENT_NOT_FOUND, SERVICE_NOT_FOUND, APPOINTMENT_NOT_FOUND -> HttpStatus.NOT_FOUND;
             case OUTSIDE_SCHEDULE -> HttpStatus.UNPROCESSABLE_CONTENT;
-            case TIME_TAKEN -> HttpStatus.CONFLICT;
+            case TIME_TAKEN, NOT_CONFIRMED, NOT_STARTED ->HttpStatus.CONFLICT;
         };
         return new ResponseStatusException(status, e.getMessage(), e);
     }

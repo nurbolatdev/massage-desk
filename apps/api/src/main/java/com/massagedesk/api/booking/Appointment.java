@@ -15,6 +15,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.UUID;
 import org.hibernate.annotations.ColumnTransformer;
@@ -67,6 +68,36 @@ public class Appointment {
         this.period = Objects.requireNonNull(period, "period");
         this.source = Objects.requireNonNull(source, "source");
         this.status = AppointmentStatus.CONFIRMED;
+    }
+
+    /** Only confirmed appointments hold time and can change. */
+    void requireConfirmed() {
+        if (status != AppointmentStatus.CONFIRMED) {
+            throw new BookingException(
+                    BookingException.Reason.NOT_CONFIRMED,
+                    "appointment is " + status.name().toLowerCase(Locale.ROOT));
+        }
+    }
+
+    /** Moves a confirmed appointment to the new period. */
+    public void reschedule(TimeRange newPeriod) {
+        requireConfirmed();
+        this.period = Objects.requireNonNull(newPeriod, "newPeriod");
+    }
+
+    /** Cancels a confirmed appointment, freeing its time. */
+    public void cancel() {
+        requireConfirmed();
+        this.status = AppointmentStatus.CANCELLED;
+    }
+
+    /** Marks a confirmed appointment as a no-show; allowed only once the visit has started. */
+    public void markNoShow(Instant now) {
+        requireConfirmed();
+        if (now.isBefore(period.start())) {
+            throw new BookingException(BookingException.Reason.NOT_STARTED, "appointment has not started yet");
+        }
+        this.status = AppointmentStatus.NO_SHOW;
     }
 
     public UUID getId() {

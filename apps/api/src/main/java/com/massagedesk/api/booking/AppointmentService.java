@@ -8,6 +8,8 @@ import com.massagedesk.api.schedule.MassageServiceRepository;
 import com.massagedesk.api.schedule.SlotService;
 import com.massagedesk.api.schedule.TimeRange;
 import com.massagedesk.api.settings.SettingsRepository;
+import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.UUID;
@@ -38,18 +40,21 @@ public class AppointmentService {
     private final MassageServiceRepository services;
     private final SlotService slotService;
     private final SettingsRepository settings;
+    private final Clock clock;
 
     public AppointmentService(
             AppointmentRepository appointments,
             ClientRepository clients,
             MassageServiceRepository services,
             SlotService slotService,
-            SettingsRepository settings) {
+            SettingsRepository settings,
+            Clock clock) {
         this.appointments = appointments;
         this.clients = clients;
         this.services = services;
         this.slotService = slotService;
         this.settings = settings;
+        this.clock = clock;
     }
 
     /** Books the service for the client; the end is the start plus the service length. */
@@ -66,6 +71,42 @@ public class AppointmentService {
         }
         Appointment saved = flush(new Appointment(client, service, period, source));
         return view(saved);
+    }
+
+    /** Moves a confirmed appointment, keeping its booked length. */
+    @Transactional
+    public AppointmentView reschedule(UUID id, Instant start) {
+        Appointment appointment = locked(id);
+        appointment.requireConfirmed();
+        TimeRange old = appointment.getPeriod();
+        TimeRange period = new TimeRange(start, start.plus(Duration.between(old.start(), old.end())));
+        if (!slotService.fitsSchedule(period)) {
+            throw new BookingException(
+                    Reason.OUTSIDE_SCHEDULE, "time is outside working hours, in time off or in the past");
+        }
+        appointment.reschedule(period);
+        return view(flush(appointment));
+    }
+
+    /** Cancels a confirmed appointment. */
+    @Transactional
+    public AppointmentView cancel(UUID id) {
+        Appointment appointment = locked(id);
+        appointment.cancel();
+        return view(flush(appointment));
+    }
+
+    /** Marks a confirmed appointment as a no-show once the visit has started. */
+    @Transactional
+    public AppointmentView markNoShow(UUID id) {
+        Appointment appointment = locked(id);
+        appointment.markNoShow(clock.instant());
+        return view(flush(appointment));
+    }
+
+    private Appointment locked(UUID id) {
+        return appointments.findByIdForUpdate(id)
+                .orElseThrow(() -> new BookingException(Reason.APPOINTMENT_NOT_FOUND, "appointment not found"));
     }
 
     private Appointment flush(Appointment appointment) {

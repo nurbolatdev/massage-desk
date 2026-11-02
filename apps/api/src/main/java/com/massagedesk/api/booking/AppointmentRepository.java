@@ -1,9 +1,12 @@
 package com.massagedesk.api.booking;
 
+import jakarta.persistence.LockModeType;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -22,4 +25,9 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID> 
             """)
     List<Appointment> findConfirmedOverlapping(
             @Param("windowStart") Instant windowStart, @Param("windowEnd") Instant windowEnd);
+
+    /** Loads the appointment with a row lock; serialises status changes of one appointment. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select a from Appointment a where a.id = :id")
+    Optional<Appointment> findByIdForUpdate(@Param("id") UUID id);
 }
