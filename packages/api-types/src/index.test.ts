@@ -36,3 +36,25 @@ describe("generated /slots types", () => {
     expect(true).toBe(true);
   });
 });
+
+describe("generated /appointments types", () => {
+  type CreatePost = paths["/appointments"]["post"];
+  type CreateBody = CreatePost["requestBody"]["content"]["application/json"];
+  type Created = CreatePost["responses"][201]["content"]["application/json"];
+
+  it("types the create request body", () => {
+    expectTypeOf<CreateBody["clientId"]>().toEqualTypeOf<string>();
+    expectTypeOf<CreateBody["serviceId"]>().toEqualTypeOf<string>();
+    expectTypeOf<CreateBody["start"]>().toEqualTypeOf<string>();
+    expect(true).toBe(true);
+  });
+
+  it("types the 201 body with status and source unions", () => {
+    expectTypeOf<Created["id"]>().toEqualTypeOf<string>();
+    expectTypeOf<Created["start"]>().toEqualTypeOf<string>();
+    expectTypeOf<Created["end"]>().toEqualTypeOf<string>();
+    expectTypeOf<Created["status"]>().toEqualTypeOf<"confirmed" | "cancelled" | "no_show" | "done">();
+    expectTypeOf<Created["source"]>().toEqualTypeOf<"bot" | "manual">();
+    expect(true).toBe(true);
+  });
+});

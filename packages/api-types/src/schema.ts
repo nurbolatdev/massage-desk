@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+    "/appointments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Book a service for a client */
+        post: operations["createAppointment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/slots": {
         parameters: {
             query?: never;
@@ -42,6 +59,45 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AppointmentResponse: {
+            /** Format: uuid */
+            clientId: string;
+            /**
+             * Format: date-time
+             * @description ISO-8601 with the master's UTC offset
+             */
+            end: string;
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            serviceId: string;
+            /** @enum {string} */
+            source: "bot" | "manual";
+            /**
+             * Format: date-time
+             * @description ISO-8601 with the master's UTC offset
+             */
+            start: string;
+            /** @enum {string} */
+            status: "confirmed" | "cancelled" | "no_show" | "done";
+        };
+        CreateAppointmentRequest: {
+            /**
+             * Format: uuid
+             * @description id of an existing client
+             */
+            clientId: string;
+            /**
+             * Format: uuid
+             * @description id of an active service
+             */
+            serviceId: string;
+            /**
+             * Format: date-time
+             * @description ISO-8601 with offset; the end is start plus the service length
+             */
+            start: string;
+        };
         ProblemDetail: {
             detail?: string;
             /** Format: uri */
@@ -77,6 +133,66 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    createAppointment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAppointmentRequest"];
+            };
+        };
+        responses: {
+            /** @description appointment created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppointmentResponse"];
+                };
+            };
+            /** @description missing or invalid field */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description client or service not found, or service inactive */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description the time is already booked */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description outside working hours, in time off or in the past */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
     slots: {
         parameters: {
             query: {
