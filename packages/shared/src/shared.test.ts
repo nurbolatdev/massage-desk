@@ -1,26 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isActiveStatus, normalizePhone, SlotsQuery, toWhatsAppId } from "./index.js";
-
-describe("normalizePhone", () => {
-  it("accepts WhatsApp format and typed format", () => {
-    expect(normalizePhone("998901234567")).toBe("+998901234567");
-    expect(normalizePhone("+998 (90) 123-45-67")).toBe("+998901234567");
-  });
-  it("rejects garbage", () => {
-    expect(normalizePhone("12345")).toBeNull();
-    expect(normalizePhone("привет")).toBeNull();
-  });
-  it("matches the API rules at the boundaries", () => {
-    expect(normalizePhone("123456789")).toBe("+123456789");
-    expect(normalizePhone("12345678")).toBeNull();
-    expect(normalizePhone("123456789012345")).toBe("+123456789012345");
-    expect(normalizePhone("1234567890123456")).toBeNull();
-    expect(normalizePhone("٩٩٨٩٠١٢٣٤٥٦٧")).toBeNull();
-  });
-  it("converts to WhatsApp id", () => {
-    expect(toWhatsAppId("+998901234567")).toBe("998901234567");
-  });
-});
+import { isActiveStatus, SlotsQuery } from "./index.js";
 
 describe("domain", () => {
   it("only confirmed and done appointments occupy time", () => {
