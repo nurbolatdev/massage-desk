@@ -177,6 +177,27 @@ class WorkingHoursServiceTests {
     }
 
     @Test
+    void appointmentFarAheadIsChecked() {
+        Client client = clients.saveAndFlush(new Client("+998900000865", "Hours client"));
+        MassageService massage = services.saveAndFlush(
+                new MassageService("Hours conflict service", 60, new BigDecimal("1000.00"), 901));
+        UUID id = jdbc.queryForObject("""
+                insert into appointments (client_id, service_id, period, status)
+                values (?, ?, tstzrange('2027-11-02 14:00+05'::timestamptz, '2027-11-02 15:00+05'::timestamptz),
+                        'confirmed')
+                returning id
+                """, UUID.class, client.getId(), massage.getId());
+
+        assertThatThrownBy(() -> service.replaceWeek(
+                List.of(block(DayOfWeek.TUESDAY, "10:00", "13:00")), false, EventActor.MASTER))
+                .isInstanceOfSatisfying(ScheduleException.class, e -> {
+                    assertThat(e.reason()).isEqualTo(ScheduleException.Reason.APPOINTMENT_CONFLICT);
+                    assertThat(e.conflicts()).extracting(ScheduleException.Conflict::appointmentId)
+                            .containsExactly(id);
+                });
+    }
+
+    @Test
     void forceStoresTheWeekOverTheAppointment() {
         tuesdayAppointment();
 

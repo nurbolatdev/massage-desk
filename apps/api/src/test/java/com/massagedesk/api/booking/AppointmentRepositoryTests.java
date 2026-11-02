@@ -157,6 +157,32 @@ class AppointmentRepositoryTests {
                 range("2026-11-03T18:30:00Z", "2026-11-03T19:30:00Z"));
     }
 
+    @Test
+    void findsConfirmedAppointmentsStartingFromAnInstant() {
+        insertAppointment("2027-11-02 14:00+05", "2027-11-02 15:00+05", "confirmed");
+        insertAppointment("2026-11-02 10:15+05", "2026-11-02 11:00+05", "confirmed");
+        insertAppointment("2026-11-03 10:00+05", "2026-11-03 11:00+05", "cancelled");
+        entityManager.clear();
+
+        List<Appointment> found = appointments.findConfirmedStartingFrom(Instant.parse("2026-11-02T05:15:00Z"));
+
+        assertThat(found).extracting(Appointment::getPeriod).containsExactly(
+                range("2026-11-02T05:15:00Z", "2026-11-02T06:00:00Z"),
+                range("2027-11-02T09:00:00Z", "2027-11-02T10:00:00Z"));
+    }
+
+    @Test
+    void excludesAnAppointmentInProgress() {
+        insertAppointment("2026-11-02 10:00+05", "2026-11-02 11:00+05", "confirmed");
+        insertAppointment("2026-11-02 12:00+05", "2026-11-02 13:00+05", "confirmed");
+        entityManager.clear();
+
+        List<Appointment> found = appointments.findConfirmedStartingFrom(Instant.parse("2026-11-02T05:15:00Z"));
+
+        assertThat(found).extracting(Appointment::getPeriod)
+                .containsExactly(range("2026-11-02T07:00:00Z", "2026-11-02T08:00:00Z"));
+    }
+
     private void insertAppointment(String start, String end, String status) {
         jdbc.update("""
                 insert into appointments (id, client_id, service_id, period, status)

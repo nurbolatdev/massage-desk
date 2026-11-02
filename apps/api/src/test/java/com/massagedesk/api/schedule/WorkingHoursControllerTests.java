@@ -303,10 +303,25 @@ class WorkingHoursControllerTests {
     }
 
     @Test
-    void anAppointmentBeyondTheHorizonIsNotReported() throws Exception {
-        appointment("+998900000865", "Hours client", "2027-01-04 14:00+05", "2027-01-04 15:00+05", "confirmed");
+    void anAppointmentFarAheadIsReported() throws Exception {
+        UUID id = appointment("+998900000865", "Hours client", "2027-01-04 14:00+05", "2027-01-04 15:00+05",
+                "confirmed");
 
-        putHours(week(block(2, "10:00", "13:00"))).andExpect(status().isOk());
+        putHours(week(block(2, "10:00", "13:00")))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.conflicts[0].appointmentId").value(id.toString()));
+    }
+
+    @Test
+    void anAppointmentAYearAheadIsReported() throws Exception {
+        UUID id = appointment("+998900000865", "Hours client", "2027-11-02 14:00+05", "2027-11-02 15:00+05",
+                "confirmed");
+
+        putHours(week(block(2, "10:00", "13:00")))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.conflicts.length()").value(1))
+                .andExpect(jsonPath("$.conflicts[0].appointmentId").value(id.toString()))
+                .andExpect(jsonPath("$.conflicts[0].start").value("2027-11-02T14:00:00+05:00"));
     }
 
     @Test
