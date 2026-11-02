@@ -74,3 +74,10 @@ constraint appointments_no_overlap
 
 All three are indexed by `created_at`. The API writes them; on Supabase staff can only read them (RLS policy `staff_read`).
 Domain events are written by `DomainEventRecorder` inside the caller's transaction (propagation `MANDATORY`).
+
+Appointment events (entity type `appointment`, written by `AppointmentService` in the same transaction as the change; payload: ids and ISO-8601 UTC times only, no names or phones):
+- `appointment_created` — `client_id`, `service_id`, `start`, `end`, `source`
+- `appointment_rescheduled` — `client_id`, `service_id`, `previous_start`, `previous_end`, `start`, `end`
+- `appointment_cancelled`, `appointment_no_show` — `client_id`, `service_id`, `start`, `end`
+
+The actor comes from the token role (`master` or `admin`); the bot will use `bot`. A refused action writes no event.

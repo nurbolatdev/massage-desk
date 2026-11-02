@@ -8,6 +8,7 @@ import com.massagedesk.api.booking.AppointmentService.AppointmentView;
 import com.massagedesk.api.booking.BookingException.Reason;
 import com.massagedesk.api.clients.Client;
 import com.massagedesk.api.clients.ClientRepository;
+import com.massagedesk.api.events.EventActor;
 import com.massagedesk.api.schedule.FixedClockConfiguration;
 import com.massagedesk.api.schedule.MassageService;
 import com.massagedesk.api.schedule.MassageServiceRepository;
@@ -80,12 +81,13 @@ class AppointmentServiceTests {
     private BookingException refused(UUID clientId, UUID serviceId, Instant start) {
         return org.assertj.core.api.Assertions.catchThrowableOfType(
                 BookingException.class,
-                () -> service.create(clientId, serviceId, start, AppointmentSource.MANUAL));
+                () -> service.create(clientId, serviceId, start, AppointmentSource.MANUAL, EventActor.MASTER));
     }
 
     @Test
     void createsConfirmedManualAppointment() {
-        AppointmentView view = service.create(client.getId(), classic.getId(), TUE_10, AppointmentSource.MANUAL);
+        AppointmentView view = service.create(
+                client.getId(), classic.getId(), TUE_10, AppointmentSource.MANUAL, EventActor.MASTER);
 
         assertThat(view.id()).isNotNull();
         assertThat(view.period().start()).isEqualTo(TUE_10);
@@ -102,7 +104,7 @@ class AppointmentServiceTests {
     @Test
     void offGridStartIsAllowed() {
         AppointmentView view = service.create(
-                client.getId(), classic.getId(), TUE_10.plusSeconds(900), AppointmentSource.MANUAL);
+                client.getId(), classic.getId(), TUE_10.plusSeconds(900), AppointmentSource.MANUAL, EventActor.MASTER);
 
         assertThat(view.period().start()).isEqualTo(TUE_10.plusSeconds(900));
     }
@@ -112,7 +114,7 @@ class AppointmentServiceTests {
         insertConfirmed("2026-11-03 10:00+05", "2026-11-03 11:00+05");
 
         AppointmentView view = service.create(
-                client.getId(), classic.getId(), TUE_10.plusSeconds(3600), AppointmentSource.MANUAL);
+                client.getId(), classic.getId(), TUE_10.plusSeconds(3600), AppointmentSource.MANUAL, EventActor.MASTER);
 
         assertThat(view.id()).isNotNull();
     }
@@ -154,7 +156,7 @@ class AppointmentServiceTests {
 
         // last statement of the test: the database transaction is aborted after the conflict
         assertThatThrownBy(() -> service.create(
-                client.getId(), classic.getId(), TUE_10.plusSeconds(1800), AppointmentSource.MANUAL))
+                client.getId(), classic.getId(), TUE_10.plusSeconds(1800), AppointmentSource.MANUAL, EventActor.MASTER))
                 .isInstanceOfSatisfying(BookingException.class, e -> {
                     assertThat(e.reason()).isEqualTo(Reason.TIME_TAKEN);
                     assertThat(e.getMessage()).isEqualTo("time is already booked");
@@ -165,7 +167,7 @@ class AppointmentServiceTests {
     private static final Instant TUE_13 = Instant.parse("2026-11-03T08:00:00Z");
 
     private AppointmentView book(Instant start) {
-        return service.create(client.getId(), classic.getId(), start, AppointmentSource.MANUAL);
+        return service.create(client.getId(), classic.getId(), start, AppointmentSource.MANUAL, EventActor.MASTER);
     }
 
     private Map<String, Object> periodOf(UUID id) {
@@ -178,7 +180,7 @@ class AppointmentServiceTests {
     void rescheduleMovesAndKeepsLength() {
         AppointmentView created = book(TUE_10);
 
-        AppointmentView moved = service.reschedule(created.id(), TUE_13);
+        AppointmentView moved = service.reschedule(created.id(), TUE_13, EventActor.MASTER);
 
         assertThat(moved.period().start()).isEqualTo(TUE_13);
         assertThat(moved.period().end()).isEqualTo(TUE_13.plusSeconds(3600));
@@ -193,7 +195,7 @@ class AppointmentServiceTests {
         jdbc.update("update services set duration_min = 90 where id = ?", classic.getId());
         entityManager.clear();
 
-        AppointmentView moved = service.reschedule(created.id(), TUE_13);
+        AppointmentView moved = service.reschedule(created.id(), TUE_13, EventActor.MASTER);
 
         assertThat(moved.period().end()).isEqualTo(TUE_13.plusSeconds(3600));
     }
@@ -202,7 +204,7 @@ class AppointmentServiceTests {
     void rescheduleOverOwnOldTime() {
         AppointmentView created = book(TUE_10);
 
-        AppointmentView moved = service.reschedule(created.id(), TUE_10.plusSeconds(1800));
+        AppointmentView moved = service.reschedule(created.id(), TUE_10.plusSeconds(1800), EventActor.MASTER);
 
         assertThat(moved.period().start()).isEqualTo(TUE_10.plusSeconds(1800));
     }
@@ -211,7 +213,7 @@ class AppointmentServiceTests {
     void rescheduleOutsideSchedule() {
         AppointmentView created = book(TUE_10);
 
-        assertThatThrownBy(() -> service.reschedule(created.id(), Instant.parse("2026-11-03T10:30:00Z")))
+        assertThatThrownBy(() -> service.reschedule(created.id(), Instant.parse("2026-11-03T10:30:00Z"), EventActor.MASTER))
                 .isInstanceOfSatisfying(BookingException.class,
                         e -> assertThat(e.reason()).isEqualTo(Reason.OUTSIDE_SCHEDULE));
         Map<String, Object> row = periodOf(created.id());
@@ -224,7 +226,7 @@ class AppointmentServiceTests {
         insertConfirmed("2026-11-03 13:00+05", "2026-11-03 14:00+05");
 
         // last statement of the test: the database transaction is aborted after the conflict
-        assertThatThrownBy(() -> service.reschedule(created.id(), TUE_13))
+        assertThatThrownBy(() -> service.reschedule(created.id(), TUE_13, EventActor.MASTER))
                 .isInstanceOfSatisfying(BookingException.class, e -> {
                     assertThat(e.reason()).isEqualTo(Reason.TIME_TAKEN);
                     assertThat(sqlState(e)).isEqualTo("23P01");
@@ -235,7 +237,7 @@ class AppointmentServiceTests {
     void cancelFreesTheTime() {
         AppointmentView created = book(TUE_10);
 
-        AppointmentView cancelled = service.cancel(created.id());
+        AppointmentView cancelled = service.cancel(created.id(), EventActor.MASTER);
 
         assertThat(cancelled.status()).isEqualTo(AppointmentStatus.CANCELLED);
         assertThat(book(TUE_10).id()).isNotEqualTo(created.id());
@@ -244,13 +246,13 @@ class AppointmentServiceTests {
     @Test
     void actionsOnCancelledAreRefused() {
         AppointmentView created = book(TUE_10);
-        service.cancel(created.id());
+        service.cancel(created.id(), EventActor.MASTER);
         Instant outside = Instant.parse("2026-11-03T04:00:00Z");
 
         for (Runnable action : new Runnable[] {
-                () -> service.cancel(created.id()),
-                () -> service.markNoShow(created.id()),
-                () -> service.reschedule(created.id(), outside)}) {
+                () -> service.cancel(created.id(), EventActor.MASTER),
+                () -> service.markNoShow(created.id(), EventActor.MASTER),
+                () -> service.reschedule(created.id(), outside, EventActor.MASTER)}) {
             assertThatThrownBy(action::run).isInstanceOfSatisfying(BookingException.class, e -> {
                 assertThat(e.reason()).isEqualTo(Reason.NOT_CONFIRMED);
                 assertThat(e.getMessage()).isEqualTo("appointment is cancelled");
@@ -268,7 +270,7 @@ class AppointmentServiceTests {
 
         assertThat(ids).hasSize(2);
         for (UUID id : ids) {
-            assertThat(service.markNoShow(id).status()).isEqualTo(AppointmentStatus.NO_SHOW);
+            assertThat(service.markNoShow(id, EventActor.MASTER).status()).isEqualTo(AppointmentStatus.NO_SHOW);
         }
     }
 
@@ -276,7 +278,7 @@ class AppointmentServiceTests {
     void noShowBeforeStart() {
         AppointmentView created = book(TUE_10);
 
-        assertThatThrownBy(() -> service.markNoShow(created.id()))
+        assertThatThrownBy(() -> service.markNoShow(created.id(), EventActor.MASTER))
                 .isInstanceOfSatisfying(BookingException.class, e -> {
                     assertThat(e.reason()).isEqualTo(Reason.NOT_STARTED);
                     assertThat(e.getMessage()).isEqualTo("appointment has not started yet");
@@ -288,9 +290,9 @@ class AppointmentServiceTests {
         UUID id = UUID.randomUUID();
 
         for (Runnable action : new Runnable[] {
-                () -> service.reschedule(id, TUE_10),
-                () -> service.cancel(id),
-                () -> service.markNoShow(id)}) {
+                () -> service.reschedule(id, TUE_10, EventActor.MASTER),
+                () -> service.cancel(id, EventActor.MASTER),
+                () -> service.markNoShow(id, EventActor.MASTER)}) {
             assertThatThrownBy(action::run).isInstanceOfSatisfying(BookingException.class,
                     e -> assertThat(e.reason()).isEqualTo(Reason.APPOINTMENT_NOT_FOUND));
         }

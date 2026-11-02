@@ -3,6 +3,9 @@ package com.massagedesk.api.booking;
 import com.massagedesk.api.booking.BookingException.Reason;
 import com.massagedesk.api.clients.Client;
 import com.massagedesk.api.clients.ClientRepository;
+import com.massagedesk.api.events.DomainEventRecorder;
+import com.massagedesk.api.events.DomainEventType;
+import com.massagedesk.api.events.EventActor;
 import com.massagedesk.api.schedule.MassageService;
 import com.massagedesk.api.schedule.MassageServiceRepository;
 import com.massagedesk.api.schedule.SlotService;
@@ -12,6 +15,9 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.util.LinkedHashMap;
+import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -41,6 +47,7 @@ public class AppointmentService {
     private final SlotService slotService;
     private final SettingsRepository settings;
     private final Clock clock;
+    private final DomainEventRecorder recorder;
 
     public AppointmentService(
             AppointmentRepository appointments,
@@ -48,18 +55,20 @@ public class AppointmentService {
             MassageServiceRepository services,
             SlotService slotService,
             SettingsRepository settings,
-            Clock clock) {
+            Clock clock,
+            DomainEventRecorder recorder) {
         this.appointments = appointments;
         this.clients = clients;
         this.services = services;
         this.slotService = slotService;
         this.settings = settings;
         this.clock = clock;
+        this.recorder = recorder;
     }
 
     /** Books the service for the client; the end is the start plus the service length. */
     @Transactional
-    public AppointmentView create(UUID clientId, UUID serviceId, Instant start, AppointmentSource source) {
+    public AppointmentView create(UUID clientId, UUID serviceId, Instant start, AppointmentSource source, EventActor actor) {
         Client client = clients.findById(clientId)
                 .orElseThrow(() -> new BookingException(Reason.CLIENT_NOT_FOUND, "client not found"));
         MassageService service = services.findByIdAndActiveTrue(serviceId)
@@ -70,12 +79,15 @@ public class AppointmentService {
                     Reason.OUTSIDE_SCHEDULE, "time is outside working hours, in time off or in the past");
         }
         Appointment saved = flush(new Appointment(client, service, period, source));
+        Map<String, Object> payload = payload(saved);
+        payload.put("source", source.name().toLowerCase(Locale.ROOT));
+        recorder.record(DomainEventType.APPOINTMENT_CREATED, saved.getId(), actor, payload);
         return view(saved);
     }
 
     /** Moves a confirmed appointment, keeping its booked length. */
     @Transactional
-    public AppointmentView reschedule(UUID id, Instant start) {
+    public AppointmentView reschedule(UUID id, Instant start, EventActor actor) {
         Appointment appointment = locked(id);
         appointment.requireConfirmed();
         TimeRange old = appointment.getPeriod();
@@ -85,23 +97,36 @@ public class AppointmentService {
                     Reason.OUTSIDE_SCHEDULE, "time is outside working hours, in time off or in the past");
         }
         appointment.reschedule(period);
-        return view(flush(appointment));
+        Appointment saved = flush(appointment);
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("client_id", saved.getClient().getId().toString());
+        payload.put("service_id", saved.getService().getId().toString());
+        payload.put("previous_start", old.start().toString());
+        payload.put("previous_end", old.end().toString());
+        payload.put("start", period.start().toString());
+        payload.put("end", period.end().toString());
+        recorder.record(DomainEventType.APPOINTMENT_RESCHEDULED, saved.getId(), actor, payload);
+        return view(saved);
     }
 
     /** Cancels a confirmed appointment. */
     @Transactional
-    public AppointmentView cancel(UUID id) {
+    public AppointmentView cancel(UUID id, EventActor actor) {
         Appointment appointment = locked(id);
         appointment.cancel();
-        return view(flush(appointment));
+        Appointment saved = flush(appointment);
+        recorder.record(DomainEventType.APPOINTMENT_CANCELLED, saved.getId(), actor, payload(saved));
+        return view(saved);
     }
 
     /** Marks a confirmed appointment as a no-show once the visit has started. */
     @Transactional
-    public AppointmentView markNoShow(UUID id) {
+    public AppointmentView markNoShow(UUID id, EventActor actor) {
         Appointment appointment = locked(id);
         appointment.markNoShow(clock.instant());
-        return view(flush(appointment));
+        Appointment saved = flush(appointment);
+        recorder.record(DomainEventType.APPOINTMENT_NO_SHOW, saved.getId(), actor, payload(saved));
+        return view(saved);
     }
 
     private Appointment locked(UUID id) {
@@ -118,6 +143,15 @@ public class AppointmentService {
             }
             throw e;
         }
+    }
+
+    private static Map<String, Object> payload(Appointment a) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("client_id", a.getClient().getId().toString());
+        payload.put("service_id", a.getService().getId().toString());
+        payload.put("start", a.getPeriod().start().toString());
+        payload.put("end", a.getPeriod().end().toString());
+        return payload;
     }
 
     private AppointmentView view(Appointment a) {
