@@ -9,6 +9,7 @@ import com.massagedesk.api.schedule.ScheduleLock;
 import com.massagedesk.api.schedule.WorkingHoursCoverage;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -49,7 +50,8 @@ public class SettingsService {
      * <p>A time zone that differs from the stored one is checked against the stored week: confirmed
      * appointments that start from now on and fall outside the working hours in the new zone refuse
      * the whole update with {@code APPOINTMENT_CONFLICT}, unless {@code force} is set. The same zone
-     * moves nothing and is not checked. Appointments are never changed.
+     * moves nothing and is not checked. Appointments are never changed. The event also records
+     * {@code forced} and the ids of the appointments the new zone leaves outside the hours.
      */
     @Transactional
     public Settings update(String timeZone, String address, Boolean botEnabled, boolean force,
@@ -62,9 +64,10 @@ public class SettingsService {
         ZoneId oldZone = row.getTimeZone();
         String oldAddress = row.getAddress();
         boolean oldBot = row.isBotEnabled();
+        List<ScheduleException.Conflict> conflicts = List.of();
         if (newZone != null) {
             if (!newZone.equals(oldZone)) {
-                List<ScheduleException.Conflict> conflicts = coverage.uncoveredByStoredWeek(newZone);
+                conflicts = coverage.uncoveredByStoredWeek(newZone);
                 if (!force && !conflicts.isEmpty()) {
                     throw new ScheduleException(ScheduleException.Reason.APPOINTMENT_CONFLICT,
                             "confirmed appointments are outside the working hours in the new time zone", conflicts);
@@ -84,7 +87,10 @@ public class SettingsService {
                 .personal("address", oldAddress, saved.getAddress())
                 .value("bot_enabled", oldBot, saved.isBotEnabled());
         if (!changes.isEmpty()) {
-            recorder.record(DomainEventType.SETTINGS_CHANGED, actor, changes.payload());
+            Map<String, Object> payload = changes.payload();
+            payload.put("forced", force);
+            payload.put("conflict_ids", conflicts.stream().map(c -> c.appointmentId().toString()).toList());
+            recorder.record(DomainEventType.SETTINGS_CHANGED, actor, payload);
         }
         return saved;
     }
