@@ -1,6 +1,7 @@
 package com.massagedesk.api.schema;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -10,13 +11,18 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.core.io.ClassPathResource;
 import org.testcontainers.junit.jupiter.Container;
@@ -213,6 +219,99 @@ class SupabasePoliciesTests {
 		long rows = as("authenticated", STAFF,
 				c -> count(c, "select count(*) from profiles where user_id = '" + STAFF + "'"));
 		assertThat(rows).isEqualTo(1);
+	}
+
+	static Stream<Arguments> inserts() {
+		return Stream.of(
+				Arguments.of("appointments", """
+						insert into appointments (client_id, service_id, period) values
+						  ('10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001',
+						   tstzrange('2030-01-02 10:00+00', '2030-01-02 11:00+00'))"""),
+				Arguments.of("clients", "insert into clients (phone, name) values ('+998900000853', 'Third')"),
+				Arguments.of("time_off", """
+						insert into time_off (period, reason) values
+						  (tstzrange('2030-03-01 00:00+00', '2030-03-02 00:00+00'), 'trip')"""),
+				Arguments.of("working_hours",
+						"insert into working_hours (weekday, start_time, end_time) values (2, '09:00', '18:00')"),
+				Arguments.of("profiles",
+						"insert into profiles (user_id, role, display_name) values ('" + STRANGER + "', 'admin', 'X')"),
+				Arguments.of("messages", """
+						insert into messages (conversation_id, direction, author, body) values
+						  ('30000000-0000-0000-0000-000000000001', 'out', 'master', 'hi')"""));
+	}
+
+	@ParameterizedTest(name = "{0}")
+	@MethodSource("inserts")
+	void staffCannotInsert(String table, String insert) {
+		assertThatThrownBy(() -> as("authenticated", STAFF, c -> {
+			try (Statement statement = c.createStatement()) {
+				return statement.executeUpdate(insert);
+			}
+		})).as(table).isInstanceOfSatisfying(SQLException.class,
+				e -> assertThat(e.getSQLState()).isEqualTo("42501"));
+	}
+
+	@ParameterizedTest(name = "{0}.{1}")
+	@CsvSource({"clients,name", "services,name", "working_hours,start_time", "time_off,reason",
+			"appointments,status", "conversations,human_mode", "messages,body", "profiles,display_name",
+			"devices,expo_push_token", "settings,address", "events,actor", "ai_runs,model",
+			"webhook_logs,status"})
+	void staffUpdatesAndDeletesNothing(String table, String column) throws SQLException {
+		int updated = as("authenticated", STAFF, c -> {
+			try (Statement statement = c.createStatement()) {
+				return statement.executeUpdate("update " + table + " set " + column + " = " + column);
+			}
+		});
+		int deleted = as("authenticated", STAFF, c -> {
+			try (Statement statement = c.createStatement()) {
+				return statement.executeUpdate("delete from " + table);
+			}
+		});
+		assertThat(updated).as(table + " updated").isZero();
+		assertThat(deleted).as(table + " deleted").isZero();
+	}
+
+	@Test
+	void staffCannotPromoteThemselves() throws SQLException {
+		int updated = as("authenticated", STAFF, c -> {
+			try (Statement statement = c.createStatement()) {
+				return statement.executeUpdate("update profiles set role = 'admin' where user_id = '" + STAFF + "'");
+			}
+		});
+		assertThat(updated).isZero();
+		try (Connection connection = owner(); Statement statement = connection.createStatement();
+				ResultSet rows = statement.executeQuery("select role from profiles where user_id = '" + STAFF + "'")) {
+			assertThat(rows.next()).isTrue();
+			assertThat(rows.getString("role")).isEqualTo("master");
+		}
+	}
+
+	@Test
+	void staffSeesOnlyOwnProfile() throws SQLException {
+		long rows = as("authenticated", STAFF, c -> count(c, "select count(*) from profiles"));
+		assertThat(rows).isEqualTo(1);
+	}
+
+	@Test
+	void policiesAreSelectOnlyForAuthenticated() throws SQLException {
+		Set<String> found = new HashSet<>();
+		try (Connection connection = superuser(); Statement statement = connection.createStatement();
+				ResultSet rows = statement.executeQuery(
+						"select tablename, policyname, cmd, roles::text from pg_policies where schemaname = 'public'")) {
+			while (rows.next()) {
+				String name = rows.getString("tablename") + "." + rows.getString("policyname");
+				assertThat(rows.getString("cmd")).as(name).isEqualTo("SELECT");
+				assertThat(rows.getString("roles")).as(name).isEqualTo("{authenticated}");
+				found.add(name);
+			}
+		}
+		Set<String> expected = new HashSet<>();
+		for (String table : new String[] {"clients", "services", "working_hours", "time_off", "appointments",
+				"conversations", "messages", "devices", "settings", "events", "ai_runs", "webhook_logs"}) {
+			expected.add(table + ".staff_read");
+		}
+		expected.add("profiles.own_profile_read");
+		assertThat(found).isEqualTo(expected);
 	}
 
 }

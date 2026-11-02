@@ -59,6 +59,15 @@ erDiagram
 
 Also: `working_hours` (ISO weekday 1–7, several blocks per day for breaks), `time_off`, `settings` (single row), `profiles` (roles `master` / `admin`), `devices` (push tokens).
 
+## Row level security (Supabase)
+Only with profile `supabase` (`migration-supabase/`). Every policy is select-only and for the `authenticated` role:
+- `staff_read` — `is_staff()`, on all business tables and the three log tables.
+- `own_profile_read` — on `profiles` a staff member sees only their own row.
+
+There are no insert/update/delete policies: an insert through the Supabase REST API fails (SQLState `42501`), an update or delete changes no rows. Every write goes through the API, which connects as the table owner and is not limited by RLS. `flyway_schema_history` is closed manually (see step 4 above).
+
+Covered by `SupabasePoliciesTests` on a stand-in database (roles, `auth.uid()` and the realtime publication recreated by a script). It does not cover JWT verification and role switching by PostgREST, the exact grants of a real project, Realtime's own checks, or which role the API uses on Supabase dev and prod.
+
 ## Schedule constraints
 - `clients_phone_e164` — phones are stored in E.164 (`+` and 9 to 15 digits).
 - `time_off_period_bounded` — a time off period is a finite half-open range `[start, end)`.
