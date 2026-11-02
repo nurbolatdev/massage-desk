@@ -98,6 +98,30 @@ class SlotServiceTests {
     }
 
     @Test
+    void fitsScheduleChecksHoursTimeOffAndNow() {
+        block(DayOfWeek.TUESDAY, 10, 16);
+        block(DayOfWeek.MONDAY, 9, 12);
+        timeOff.saveAndFlush(new TimeOff(range("2026-11-03T09:00:00Z", "2026-11-03T10:00:00Z"), "errand")); // 14:00-15:00
+
+        assertThat(slotService.fitsSchedule(range("2026-11-03T05:00:00Z", "2026-11-03T06:00:00Z"))).isTrue();
+        assertThat(slotService.fitsSchedule(range("2026-11-03T08:30:00Z", "2026-11-03T09:30:00Z"))).isFalse();
+        assertThat(slotService.fitsSchedule(range("2026-11-03T10:30:00Z", "2026-11-03T11:30:00Z"))).isFalse();
+        assertThat(slotService.fitsSchedule(range("2026-11-03T04:30:00Z", "2026-11-03T05:30:00Z"))).isFalse();
+        assertThat(slotService.fitsSchedule(range("2026-11-02T05:00:00Z", "2026-11-02T06:00:00Z"))).isFalse(); // 10:00, before now
+        assertThat(slotService.fitsSchedule(range("2026-11-02T05:15:00Z", "2026-11-02T06:15:00Z"))).isTrue();
+    }
+
+    @Test
+    void ignoresAppointments() {
+        block(DayOfWeek.TUESDAY, 10, 16);
+        Client client = clients.saveAndFlush(new Client("+998900000302", "Test client"));
+        TimeRange period = range("2026-11-03T05:00:00Z", "2026-11-03T06:00:00Z");
+        appointments.saveAndFlush(new Appointment(client, classic, period, AppointmentSource.MANUAL));
+
+        assertThat(slotService.fitsSchedule(period)).isTrue();
+    }
+
+    @Test
     void emptyForUnknownOrInactiveService() {
         MassageService inactive = services.saveAndFlush(new MassageService("Old", 45, new BigDecimal("1.00"), 0));
         jdbc.update("update services set active = false where id = ?", inactive.getId());

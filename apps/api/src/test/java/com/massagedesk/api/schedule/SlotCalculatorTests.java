@@ -85,6 +85,69 @@ class SlotCalculatorTests {
         assertThat(calculator.freeStarts(request(TEN_TO_TWELVE, dayOff, null))).isEmpty();
     }
 
+    private static final List<WorkingBlock> WITH_BREAK = List.of(
+            new WorkingBlock(LocalTime.of(10, 0), LocalTime.of(12, 0)),
+            new WorkingBlock(LocalTime.of(13, 0), LocalTime.of(16, 0)));
+
+    private boolean fits(List<Interval> busy, Instant notBefore, String start) {
+        return calculator.fits(request(WITH_BREAK, busy, notBefore), utc(start));
+    }
+
+    @Test
+    void fitsInsideABlock() {
+        assertThat(fits(List.of(), null, "2026-11-02T05:00:00Z")).isTrue(); // 10:00-11:00
+    }
+
+    @Test
+    void fitsWhenEndingExactlyAtBlockEnd() {
+        assertThat(fits(List.of(), null, "2026-11-02T06:00:00Z")).isTrue(); // 11:00-12:00
+    }
+
+    @Test
+    void doesNotFitWhenCrossingBlockEnd() {
+        assertThat(fits(List.of(), null, "2026-11-02T06:30:00Z")).isFalse(); // 11:30-12:30
+    }
+
+    @Test
+    void doesNotFitInsideTheBreak() {
+        assertThat(fits(List.of(), null, "2026-11-02T07:00:00Z")).isFalse(); // 12:00-13:00
+    }
+
+    @Test
+    void doesNotFitWhenSpanningTheBreakIntoTheNextBlock() {
+        assertThat(fits(List.of(), null, "2026-11-02T06:30:00Z")).isFalse();
+        assertThat(fits(List.of(), null, "2026-11-02T07:30:00Z")).isFalse(); // 12:30-13:30
+    }
+
+    @Test
+    void doesNotFitWhenOverlappingBusy() {
+        var busy = List.of(new Interval(utc("2026-11-02T05:30:00Z"), utc("2026-11-02T06:30:00Z")));
+
+        assertThat(fits(busy, null, "2026-11-02T05:00:00Z")).isFalse();
+    }
+
+    @Test
+    void fitsBackToBackWithBusy() {
+        var busy = List.of(new Interval(utc("2026-11-02T04:00:00Z"), utc("2026-11-02T05:00:00Z")));
+
+        assertThat(fits(busy, null, "2026-11-02T05:00:00Z")).isTrue();
+    }
+
+    @Test
+    void fitsAtAnOffGridStart() {
+        assertThat(fits(List.of(), null, "2026-11-02T05:15:00Z")).isTrue(); // 10:15-11:15
+    }
+
+    @Test
+    void doesNotFitBeforeNotBefore() {
+        assertThat(fits(List.of(), utc("2026-11-02T05:30:00Z"), "2026-11-02T05:15:00Z")).isFalse();
+    }
+
+    @Test
+    void fitsAtNotBefore() {
+        assertThat(fits(List.of(), utc("2026-11-02T05:15:00Z"), "2026-11-02T05:15:00Z")).isTrue();
+    }
+
     @Test
     void rejectsInvalidInput() {
         assertThatThrownBy(() -> new WorkingBlock(LocalTime.of(12, 0), LocalTime.of(10, 0)))

@@ -64,7 +64,7 @@ Also: `working_hours` (ISO weekday 1–7, several blocks per day for breaks), `t
 constraint appointments_no_overlap
     exclude using gist (period with &&) where (status = 'confirmed')
 ```
-`[start, end)` ranges allow back-to-back appointments; cancelled ones free the time. Covered by `AppointmentOverlapConstraintTests`.
+`[start, end)` ranges allow back-to-back appointments; cancelled ones free the time. Covered by `AppointmentOverlapConstraintTests`. Creating or moving an appointment first takes a transaction-scoped advisory lock, so parallel overlapping writes queue up instead of deadlocking; the constraint still decides the conflict.
 
 ## Observability (append-only)
 - `events` — domain event log: `type` (e.g. `appointment_created`), `entity_type`, `entity_id`, `actor` (client, bot, master, admin, system), `payload` (jsonb object).
@@ -74,3 +74,10 @@ constraint appointments_no_overlap
 
 All three are indexed by `created_at`. The API writes them; on Supabase staff can only read them (RLS policy `staff_read`).
 Domain events are written by `DomainEventRecorder` inside the caller's transaction (propagation `MANDATORY`).
+
+Appointment events (entity type `appointment`, written by `AppointmentService` in the same transaction as the change; payload: ids and ISO-8601 UTC times only, no names or phones):
+- `appointment_created` — `client_id`, `service_id`, `start`, `end`, `source`
+- `appointment_rescheduled` — `client_id`, `service_id`, `previous_start`, `previous_end`, `start`, `end`
+- `appointment_cancelled`, `appointment_no_show` — `client_id`, `service_id`, `start`, `end`
+
+The actor comes from the token role (`master` or `admin`); the bot will use `bot`. A refused action writes no event.

@@ -84,4 +84,31 @@ public class SlotService {
                 clock.instant().plus(properties.minNotice())));
         return Optional.of(new DaySlots(day, zone, service.getDuration(), starts));
     }
+
+    /**
+     * Whether the range lies inside one working block of its local day, outside time off and not
+     * before now plus the minimum notice. Appointments are not checked here: the database refuses
+     * overlapping confirmed appointments.
+     */
+    @Transactional(readOnly = true)
+    public boolean fitsSchedule(TimeRange period) {
+        ZoneId zone = settings.get().getTimeZone();
+        LocalDate day = LocalDate.ofInstant(period.start(), zone);
+        List<WorkingBlock> blocks = workingHours.findByWeekdayOrderByStartTimeAsc(day.getDayOfWeek()).stream()
+                .map(h -> new WorkingBlock(h.getStartTime(), h.getEndTime()))
+                .toList();
+        List<Interval> busy = timeOff.findOverlapping(period.start(), period.end()).stream()
+                .map(t -> new Interval(t.getPeriod().start(), t.getPeriod().end()))
+                .toList();
+        return calculator.fits(
+                new SlotCalculator.Request(
+                        day,
+                        zone,
+                        blocks,
+                        busy,
+                        Duration.between(period.start(), period.end()),
+                        properties.step(),
+                        clock.instant().plus(properties.minNotice())),
+                period.start());
+    }
 }

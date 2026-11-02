@@ -61,11 +61,34 @@ public final class SlotCalculator {
         }
     }
 
+    private static Instant blockStart(Request request, WorkingBlock block) {
+        return request.day().atTime(block.start()).atZone(request.zone()).toInstant();
+    }
+
+    private static Instant blockEnd(Request request, WorkingBlock block) {
+        return request.day().atTime(block.end()).atZone(request.zone()).toInstant();
+    }
+
+    /**
+     * Whether {@code [start, start + duration)} lies inside one working block of the request day,
+     * is not before {@code notBefore} and overlaps no busy interval. The step is not used:
+     * any start minute inside a block fits.
+     */
+    public boolean fits(Request request, Instant start) {
+        Instant end = start.plus(request.duration());
+        if (request.notBefore() != null && start.isBefore(request.notBefore())) {
+            return false;
+        }
+        boolean insideBlock = request.workingBlocks().stream()
+                .anyMatch(b -> !start.isBefore(blockStart(request, b)) && !end.isAfter(blockEnd(request, b)));
+        return insideBlock && request.busy().stream().noneMatch(b -> b.overlaps(start, end));
+    }
+
     public List<Instant> freeStarts(Request request) {
         List<Instant> slots = new ArrayList<>();
         for (WorkingBlock block : request.workingBlocks()) {
-            Instant blockStart = request.day().atTime(block.start()).atZone(request.zone()).toInstant();
-            Instant blockEnd = request.day().atTime(block.end()).atZone(request.zone()).toInstant();
+            Instant blockStart = blockStart(request, block);
+            Instant blockEnd = blockEnd(request, block);
             for (Instant start = blockStart;
                     !start.plus(request.duration()).isAfter(blockEnd);
                     start = start.plus(request.step())) {

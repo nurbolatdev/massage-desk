@@ -30,8 +30,10 @@ insert into profiles (user_id, role, display_name) values ('<auth user id>', 'ma
 | GET | `/webhook/whatsapp` | ✅ M0 | Meta webhook verification |
 | POST | `/webhook/whatsapp` | M2 | Incoming messages |
 | GET | `/slots?serviceId&day` | ✅ M1 | Free start times for a service on a day |
-| POST | `/appointments` | M1 | Create; `409` on time conflict |
-| PATCH | `/appointments/{id}` | M1 | Reschedule, cancel, no-show |
+| POST | `/appointments` | ✅ M1 | Create; `409` when the time is taken |
+| POST | `/appointments/{id}/reschedule` | ✅ M1 | Move, keeping the booked length |
+| POST | `/appointments/{id}/cancel` | ✅ M1 | Cancel; frees the time |
+| POST | `/appointments/{id}/no-show` | ✅ M1 | Mark a no-show after the start |
 | GET | `/clients` | M1 | List and search clients |
 | GET/PUT | `/settings/*` | M1 | Services, working hours, time off |
 | GET/POST | `/conversations/*` | M2 | Chats, master replies, take-over |
@@ -52,3 +54,32 @@ Working hours (with breaks), time off and confirmed appointments are taken into 
 - `404` (`application/problem+json`): the service does not exist or is inactive.
 
 Configuration: `APP_SLOTS_STEP` (grid of offered start times, default `30m`) and `APP_SLOTS_MIN_NOTICE` (how far ahead the first start is, default `0m`).
+
+## Appointments
+
+`POST /appointments` books a service for an existing client. The end is the start plus the service length; the client never sends it.
+
+```json
+{"clientId":"<uuid>","serviceId":"<uuid>","start":"2026-11-03T10:00:00+05:00"}
+```
+
+Response `201`:
+
+```json
+{"id":"<uuid>","clientId":"<uuid>","serviceId":"<uuid>","start":"2026-11-03T10:00:00+05:00","end":"2026-11-03T11:00:00+05:00","status":"confirmed","source":"manual"}
+```
+
+`start` must carry a UTC offset. Any minute is accepted, not only the grid of `/slots`. The time must lie inside one working block (breaks are excluded), outside time off and not in the past. Overlaps with other confirmed appointments are refused by the database, also under concurrent requests.
+
+- `400` (`application/problem+json`): a field is missing or invalid, or `start` has no offset.
+- `404` (`application/problem+json`): the client does not exist, or the service does not exist or is inactive.
+- `409` (`application/problem+json`): the time is already booked.
+- `422` (`application/problem+json`): the time is outside working hours, in time off or in the past.
+
+### Reschedule, cancel and no-show
+
+- `POST /appointments/{id}/reschedule` with `{"start":"2026-11-03T13:00:00+05:00"}` moves the appointment. The booked length is kept (not the current service length) and the same time rules as for creation apply. Errors: `400`, `404`, `409` (time taken), `422`.
+- `POST /appointments/{id}/cancel` (no body) cancels it and frees the time. Errors: `400`, `404`, `409`.
+- `POST /appointments/{id}/no-show` (no body) marks that the client did not come; allowed only once the visit has started, otherwise `409`. Errors: `400`, `404`, `409`.
+
+All three return the updated appointment (same shape as the create response). Any action on an appointment that is not `confirmed` gives `409` with `appointment is <status>`; repeated actions are not idempotent. Errors are `application/problem+json`.
