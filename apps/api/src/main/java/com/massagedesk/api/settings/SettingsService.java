@@ -4,6 +4,7 @@ import com.massagedesk.api.events.Changes;
 import com.massagedesk.api.events.DomainEventRecorder;
 import com.massagedesk.api.events.DomainEventType;
 import com.massagedesk.api.events.EventActor;
+import com.massagedesk.api.schedule.ScheduleLock;
 import java.time.ZoneId;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,9 +17,12 @@ public class SettingsService {
 
     private final DomainEventRecorder recorder;
 
-    public SettingsService(SettingsRepository settings, DomainEventRecorder recorder) {
+    private final ScheduleLock scheduleLock;
+
+    public SettingsService(SettingsRepository settings, DomainEventRecorder recorder, ScheduleLock scheduleLock) {
         this.settings = settings;
         this.recorder = recorder;
+        this.scheduleLock = scheduleLock;
     }
 
     @Transactional(readOnly = true)
@@ -28,10 +32,16 @@ public class SettingsService {
 
     /**
      * A null argument leaves the field unchanged; a blank address clears it. A change writes one
-     * {@code settings_changed} event (the address is only named, never copied).
+     * {@code settings_changed} event (the address is only named, never copied). Working hours are
+     * stored in local time, so a time zone change moves free time like a new week: it takes the
+     * schedule lock first, before the settings row is read (the advisory lock always comes before
+     * row locks). An update without a time zone does not take it.
      */
     @Transactional
     public Settings update(String timeZone, String address, Boolean botEnabled, EventActor actor) {
+        if (timeZone != null) {
+            scheduleLock.acquire();
+        }
         Settings row = settings.get();
         ZoneId oldZone = row.getTimeZone();
         String oldAddress = row.getAddress();

@@ -9,6 +9,7 @@ import com.massagedesk.api.clients.Client;
 import com.massagedesk.api.clients.ClientRepository;
 import com.massagedesk.api.events.EventActor;
 import com.massagedesk.api.schedule.WorkingHoursService.Block;
+import com.massagedesk.api.settings.SettingsService;
 import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.Instant;
@@ -56,6 +57,9 @@ class ScheduleLockTests {
     private WorkingHoursService workingHours;
 
     @Autowired
+    private SettingsService settingsService;
+
+    @Autowired
     private ClientRepository clients;
 
     @Autowired
@@ -88,13 +92,14 @@ class ScheduleLockTests {
         jdbc.update("delete from appointments where client_id = ?", clientId);
         jdbc.update("delete from clients where id = ?", clientId);
         jdbc.update("delete from services where id = ?", serviceId);
-        jdbc.update("delete from events where type in ('time_off_created', 'time_off_deleted', 'working_hours_replaced')");
+        jdbc.update("delete from events where type in ('time_off_created', 'time_off_deleted', 'working_hours_replaced', 'settings_changed')");
+        jdbc.update("update settings set time_zone = 'Asia/Tashkent'");
         jdbc.update("delete from time_off");
         jdbc.update("delete from working_hours");
     }
 
     static Stream<String> operations() {
-        return Stream.of("create", "reschedule", "timeOff", "workingHours");
+        return Stream.of("create", "reschedule", "timeOff", "workingHours", "timeZone");
     }
 
     @ParameterizedTest
@@ -138,6 +143,7 @@ class ScheduleLockTests {
             case "workingHours" -> workingHours.replaceWeek(List.of(
                     new Block(DayOfWeek.TUESDAY, LocalTime.of(10, 0), LocalTime.of(16, 0)),
                     new Block(DayOfWeek.WEDNESDAY, LocalTime.of(10, 0), LocalTime.of(12, 0))), false, EventActor.MASTER);
+            case "timeZone" -> settingsService.update("America/New_York", null, null, EventActor.MASTER);
             default -> throw new IllegalArgumentException(operation);
         }
     }
