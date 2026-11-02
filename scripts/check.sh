@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Quality gate: the same checks locally and in CI.
-#   apps/api      — Maven verify (compile, unit + integration tests)
+#   apps/api      — Maven verify (compile, unit + integration tests); also checks that
+#                   apps/api/openapi.json matches the code
+#   packages/api-types:up-to-date — checks that src/schema.ts matches openapi.json
+#                   (fix both with `npm run api:types`)
 #   npm packages  — lint, typecheck, test, build for every workspace that has the script
 # Prints only what failed. Ends with GATE PASS or GATE FAIL.
 set -u
@@ -45,6 +48,9 @@ if [ -f package.json ]; then
       fi
     done
   done
+  if [ -f "$ROOT/packages/api-types/package.json" ]; then
+    run_step "packages/api-types:up-to-date" npm run check:generated --silent --workspace packages/api-types
+  fi
 else
   echo "skip npm packages (no package.json yet)"
 fi

@@ -3,6 +3,7 @@
   "private": true,
   "workspaces": [
     "packages/shared",
+    "packages/api-types",
     "apps/mobile"
   ],
   "engines": {
@@ -11,6 +12,8 @@
   "scripts": {
     "build:shared": "npm run build -w @massage-desk/shared",
     "dev:mobile": "npm run start -w @massage-desk/mobile",
+    "api:openapi": "cd apps/api && OPENAPI_UPDATE=true ./mvnw -B -q test -Dtest=OpenApiDocumentTests",
+    "api:types": "npm run api:openapi && npm run generate -w @massage-desk/api-types",
     "check": "bash scripts/check.sh",
     "brand": "node scripts/brand/generate.mjs",
     "postinstall": "npm run build:shared"
