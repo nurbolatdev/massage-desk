@@ -4,7 +4,7 @@ Spring Boot, `apps/api`. The OpenAPI 3.1 document is served at `GET /v3/api-docs
 
 ## Contract
 
-`packages/api-types` exports `paths`, `components` and `operations` generated from `openapi.json`. Clients use `import type` only and never hand-write API types. After changing an endpoint, run `npm run api:types` and commit both files.
+`packages/api-types` exports `paths`, `components` and `operations` generated from `openapi.json`. It also exports `ApiProblem` (the body of every error response) and `ErrorCode`: `import type { ApiProblem, ErrorCode } from "@massage-desk/api-types"`. Clients use `import type` only and never hand-write API types. After changing an endpoint, run `npm run api:types` and commit both files.
 
 ## Authentication
 
@@ -20,7 +20,21 @@ Errors from the endpoints below use RFC 9457 problem details (`application/probl
 
 ### Errors
 
-A request refused by a domain rule answers a problem detail with the usual members (`type`, `title`, `status`, `detail`, `instance`) and a machine-readable `code`. Clients should branch on `code`, not on the `detail` text. Client errors raised by the framework (malformed body, wrong type, missing field or parameter, unknown path, wrong method or media type) carry the code `INVALID_REQUEST` and the framework's `detail`.
+Every documented error response is an `ApiProblem` (`application/problem+json`):
+
+| Member | Type | Required | Meaning |
+|---|---|---|---|
+| `type` | string | no | absent while it is `about:blank` |
+| `title` | string | yes | the HTTP reason phrase |
+| `status` | number | yes | the HTTP status |
+| `detail` | string | yes | human-readable text; may change, never branch on it |
+| `instance` | string | yes | the request path |
+| `code` | `ErrorCode` | yes | machine-readable reason; branch on this |
+| `conflicts` | array | no | only with `APPOINTMENT_CONFLICT`: the confirmed appointments in the way, ordered by start |
+
+Client errors raised by the framework (malformed body, wrong type, missing field or parameter, unknown path, wrong method or media type) carry the code `INVALID_REQUEST` and the framework's `detail`.
+
+`401` and `403` come from the security layer with an empty body and no `code`; handle them by status. `5xx` are not part of the contract: show a generic error and retry later.
 
 | `code` | Status | `detail` |
 |---|---|---|
