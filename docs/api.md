@@ -38,7 +38,10 @@ insert into profiles (user_id, role, display_name) values ('<auth user id>', 'ma
 | POST | `/clients` | ✅ M1 | Add a client; `409` when the phone exists |
 | GET | `/clients/{id}` | ✅ M1 | One client |
 | PATCH | `/clients/{id}` | ✅ M1 | Change name or notes |
-| GET/PUT | `/settings/*` | M1 | Services, working hours, time off |
+| GET | `/services` | ✅ M1 | All services, active and inactive |
+| POST | `/services` | ✅ M1 | Add a service |
+| PATCH | `/services/{id}` | ✅ M1 | Change or deactivate a service |
+| GET/PUT | `/settings/*` | M1 | Working hours, time off |
 | GET/POST | `/conversations/*` | M2 | Chats, master replies, take-over |
 | POST | `/devices` | M4 | Register a push token |
 | GET | `/admin/*` | M1–M5 | Statistics and diagnostics (admin only) |
@@ -104,3 +107,20 @@ All three return the updated appointment (same shape as the create response). An
 - `409` (`application/problem+json`): `client with this phone already exists`.
 
 Clients cannot be deleted: appointments and chats refer to them.
+
+## Services
+
+`GET /services` returns every service, active and inactive, ordered by `sortOrder` then name. The booking screen filters by `active`.
+
+```json
+{"id":"<uuid>","name":"Classic","durationMin":60,"price":150000.5,"sortOrder":0,"active":true}
+```
+
+`POST /services` takes `name` (up to 100 characters), `durationMin` (5..480), `price` (not negative, up to 2 decimals) and optional `sortOrder` (0..10000; omitted means after the last one). Response `201`.
+
+`PATCH /services/{id}` takes any of `name`, `durationMin`, `price`, `sortOrder`, `active`. A missing or `null` field is left unchanged. Inactive services can be edited and re-enabled.
+
+There is no delete: appointments refer to services, so a service is deactivated with `active: false`. A deactivated service gives `404` on `/slots` and cannot be booked; appointments already made keep their service and their booked length, also after a duration change.
+
+- `400` (`application/problem+json`): invalid field or id.
+- `404` (`application/problem+json`): `service not found`.

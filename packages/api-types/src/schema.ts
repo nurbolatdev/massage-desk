@@ -108,6 +108,41 @@ export interface paths {
         patch: operations["updateClient"];
         trace?: never;
     };
+    "/services": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List all services, active and inactive */
+        get: operations["listServices"];
+        put?: never;
+        /** Add a service */
+        post: operations["createService"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/services/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change or deactivate a service */
+        patch: operations["updateService"];
+        trace?: never;
+    };
     "/slots": {
         parameters: {
             query?: never;
@@ -204,6 +239,20 @@ export interface components {
             /** @description any format; stored as E.164 */
             phone: string;
         };
+        CreateServiceRequest: {
+            /**
+             * Format: int32
+             * @description length in minutes, 5..480
+             */
+            durationMin: number;
+            name: string;
+            price: number;
+            /**
+             * Format: int32
+             * @description display order; omitted means last
+             */
+            sortOrder?: number;
+        };
         ProblemDetail: {
             detail?: string;
             /** Format: uri */
@@ -224,6 +273,24 @@ export interface components {
              */
             start: string;
         };
+        ServiceResponse: {
+            /** @description inactive services cannot be booked */
+            active: boolean;
+            /**
+             * Format: int32
+             * @description length in minutes
+             */
+            durationMin: number;
+            /** Format: uuid */
+            id: string;
+            name: string;
+            price: number;
+            /**
+             * Format: int32
+             * @description display order, ascending
+             */
+            sortOrder: number;
+        };
         SlotsResponse: {
             /** Format: date */
             day: string;
@@ -242,6 +309,19 @@ export interface components {
             name?: string;
             /** @description blank clears the notes */
             notes?: string;
+        };
+        UpdateServiceRequest: {
+            /** @description false hides the service from booking */
+            active?: boolean;
+            /**
+             * Format: int32
+             * @description length in minutes, 5..480
+             */
+            durationMin?: number;
+            name?: string;
+            price?: number;
+            /** Format: int32 */
+            sortOrder?: number;
         };
     };
     responses: never;
@@ -629,6 +709,104 @@ export interface operations {
                 };
             };
             /** @description client not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    listServices: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description services in display order */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceResponse"][];
+                };
+            };
+        };
+    };
+    createService: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateServiceRequest"];
+            };
+        };
+        responses: {
+            /** @description service created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceResponse"];
+                };
+            };
+            /** @description missing or invalid field */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    updateService: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description service id */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateServiceRequest"];
+            };
+        };
+        responses: {
+            /** @description service updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceResponse"];
+                };
+            };
+            /** @description invalid field or id */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description service not found */
             404: {
                 headers: {
                     [name: string]: unknown;

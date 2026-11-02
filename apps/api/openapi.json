@@ -497,6 +497,124 @@
         "tags" : [ "clients" ]
       }
     },
+    "/services" : {
+      "get" : {
+        "operationId" : "listServices",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/ServiceResponse"
+                  }
+                }
+              }
+            },
+            "description" : "services in display order"
+          }
+        },
+        "summary" : "List all services, active and inactive",
+        "tags" : [ "services" ]
+      },
+      "post" : {
+        "operationId" : "createService",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateServiceRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ServiceResponse"
+                }
+              }
+            },
+            "description" : "service created"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description" : "missing or invalid field"
+          }
+        },
+        "summary" : "Add a service",
+        "tags" : [ "services" ]
+      }
+    },
+    "/services/{id}" : {
+      "patch" : {
+        "operationId" : "updateService",
+        "parameters" : [ {
+          "description" : "service id",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateServiceRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ServiceResponse"
+                }
+              }
+            },
+            "description" : "service updated"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description" : "invalid field or id"
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description" : "service not found"
+          }
+        },
+        "summary" : "Change or deactivate a service",
+        "tags" : [ "services" ]
+      }
+    },
     "/slots" : {
       "get" : {
         "operationId" : "slots",
@@ -714,6 +832,35 @@
         },
         "required" : [ "phone" ]
       },
+      "CreateServiceRequest" : {
+        "type" : "object",
+        "properties" : {
+          "durationMin" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "length in minutes, 5..480",
+            "maximum" : 480,
+            "minimum" : 5
+          },
+          "name" : {
+            "type" : "string",
+            "maxLength" : 100,
+            "minLength" : 0
+          },
+          "price" : {
+            "type" : "number",
+            "minimum" : 0
+          },
+          "sortOrder" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "display order; omitted means last",
+            "maximum" : 10000,
+            "minimum" : 0
+          }
+        },
+        "required" : [ "durationMin", "name", "price" ]
+      },
       "ProblemDetail" : {
         "type" : "object",
         "properties" : {
@@ -751,6 +898,36 @@
           }
         },
         "required" : [ "start" ]
+      },
+      "ServiceResponse" : {
+        "type" : "object",
+        "properties" : {
+          "active" : {
+            "type" : "boolean",
+            "description" : "inactive services cannot be booked"
+          },
+          "durationMin" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "length in minutes"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "price" : {
+            "type" : "number"
+          },
+          "sortOrder" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "display order, ascending"
+          }
+        },
+        "required" : [ "active", "durationMin", "id", "name", "price", "sortOrder" ]
       },
       "SlotsResponse" : {
         "type" : "object",
@@ -793,6 +970,38 @@
             "description" : "blank clears the notes",
             "maxLength" : 2000,
             "minLength" : 0
+          }
+        }
+      },
+      "UpdateServiceRequest" : {
+        "type" : "object",
+        "properties" : {
+          "active" : {
+            "type" : "boolean",
+            "description" : "false hides the service from booking"
+          },
+          "durationMin" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "length in minutes, 5..480",
+            "maximum" : 480,
+            "minimum" : 5
+          },
+          "name" : {
+            "type" : "string",
+            "maxLength" : 100,
+            "minLength" : 1,
+            "pattern" : ".*\\S.*"
+          },
+          "price" : {
+            "type" : "number",
+            "minimum" : 0
+          },
+          "sortOrder" : {
+            "type" : "integer",
+            "format" : "int32",
+            "maximum" : 10000,
+            "minimum" : 0
           }
         }
       }
