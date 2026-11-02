@@ -43,7 +43,10 @@ insert into profiles (user_id, role, display_name) values ('<auth user id>', 'ma
 | PATCH | `/services/{id}` | ✅ M1 | Change or deactivate a service |
 | GET | `/working-hours` | ✅ M1 | The weekly working hours |
 | PUT | `/working-hours` | ✅ M1 | Replace the whole week |
-| GET/PUT | `/settings/*` | M1 | Time off |
+| GET | `/time-off?from&to` | ✅ M1 | Time off touching the local days |
+| POST | `/time-off` | ✅ M1 | Add a day off or vacation |
+| DELETE | `/time-off/{id}` | ✅ M1 | Remove time off |
+| GET/PUT | `/settings/*` | M1 | Business settings |
 | GET/POST | `/conversations/*` | M2 | Chats, master replies, take-over |
 | POST | `/devices` | M4 | Register a push token |
 | GET | `/admin/*` | M1–M5 | Statistics and diagnostics (admin only) |
@@ -144,3 +147,22 @@ There is no delete: appointments refer to services, so a service is deactivated 
 
 - `400` (`application/problem+json`): missing or invalid field.
 - `422` (`application/problem+json`): `block must start before it ends`; `blocks of one day must not overlap or touch`.
+
+## Time off
+
+`POST /time-off` takes `start` and `end` (ISO-8601 with an offset) and an optional `reason` (up to 200 characters). The period is half-open, `[start, end)`. A day off is local midnight to the next local midnight with the master's offset. Response `201`; times are answered in the master's offset.
+
+```json
+{"id":"<uuid>","start":"2026-11-03T00:00:00+05:00","end":"2026-11-04T00:00:00+05:00","reason":null}
+```
+
+`GET /time-off?from=2026-11-03&to=2026-11-05` lists time off that touches the local days `from..to`, both inclusive, ordered by start (a vacation that began earlier is included). Both dates are required; at most 366 days.
+
+`DELETE /time-off/{id}` answers `204`. There is no edit: delete and create again.
+
+- Periods may overlap each other. Time off over confirmed appointments is allowed and the appointments are kept; the app warns the master and offers to move or cancel them.
+- Time off hides the time from `/slots` and refuses new appointments there at once.
+
+- `400` (`application/problem+json`): missing or invalid field, id or date; `from must not be after to`; `range must be at most 366 days`.
+- `404` (`application/problem+json`): `time off not found`.
+- `422` (`application/problem+json`): `time off must start before it ends`; `time off must end in the future, start within two years and last at most 366 days`.

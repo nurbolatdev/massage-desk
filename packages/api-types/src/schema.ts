@@ -160,6 +160,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/time-off": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Time off that touches the local days from..to */
+        get: operations["listTimeOff"];
+        put?: never;
+        /** Add time off */
+        post: operations["createTimeOff"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/time-off/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove time off */
+        delete: operations["deleteTimeOff"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/webhook/whatsapp": {
         parameters: {
             query?: never;
@@ -271,6 +306,19 @@ export interface components {
              */
             sortOrder?: number;
         };
+        CreateTimeOffRequest: {
+            /**
+             * Format: date-time
+             * @description ISO-8601 with offset, exclusive
+             */
+            end: string;
+            reason?: string;
+            /**
+             * Format: date-time
+             * @description ISO-8601 with offset; a day off starts at local midnight
+             */
+            start: string;
+        };
         ProblemDetail: {
             detail?: string;
             /** Format: uri */
@@ -321,6 +369,21 @@ export interface components {
             starts: string[];
             /** @description IANA time zone of the master */
             timeZone: string;
+        };
+        TimeOffResponse: {
+            /**
+             * Format: date-time
+             * @description ISO-8601 with the master's UTC offset, exclusive
+             */
+            end: string;
+            /** Format: uuid */
+            id: string;
+            reason: string | null;
+            /**
+             * Format: date-time
+             * @description ISO-8601 with the master's UTC offset
+             */
+            start: string;
         };
         UpdateClientRequest: {
             /** @description blank clears the name */
@@ -886,6 +949,121 @@ export interface operations {
                 };
             };
             /** @description service not found or inactive */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    listTimeOff: {
+        parameters: {
+            query: {
+                /** @description first local day, YYYY-MM-DD, inclusive */
+                from: string;
+                /** @description last local day, YYYY-MM-DD, inclusive */
+                to: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description time off ordered by start */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimeOffResponse"][];
+                };
+            };
+            /** @description missing or invalid date, or range too long */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    createTimeOff: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTimeOffRequest"];
+            };
+        };
+        responses: {
+            /** @description time off created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimeOffResponse"];
+                };
+            };
+            /** @description missing or invalid field */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description start is not before end, or the period is out of range */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    deleteTimeOff: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description time off id */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description time off removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description invalid id */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description time off not found */
             404: {
                 headers: {
                     [name: string]: unknown;

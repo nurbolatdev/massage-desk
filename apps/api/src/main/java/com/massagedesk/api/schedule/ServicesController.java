@@ -75,8 +75,8 @@ class ServicesController {
 
     private static ResponseStatusException http(ScheduleException e) {
         HttpStatus status = switch (e.reason()) {
-            case SERVICE_NOT_FOUND -> HttpStatus.NOT_FOUND;
-            case INVALID_HOURS -> HttpStatus.UNPROCESSABLE_ENTITY;
+            case SERVICE_NOT_FOUND, TIME_OFF_NOT_FOUND -> HttpStatus.NOT_FOUND;
+            case INVALID_HOURS, INVALID_TIME_OFF -> HttpStatus.UNPROCESSABLE_ENTITY;
         };
         return new ResponseStatusException(status, e.getMessage(), e);
     }

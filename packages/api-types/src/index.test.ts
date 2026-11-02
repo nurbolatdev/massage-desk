@@ -172,3 +172,32 @@ describe("generated /working-hours types", () => {
   });
 });
 
+
+describe("generated /time-off types", () => {
+  type ListGet = paths["/time-off"]["get"];
+  type Created = paths["/time-off"]["post"]["responses"][201]["content"]["application/json"];
+  type CreateBody = paths["/time-off"]["post"]["requestBody"]["content"]["application/json"];
+  type DeletePath = paths["/time-off/{id}"]["delete"]["parameters"]["path"];
+
+  it("types the required list window", () => {
+    expectTypeOf<ListGet["parameters"]["query"]["from"]>().toEqualTypeOf<string>();
+    expectTypeOf<ListGet["parameters"]["query"]["to"]>().toEqualTypeOf<string>();
+    expect(true).toBe(true);
+  });
+
+  it("types a time off period", () => {
+    expectTypeOf<Created["id"]>().toEqualTypeOf<string>();
+    expectTypeOf<Created["start"]>().toEqualTypeOf<string>();
+    expectTypeOf<Created["end"]>().toEqualTypeOf<string>();
+    expectTypeOf<Created["reason"]>().toEqualTypeOf<string | null>();
+    expect(true).toBe(true);
+  });
+
+  it("types the create body and the delete path", () => {
+    expectTypeOf<CreateBody["start"]>().toEqualTypeOf<string>();
+    expectTypeOf<CreateBody["end"]>().toEqualTypeOf<string>();
+    expectTypeOf<CreateBody["reason"]>().toEqualTypeOf<string | undefined>();
+    expectTypeOf<DeletePath["id"]>().toEqualTypeOf<string>();
+    expect(true).toBe(true);
+  });
+});

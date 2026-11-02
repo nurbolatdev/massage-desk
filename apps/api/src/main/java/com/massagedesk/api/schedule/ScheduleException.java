@@ -10,7 +10,9 @@ public class ScheduleException extends RuntimeException {
     /** Why a schedule command was refused. */
     public enum Reason {
         SERVICE_NOT_FOUND,
-        INVALID_HOURS
+        TIME_OFF_NOT_FOUND,
+        INVALID_HOURS,
+        INVALID_TIME_OFF
     }
 
     private final Reason reason;

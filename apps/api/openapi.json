@@ -673,6 +673,146 @@
         "tags" : [ "schedule" ]
       }
     },
+    "/time-off" : {
+      "get" : {
+        "operationId" : "listTimeOff",
+        "parameters" : [ {
+          "description" : "first local day, YYYY-MM-DD, inclusive",
+          "in" : "query",
+          "name" : "from",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "date"
+          }
+        }, {
+          "description" : "last local day, YYYY-MM-DD, inclusive",
+          "in" : "query",
+          "name" : "to",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "date"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/TimeOffResponse"
+                  }
+                }
+              }
+            },
+            "description" : "time off ordered by start"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description" : "missing or invalid date, or range too long"
+          }
+        },
+        "summary" : "Time off that touches the local days from..to",
+        "tags" : [ "schedule" ]
+      },
+      "post" : {
+        "operationId" : "createTimeOff",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateTimeOffRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TimeOffResponse"
+                }
+              }
+            },
+            "description" : "time off created"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description" : "missing or invalid field"
+          },
+          "422" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description" : "start is not before end, or the period is out of range"
+          }
+        },
+        "summary" : "Add time off",
+        "tags" : [ "schedule" ]
+      }
+    },
+    "/time-off/{id}" : {
+      "delete" : {
+        "operationId" : "deleteTimeOff",
+        "parameters" : [ {
+          "description" : "time off id",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "time off removed"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description" : "invalid id"
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description" : "time off not found"
+          }
+        },
+        "summary" : "Remove time off",
+        "tags" : [ "schedule" ]
+      }
+    },
     "/webhook/whatsapp" : {
       "get" : {
         "operationId" : "verify",
@@ -927,6 +1067,27 @@
         },
         "required" : [ "durationMin", "name", "price" ]
       },
+      "CreateTimeOffRequest" : {
+        "type" : "object",
+        "properties" : {
+          "end" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "ISO-8601 with offset, exclusive"
+          },
+          "reason" : {
+            "type" : "string",
+            "maxLength" : 200,
+            "minLength" : 0
+          },
+          "start" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "ISO-8601 with offset; a day off starts at local midnight"
+          }
+        },
+        "required" : [ "end", "start" ]
+      },
       "ProblemDetail" : {
         "type" : "object",
         "properties" : {
@@ -1021,6 +1182,29 @@
           }
         },
         "required" : [ "day", "durationMin", "starts", "timeZone" ]
+      },
+      "TimeOffResponse" : {
+        "type" : "object",
+        "properties" : {
+          "end" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "ISO-8601 with the master's UTC offset, exclusive"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "reason" : {
+            "type" : [ "string", "null" ]
+          },
+          "start" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "ISO-8601 with the master's UTC offset"
+          }
+        },
+        "required" : [ "end", "id", "reason", "start" ]
       },
       "UpdateClientRequest" : {
         "type" : "object",
