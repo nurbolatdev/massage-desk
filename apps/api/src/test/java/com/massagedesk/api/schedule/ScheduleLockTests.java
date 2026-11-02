@@ -133,7 +133,7 @@ class ScheduleLockTests {
                     clientId, serviceId, Instant.parse("2026-11-03T05:00:00Z"), AppointmentSource.MANUAL, EventActor.MASTER);
             case "reschedule" -> appointments.reschedule(bookedId, Instant.parse("2026-11-03T10:00:00Z"), EventActor.MASTER);
             case "timeOff" -> timeOff.create(
-                    Instant.parse("2026-11-03T19:00:00Z"), Instant.parse("2026-11-04T19:00:00Z"), null);
+                    Instant.parse("2026-11-03T19:00:00Z"), Instant.parse("2026-11-04T19:00:00Z"), null, false);
             case "workingHours" -> workingHours.replaceWeek(List.of(
                     new Block(DayOfWeek.TUESDAY, LocalTime.of(10, 0), LocalTime.of(16, 0)),
                     new Block(DayOfWeek.WEDNESDAY, LocalTime.of(10, 0), LocalTime.of(12, 0))));

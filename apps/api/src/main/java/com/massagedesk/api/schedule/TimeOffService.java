@@ -1,5 +1,7 @@
 package com.massagedesk.api.schedule;
 
+import com.massagedesk.api.booking.Appointment;
+import com.massagedesk.api.booking.AppointmentRepository;
 import com.massagedesk.api.settings.SettingsRepository;
 import java.time.Clock;
 import java.time.Duration;
@@ -23,20 +25,27 @@ public class TimeOffService {
     }
 
     private final TimeOffRepository timeOff;
+    private final AppointmentRepository appointments;
     private final SettingsRepository settings;
     private final Clock clock;
     private final ScheduleLock scheduleLock;
 
     public TimeOffService(
-            TimeOffRepository timeOff, SettingsRepository settings, Clock clock, ScheduleLock scheduleLock) {
+            TimeOffRepository timeOff, AppointmentRepository appointments, SettingsRepository settings,
+            Clock clock, ScheduleLock scheduleLock) {
         this.scheduleLock = scheduleLock;
         this.timeOff = timeOff;
+        this.appointments = appointments;
         this.settings = settings;
         this.clock = clock;
     }
 
+    /**
+     * Adds time off. Confirmed appointments inside the period are never changed; without {@code force}
+     * they refuse the command with {@code APPOINTMENT_CONFLICT} and the list of those appointments.
+     */
     @Transactional
-    public TimeOffView create(Instant start, Instant end, String reason) {
+    public TimeOffView create(Instant start, Instant end, String reason, boolean force) {
         if (!start.isBefore(end)) {
             throw invalid("time off must start before it ends");
         }
@@ -46,9 +55,25 @@ public class TimeOffService {
             throw invalid("time off must end in the future, start within two years and last at most 366 days");
         }
         scheduleLock.acquire();
+        ZoneId zone = settings.get().getTimeZone();
+        List<Appointment> overlapping = appointments.findConfirmedOverlapping(start, end);
+        if (!force && !overlapping.isEmpty()) {
+            throw new ScheduleException(ScheduleException.Reason.APPOINTMENT_CONFLICT,
+                    "time off overlaps confirmed appointments", conflicts(overlapping, zone));
+        }
         String cleaned = reason == null || reason.isBlank() ? null : reason.trim();
         TimeOff saved = timeOff.saveAndFlush(new TimeOff(new TimeRange(start, end), cleaned));
-        return view(saved, settings.get().getTimeZone());
+        return view(saved, zone);
+    }
+
+    private static List<ScheduleException.Conflict> conflicts(List<Appointment> found, ZoneId zone) {
+        return found.stream()
+                .map(a -> new ScheduleException.Conflict(
+                        a.getId(),
+                        a.getClient().getName(),
+                        a.getPeriod().start().atZone(zone).toOffsetDateTime(),
+                        a.getPeriod().end().atZone(zone).toOffsetDateTime()))
+                .toList();
     }
 
     @Transactional

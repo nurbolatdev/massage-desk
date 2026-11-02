@@ -13,7 +13,12 @@ final class ScheduleErrors {
         HttpStatus status = switch (e.reason()) {
             case SERVICE_NOT_FOUND, TIME_OFF_NOT_FOUND -> HttpStatus.NOT_FOUND;
             case INVALID_HOURS, INVALID_TIME_OFF -> HttpStatus.UNPROCESSABLE_ENTITY;
+            case APPOINTMENT_CONFLICT -> HttpStatus.CONFLICT;
         };
-        return new ResponseStatusException(status, e.getMessage(), e);
+        ResponseStatusException result = new ResponseStatusException(status, e.getMessage(), e);
+        if (e.reason() == ScheduleException.Reason.APPOINTMENT_CONFLICT) {
+            result.getBody().setProperty("conflicts", e.conflicts().stream().map(AppointmentConflict::from).toList());
+        }
+        return result;
     }
 }

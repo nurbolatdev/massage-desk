@@ -13,5 +13,7 @@ public record CreateTimeOffRequest(
         @NotNull @Schema(requiredMode = Schema.RequiredMode.REQUIRED,
                 description = "ISO-8601 with offset, exclusive")
         OffsetDateTime end,
-        @Size(max = 200) String reason) {
+        @Size(max = 200) String reason,
+        @Schema(description = "store even if confirmed appointments conflict; the appointments are kept")
+        Boolean force) {
 }

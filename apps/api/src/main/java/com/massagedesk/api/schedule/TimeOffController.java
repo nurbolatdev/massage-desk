@@ -73,12 +73,17 @@ class TimeOffController {
     @ApiResponse(responseCode = "422", description = "start is not before end, or the period is out of range",
             content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
                     schema = @Schema(implementation = ProblemDetail.class)))
+    @ApiResponse(responseCode = "409",
+            description = "confirmed appointments overlap the period; send force to store anyway",
+            content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                    schema = @Schema(implementation = ScheduleConflictProblem.class)))
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
     TimeOffResponse createTimeOff(@Valid @RequestBody CreateTimeOffRequest request) {
         try {
             return TimeOffResponse.from(service.create(
-                    request.start().toInstant(), request.end().toInstant(), request.reason()));
+                    request.start().toInstant(), request.end().toInstant(), request.reason(),
+                    Boolean.TRUE.equals(request.force())));
         } catch (ScheduleException e) {
             throw ScheduleErrors.http(e);
         }

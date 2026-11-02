@@ -151,7 +151,7 @@ There is no delete: appointments refer to services, so a service is deactivated 
 
 ## Time off
 
-`POST /time-off` takes `start` and `end` (ISO-8601 with an offset) and an optional `reason` (up to 200 characters). The period is half-open, `[start, end)`. A day off is local midnight to the next local midnight with the master's offset. Response `201`; times are answered in the master's offset.
+`POST /time-off` takes `start` and `end` (ISO-8601 with an offset), an optional `reason` (up to 200 characters) and an optional `force` (boolean, default `false`). The period is half-open, `[start, end)`. A day off is local midnight to the next local midnight with the master's offset. Response `201`; times are answered in the master's offset.
 
 ```json
 {"id":"<uuid>","start":"2026-11-03T00:00:00+05:00","end":"2026-11-04T00:00:00+05:00","reason":null}
@@ -161,11 +161,19 @@ There is no delete: appointments refer to services, so a service is deactivated 
 
 `DELETE /time-off/{id}` answers `204`. There is no edit: delete and create again.
 
-- Periods may overlap each other. Time off over confirmed appointments is allowed and the appointments are kept; the app warns the master and offers to move or cancel them.
+- Periods may overlap each other.
+- Time off over confirmed appointments answers `409` with the list of those appointments, unless `force` is `true`. An appointment that ends exactly when the time off starts is not a conflict. With `force: true` the time off is stored and the appointments are never changed or cancelled; the app shows the list so the master can move or cancel them.
 - Time off hides the time from `/slots` and refuses new appointments there at once.
 
 - `400` (`application/problem+json`): missing or invalid field, id or date; `from must not be after to`; `range must be at most 366 days`; `dates must be within 2000-01-01..2100-12-31`.
 - `404` (`application/problem+json`): `time off not found`.
+- `409` (`application/problem+json`): `time off overlaps confirmed appointments`. Besides the usual members the body has `conflicts`, ordered by start:
+
+```json
+{"status":409,"detail":"time off overlaps confirmed appointments","conflicts":[{"appointmentId":"<uuid>","clientName":"Aigul","start":"2026-11-03T10:00:00+05:00","end":"2026-11-03T11:00:00+05:00"}]}
+```
+
+  `clientName` is `null` when the client has no name.
 - `422` (`application/problem+json`): `time off must start before it ends`; `time off must end in the future, start within two years and last at most 366 days`.
 
 ## Settings

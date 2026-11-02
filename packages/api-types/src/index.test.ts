@@ -197,7 +197,23 @@ describe("generated /time-off types", () => {
     expectTypeOf<CreateBody["start"]>().toEqualTypeOf<string>();
     expectTypeOf<CreateBody["end"]>().toEqualTypeOf<string>();
     expectTypeOf<CreateBody["reason"]>().toEqualTypeOf<string | undefined>();
+    expectTypeOf<CreateBody["force"]>().toEqualTypeOf<boolean | undefined>();
     expectTypeOf<DeletePath["id"]>().toEqualTypeOf<string>();
+    expect(true).toBe(true);
+  });
+});
+
+describe("generated /time-off conflict types", () => {
+  type Conflict = paths["/time-off"]["post"]["responses"][409]["content"]["application/problem+json"];
+
+  it("types the 409 conflicts", () => {
+    expectTypeOf<Conflict["conflicts"][number]>().toEqualTypeOf<{
+      appointmentId: string;
+      clientName: string | null;
+      start: string;
+      end: string;
+    }>();
+    expectTypeOf<Conflict["detail"]>().toEqualTypeOf<string>();
     expect(true).toBe(true);
   });
 });

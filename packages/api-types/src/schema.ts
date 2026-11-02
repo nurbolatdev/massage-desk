@@ -252,6 +252,22 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AppointmentConflict: {
+            /** Format: uuid */
+            appointmentId: string;
+            /** @description the client's name, null when the client has none */
+            clientName: string | null;
+            /**
+             * Format: date-time
+             * @description ISO-8601 with the master's UTC offset
+             */
+            end: string;
+            /**
+             * Format: date-time
+             * @description ISO-8601 with the master's UTC offset
+             */
+            start: string;
+        };
         AppointmentResponse: {
             /** Format: uuid */
             clientId: string;
@@ -330,6 +346,8 @@ export interface components {
              * @description ISO-8601 with offset, exclusive
              */
             end: string;
+            /** @description store even if confirmed appointments conflict; the appointments are kept */
+            force?: boolean;
             reason?: string;
             /**
              * Format: date-time
@@ -356,6 +374,16 @@ export interface components {
              * @description ISO-8601 with offset; the booked length is kept
              */
             start: string;
+        };
+        ScheduleConflictProblem: {
+            /** @description the confirmed appointments in the way, ordered by start */
+            conflicts: components["schemas"]["AppointmentConflict"][];
+            detail: string;
+            instance?: string;
+            /** Format: int32 */
+            status: number;
+            title?: string;
+            type?: string;
         };
         ServiceResponse: {
             /** @description inactive services cannot be booked */
@@ -1105,6 +1133,15 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description confirmed appointments overlap the period; send force to store anyway */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ScheduleConflictProblem"];
                 };
             };
             /** @description start is not before end, or the period is out of range */
