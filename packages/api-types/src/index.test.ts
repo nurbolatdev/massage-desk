@@ -155,3 +155,20 @@ describe("generated /services types", () => {
     expect(true).toBe(true);
   });
 });
+
+describe("generated /working-hours types", () => {
+  type GetOk = paths["/working-hours"]["get"]["responses"][200]["content"]["application/json"];
+  type PutBody = paths["/working-hours"]["put"]["requestBody"]["content"]["application/json"];
+  type Block = { weekday: number; start: string; end: string };
+
+  it("types the blocks of the response", () => {
+    expectTypeOf<GetOk["blocks"][number]>().toEqualTypeOf<Block>();
+    expect(true).toBe(true);
+  });
+
+  it("types the blocks of the request", () => {
+    expectTypeOf<PutBody["blocks"][number]>().toEqualTypeOf<Block>();
+    expect(true).toBe(true);
+  });
+});
+

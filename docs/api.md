@@ -41,7 +41,9 @@ insert into profiles (user_id, role, display_name) values ('<auth user id>', 'ma
 | GET | `/services` | ✅ M1 | All services, active and inactive |
 | POST | `/services` | ✅ M1 | Add a service |
 | PATCH | `/services/{id}` | ✅ M1 | Change or deactivate a service |
-| GET/PUT | `/settings/*` | M1 | Working hours, time off |
+| GET | `/working-hours` | ✅ M1 | The weekly working hours |
+| PUT | `/working-hours` | ✅ M1 | Replace the whole week |
+| GET/PUT | `/settings/*` | M1 | Time off |
 | GET/POST | `/conversations/*` | M2 | Chats, master replies, take-over |
 | POST | `/devices` | M4 | Register a push token |
 | GET | `/admin/*` | M1–M5 | Statistics and diagnostics (admin only) |
@@ -124,3 +126,21 @@ There is no delete: appointments refer to services, so a service is deactivated 
 
 - `400` (`application/problem+json`): invalid field or id.
 - `404` (`application/problem+json`): `service not found`.
+
+## Working hours
+
+`GET /working-hours` returns the week; `PUT /working-hours` replaces the whole week in one request and returns the stored blocks. Both use the same shape, ordered by weekday, then start.
+
+```json
+{"blocks":[{"weekday":1,"start":"09:00","end":"13:00"},{"weekday":1,"start":"14:00","end":"19:00"}]}
+```
+
+- `weekday` is the ISO number: 1 = Monday ... 7 = Sunday.
+- `start` and `end` are local times `HH:mm` in the master's time zone (`00:00`..`23:59`; no seconds, no `24:00`).
+- A weekday without blocks is a day off every week. `{"blocks":[]}` makes every day a day off.
+- A break is a gap between two blocks of one day. Blocks of one day must neither overlap nor touch (`09:00-13:00` and `13:00-17:00` must be sent as one block `09:00-17:00`).
+- The week is replaced atomically: either all blocks are stored or none. At most 50 blocks.
+- The new hours apply to `/slots` and to new appointments at once. Appointments already made are not touched, also when they fall outside the new hours.
+
+- `400` (`application/problem+json`): missing or invalid field.
+- `422` (`application/problem+json`): `block must start before it ends`; `blocks of one day must not overlap or touch`.

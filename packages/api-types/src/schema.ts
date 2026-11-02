@@ -177,6 +177,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/working-hours": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The weekly working hours */
+        get: operations["getWorkingHours"];
+        /** Replace the whole week of working hours */
+        put: operations["replaceWorkingHours"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -322,6 +340,24 @@ export interface components {
             price?: number;
             /** Format: int32 */
             sortOrder?: number;
+        };
+        WorkingBlock: {
+            /** @description local time HH:mm in the master's time zone */
+            end: string;
+            /** @description local time HH:mm in the master's time zone */
+            start: string;
+            /**
+             * Format: int32
+             * @description ISO weekday, 1 = Monday … 7 = Sunday
+             */
+            weekday: number;
+        };
+        WorkingHoursRequest: {
+            /** @description every block of the week, at most 50 */
+            blocks: components["schemas"]["WorkingBlock"][];
+        };
+        WorkingHoursResponse: {
+            blocks: components["schemas"]["WorkingBlock"][];
         };
     };
     responses: never;
@@ -889,6 +925,68 @@ export interface operations {
                 };
                 content: {
                     "text/plain": string;
+                };
+            };
+        };
+    };
+    getWorkingHours: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description blocks ordered by weekday, then start */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkingHoursResponse"];
+                };
+            };
+        };
+    };
+    replaceWorkingHours: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkingHoursRequest"];
+            };
+        };
+        responses: {
+            /** @description the stored week */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkingHoursResponse"];
+                };
+            };
+            /** @description missing or invalid field */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description a block ends before it starts, or blocks of one day overlap or touch */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
         };

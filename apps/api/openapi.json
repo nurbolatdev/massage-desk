@@ -724,6 +724,72 @@
         "summary" : "Meta webhook verification",
         "tags" : [ "webhook" ]
       }
+    },
+    "/working-hours" : {
+      "get" : {
+        "operationId" : "getWorkingHours",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/WorkingHoursResponse"
+                }
+              }
+            },
+            "description" : "blocks ordered by weekday, then start"
+          }
+        },
+        "summary" : "The weekly working hours",
+        "tags" : [ "schedule" ]
+      },
+      "put" : {
+        "operationId" : "replaceWorkingHours",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/WorkingHoursRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/WorkingHoursResponse"
+                }
+              }
+            },
+            "description" : "the stored week"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description" : "missing or invalid field"
+          },
+          "422" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description" : "a block ends before it starts, or blocks of one day overlap or touch"
+          }
+        },
+        "summary" : "Replace the whole week of working hours",
+        "tags" : [ "schedule" ]
+      }
     }
   },
   "components" : {
@@ -1004,6 +1070,56 @@
             "minimum" : 0
           }
         }
+      },
+      "WorkingBlock" : {
+        "type" : "object",
+        "properties" : {
+          "end" : {
+            "type" : "string",
+            "description" : "local time HH:mm in the master's time zone",
+            "pattern" : "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+          },
+          "start" : {
+            "type" : "string",
+            "description" : "local time HH:mm in the master's time zone",
+            "pattern" : "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+          },
+          "weekday" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "ISO weekday, 1 = Monday … 7 = Sunday",
+            "maximum" : 7,
+            "minimum" : 1
+          }
+        },
+        "required" : [ "end", "start", "weekday" ]
+      },
+      "WorkingHoursRequest" : {
+        "type" : "object",
+        "properties" : {
+          "blocks" : {
+            "type" : "array",
+            "description" : "every block of the week, at most 50",
+            "items" : {
+              "$ref" : "#/components/schemas/WorkingBlock"
+            },
+            "maxItems" : 50,
+            "minItems" : 0
+          }
+        },
+        "required" : [ "blocks" ]
+      },
+      "WorkingHoursResponse" : {
+        "type" : "object",
+        "properties" : {
+          "blocks" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/WorkingBlock"
+            }
+          }
+        },
+        "required" : [ "blocks" ]
       }
     },
     "securitySchemes" : {
