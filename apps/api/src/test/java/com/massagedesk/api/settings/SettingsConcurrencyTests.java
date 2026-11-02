@@ -60,7 +60,7 @@ class SettingsConcurrencyTests {
             }));
             assertThat(held.await(10, TimeUnit.SECONDS)).isTrue();
 
-            Future<?> update = pool.submit(() -> settingsService.update(null, "Navoi 12", null, EventActor.MASTER));
+            Future<?> update = pool.submit(() -> settingsService.update(null, "Navoi 12", null, false, EventActor.MASTER));
             awaitWaitingLock();
             assertThat(update.isDone()).as("the update must wait for the settings row").isFalse();
 

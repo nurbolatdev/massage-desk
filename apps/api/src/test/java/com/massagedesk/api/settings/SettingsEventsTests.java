@@ -49,7 +49,7 @@ class SettingsEventsTests {
 
     @Test
     void zoneChangeWritesFromAndTo() {
-        service.update("America/New_York", null, null, EventActor.ADMIN);
+        service.update("America/New_York", null, null, false, EventActor.ADMIN);
 
         List<Map<String, Object>> found = events();
         assertThat(found).hasSize(1);
@@ -62,7 +62,7 @@ class SettingsEventsTests {
 
     @Test
     void addressChangeIsNamedButNotCopied() {
-        service.update(null, "12 Secret Street", null, EventActor.MASTER);
+        service.update(null, "12 Secret Street", null, false, EventActor.MASTER);
 
         List<Map<String, Object>> found = events();
         assertThat(found).hasSize(1);
@@ -72,7 +72,7 @@ class SettingsEventsTests {
 
     @Test
     void botSwitchWritesBooleans() {
-        service.update(null, null, false, EventActor.MASTER);
+        service.update(null, null, false, false, EventActor.MASTER);
 
         assertThat(sameJson(events().get(0), """
                 {"changed":["bot_enabled"],"from":{"bot_enabled":true},"to":{"bot_enabled":false}}
@@ -81,15 +81,15 @@ class SettingsEventsTests {
 
     @Test
     void emptyAndSameValuesWriteNoEvent() {
-        service.update(null, null, null, EventActor.MASTER);
-        service.update("Asia/Tashkent", null, true, EventActor.MASTER);
+        service.update(null, null, null, false, EventActor.MASTER);
+        service.update("Asia/Tashkent", null, true, false, EventActor.MASTER);
 
         assertThat(events()).isEmpty();
     }
 
     @Test
     void unknownTimeZoneWritesNoEvent() {
-        assertThatThrownBy(() -> service.update("Mars/Base", null, null, EventActor.MASTER))
+        assertThatThrownBy(() -> service.update("Mars/Base", null, null, false, EventActor.MASTER))
                 .isInstanceOf(SettingsException.class);
 
         assertThat(events()).isEmpty();

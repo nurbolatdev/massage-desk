@@ -456,6 +456,8 @@ export interface components {
         UpdateSettingsRequest: {
             address?: string;
             botEnabled?: boolean;
+            /** @description store even if confirmed appointments conflict; the appointments are kept */
+            force?: boolean;
             /** @description IANA region id; fixed offsets are refused */
             timeZone?: string;
         };
@@ -1017,6 +1019,15 @@ export interface operations {
             };
             /** @description invalid field or unknown time zone */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+            /** @description confirmed appointments are outside the working hours in the new time zone; send force to store anyway */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

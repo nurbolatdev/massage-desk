@@ -23,11 +23,15 @@ import org.springframework.transaction.annotation.Transactional;
 public class WorkingHoursCoverage {
 
     private final AppointmentRepository appointments;
+    private final WorkingHoursRepository workingHours;
     private final SlotProperties slotProperties;
     private final Clock clock;
 
-    public WorkingHoursCoverage(AppointmentRepository appointments, SlotProperties slotProperties, Clock clock) {
+    public WorkingHoursCoverage(
+            AppointmentRepository appointments, WorkingHoursRepository workingHours, SlotProperties slotProperties,
+            Clock clock) {
         this.appointments = appointments;
+        this.workingHours = workingHours;
         this.slotProperties = slotProperties;
         this.clock = clock;
     }
@@ -39,9 +43,27 @@ public class WorkingHoursCoverage {
      */
     @Transactional(propagation = Propagation.MANDATORY)
     public List<ScheduleException.Conflict> uncovered(List<WorkingHoursService.Block> week, ZoneId zone) {
-        Map<DayOfWeek, List<SlotCalculator.WorkingBlock>> byDay = week.stream().collect(Collectors.groupingBy(
+        return uncovered(week.stream().collect(Collectors.groupingBy(
                 WorkingHoursService.Block::weekday,
-                Collectors.mapping(b -> new SlotCalculator.WorkingBlock(b.start(), b.end()), Collectors.toList())));
+                Collectors.mapping(b -> new SlotCalculator.WorkingBlock(b.start(), b.end()), Collectors.toList()))),
+                zone);
+    }
+
+    /**
+     * The same check over the stored week, as it would read in {@code zone}. Call after
+     * {@code ScheduleLock.acquire()}.
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public List<ScheduleException.Conflict> uncoveredByStoredWeek(ZoneId zone) {
+        return uncovered(workingHours.findAllByOrderByWeekdayAscStartTimeAsc().stream().collect(Collectors.groupingBy(
+                WorkingHours::getWeekday,
+                Collectors.mapping(w -> new SlotCalculator.WorkingBlock(w.getStartTime(), w.getEndTime()),
+                        Collectors.toList()))),
+                zone);
+    }
+
+    private List<ScheduleException.Conflict> uncovered(
+            Map<DayOfWeek, List<SlotCalculator.WorkingBlock>> byDay, ZoneId zone) {
         SlotCalculator calculator = new SlotCalculator();
         return appointments.findConfirmedStartingFrom(clock.instant()).stream()
                 .filter(a -> !fits(calculator, byDay, a, zone))

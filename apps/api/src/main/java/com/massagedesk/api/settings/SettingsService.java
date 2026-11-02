@@ -4,8 +4,11 @@ import com.massagedesk.api.events.Changes;
 import com.massagedesk.api.events.DomainEventRecorder;
 import com.massagedesk.api.events.DomainEventType;
 import com.massagedesk.api.events.EventActor;
+import com.massagedesk.api.schedule.ScheduleException;
 import com.massagedesk.api.schedule.ScheduleLock;
+import com.massagedesk.api.schedule.WorkingHoursCoverage;
 import java.time.ZoneId;
+import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,10 +22,15 @@ public class SettingsService {
 
     private final ScheduleLock scheduleLock;
 
-    public SettingsService(SettingsRepository settings, DomainEventRecorder recorder, ScheduleLock scheduleLock) {
+    private final WorkingHoursCoverage coverage;
+
+    public SettingsService(
+            SettingsRepository settings, DomainEventRecorder recorder, ScheduleLock scheduleLock,
+            WorkingHoursCoverage coverage) {
         this.settings = settings;
         this.recorder = recorder;
         this.scheduleLock = scheduleLock;
+        this.coverage = coverage;
     }
 
     @Transactional(readOnly = true)
@@ -37,18 +45,32 @@ public class SettingsService {
      * schedule lock first, before the settings row is read (the advisory lock always comes before
      * row locks). An update without a time zone does not take it and only locks the settings row.
      * Lock order: schedule lock (only with a time zone), then the settings row.
+     *
+     * <p>A time zone that differs from the stored one is checked against the stored week: confirmed
+     * appointments that start from now on and fall outside the working hours in the new zone refuse
+     * the whole update with {@code APPOINTMENT_CONFLICT}, unless {@code force} is set. The same zone
+     * moves nothing and is not checked. Appointments are never changed.
      */
     @Transactional
-    public Settings update(String timeZone, String address, Boolean botEnabled, EventActor actor) {
-        if (timeZone != null) {
+    public Settings update(String timeZone, String address, Boolean botEnabled, boolean force,
+            EventActor actor) {
+        ZoneId newZone = timeZone == null ? null : region(timeZone.trim());
+        if (newZone != null) {
             scheduleLock.acquire();
         }
         Settings row = settings.getForUpdate();
         ZoneId oldZone = row.getTimeZone();
         String oldAddress = row.getAddress();
         boolean oldBot = row.isBotEnabled();
-        if (timeZone != null) {
-            row.changeTimeZone(region(timeZone.trim()));
+        if (newZone != null) {
+            if (!newZone.equals(oldZone)) {
+                List<ScheduleException.Conflict> conflicts = coverage.uncoveredByStoredWeek(newZone);
+                if (!force && !conflicts.isEmpty()) {
+                    throw new ScheduleException(ScheduleException.Reason.APPOINTMENT_CONFLICT,
+                            "confirmed appointments are outside the working hours in the new time zone", conflicts);
+                }
+            }
+            row.changeTimeZone(newZone);
         }
         if (address != null) {
             row.changeAddress(address);

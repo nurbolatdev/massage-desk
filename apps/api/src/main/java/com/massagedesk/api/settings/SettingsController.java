@@ -41,11 +41,16 @@ class SettingsController {
     @ApiResponse(responseCode = "400", description = "invalid field or unknown time zone",
             content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
                     schema = @Schema(implementation = ApiProblem.class)))
+    @ApiResponse(responseCode = "409",
+            description = "confirmed appointments are outside the working hours in the new time zone; "
+                    + "send force to store anyway",
+            content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                    schema = @Schema(implementation = ApiProblem.class)))
     @PatchMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     SettingsResponse updateSettings(@Valid @RequestBody UpdateSettingsRequest request,
             @Parameter(hidden = true) Authentication authentication) {
         return SettingsResponse.from(
                 service.update(request.timeZone(), request.address(), request.botEnabled(),
-                StaffActors.of(authentication)));
+                Boolean.TRUE.equals(request.force()), StaffActors.of(authentication)));
     }
 }

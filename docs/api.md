@@ -52,7 +52,7 @@ Client errors raised by the framework (malformed body, wrong type, missing field
 | `NOT_CONFIRMED` | 409 | `appointment is <status>` |
 | `NOT_STARTED` | 409 | `appointment has not started yet` |
 | `PHONE_TAKEN` | 409 | `client with this phone already exists` |
-| `APPOINTMENT_CONFLICT` | 409 | `time off overlaps confirmed appointments` or `confirmed appointments are outside the new working hours`, with `conflicts` |
+| `APPOINTMENT_CONFLICT` | 409 | `time off overlaps confirmed appointments`, `confirmed appointments are outside the new working hours` or `confirmed appointments are outside the working hours in the new time zone`, with `conflicts` |
 
 The `422` title is `Unprocessable Content` (RFC 9110 name); the status code is `422`.
 
@@ -231,5 +231,8 @@ There is no delete: appointments refer to services, so a service is deactivated 
 - `timeZone` must be a region id such as `Asia/Tashkent`. Fixed offsets (`+05:00`, `UTC`, `Etc/GMT+5`) are refused because they ignore daylight saving.
 - Changing the zone keeps working hours as local times (the same 10:00 in the new zone) and does not move booked appointments, which keep their instants.
 - `botEnabled` is stored now; the bot uses it from M2.
+- A zone change that differs from the stored zone checks every confirmed appointment that starts from now on against the stored week in the new zone. If one does not fit inside a block, the whole request is refused with `409` and `conflicts`, and nothing of it is stored (not even `address` or `botEnabled`). The times in `conflicts` use the offset of the new zone. The same zone is not checked.
+- `force: true` (optional) stores the zone anyway. Appointments are never cancelled, moved or messaged.
 
 - `400` (`application/problem+json`): invalid field or malformed JSON; `unknown time zone`.
+- `409` (`application/problem+json`): `confirmed appointments are outside the working hours in the new time zone`, with `conflicts`; send `force: true` to store the zone anyway.

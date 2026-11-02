@@ -248,6 +248,7 @@ describe("generated /settings types", () => {
     expectTypeOf<PatchBody["timeZone"]>().toEqualTypeOf<string | undefined>();
     expectTypeOf<PatchBody["address"]>().toEqualTypeOf<string | undefined>();
     expectTypeOf<PatchBody["botEnabled"]>().toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<PatchBody["force"]>().toEqualTypeOf<boolean | undefined>();
     expect(true).toBe(true);
   });
 });
@@ -331,6 +332,7 @@ describe("error types", () => {
     expectTypeOf<Problem<paths["/services/{id}"]["patch"], 400>>().toEqualTypeOf<ApiProblem>();
     expectTypeOf<Problem<paths["/services/{id}"]["patch"], 404>>().toEqualTypeOf<ApiProblem>();
     expectTypeOf<Problem<paths["/settings"]["patch"], 400>>().toEqualTypeOf<ApiProblem>();
+    expectTypeOf<Problem<paths["/settings"]["patch"], 409>>().toEqualTypeOf<ApiProblem>();
     expect(true).toBe(true);
   });
 
