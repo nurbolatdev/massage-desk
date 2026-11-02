@@ -34,7 +34,10 @@ insert into profiles (user_id, role, display_name) values ('<auth user id>', 'ma
 | POST | `/appointments/{id}/reschedule` | ✅ M1 | Move, keeping the booked length |
 | POST | `/appointments/{id}/cancel` | ✅ M1 | Cancel; frees the time |
 | POST | `/appointments/{id}/no-show` | ✅ M1 | Mark a no-show after the start |
-| GET | `/clients` | M1 | List and search clients |
+| GET | `/clients?q&limit&offset` | ✅ M1 | List and search clients |
+| POST | `/clients` | ✅ M1 | Add a client; `409` when the phone exists |
+| GET | `/clients/{id}` | ✅ M1 | One client |
+| PATCH | `/clients/{id}` | ✅ M1 | Change name or notes |
 | GET/PUT | `/settings/*` | M1 | Services, working hours, time off |
 | GET/POST | `/conversations/*` | M2 | Chats, master replies, take-over |
 | POST | `/devices` | M4 | Register a push token |
@@ -83,3 +86,21 @@ Response `201`:
 - `POST /appointments/{id}/no-show` (no body) marks that the client did not come; allowed only once the visit has started, otherwise `409`. Errors: `400`, `404`, `409`.
 
 All three return the updated appointment (same shape as the create response). Any action on an appointment that is not `confirmed` gives `409` with `appointment is <status>`; repeated actions are not idempotent. Errors are `application/problem+json`.
+
+## Clients
+
+`GET /clients` returns a JSON array of clients. `q` (at most 100 characters) filters by name (case-insensitive substring) and, when it consists only of phone characters (digits, `+`, spaces, brackets, dashes), also by phone digits. A blank `q` lists everyone. Order: by name alphabetically, clients without a name last, then by phone. Paging: `limit` 1..200 (default 50), `offset` from 0 (default 0); there is no total count.
+
+```json
+{"id":"<uuid>","phone":"+998901234567","name":"Aziza","notes":null,"createdAt":"2026-11-02T10:15:00+05:00"}
+```
+
+`POST /clients` takes `{"phone":"+998 90 123-45-67","name":"Aziza","notes":"..."}`; only `phone` is required. The phone is normalised to E.164 (digits only, 9 to 15 of them, same rule as the apps) and cannot be changed later, because chats are matched by it. Response `201`.
+
+`PATCH /clients/{id}` takes `name` and/or `notes`. A missing or `null` field is left unchanged; a blank text clears the field. Text is trimmed.
+
+- `400` (`application/problem+json`): invalid field, query parameter or id; `invalid phone number`.
+- `404` (`application/problem+json`): `client not found`.
+- `409` (`application/problem+json`): `client with this phone already exists`.
+
+Clients cannot be deleted: appointments and chats refer to them.

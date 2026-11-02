@@ -278,6 +278,225 @@
         "tags" : [ "booking" ]
       }
     },
+    "/clients" : {
+      "get" : {
+        "operationId" : "listClients",
+        "parameters" : [ {
+          "description" : "name fragment or phone digits; blank lists everyone",
+          "in" : "query",
+          "name" : "q",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "maxLength" : 100,
+            "minLength" : 0
+          }
+        }, {
+          "description" : "page size, 1..200",
+          "in" : "query",
+          "name" : "limit",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 50,
+            "maximum" : 200,
+            "minimum" : 1
+          }
+        }, {
+          "description" : "rows to skip",
+          "in" : "query",
+          "name" : "offset",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 0,
+            "minimum" : 0
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/ClientResponse"
+                  }
+                }
+              }
+            },
+            "description" : "clients, alphabetically by name"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description" : "invalid query parameter"
+          }
+        },
+        "summary" : "List clients or search them by name or phone",
+        "tags" : [ "clients" ]
+      },
+      "post" : {
+        "operationId" : "createClient",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateClientRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ClientResponse"
+                }
+              }
+            },
+            "description" : "client created"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description" : "missing or invalid field, or invalid phone number"
+          },
+          "409" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description" : "a client with this phone already exists"
+          }
+        },
+        "summary" : "Add a client",
+        "tags" : [ "clients" ]
+      }
+    },
+    "/clients/{id}" : {
+      "get" : {
+        "operationId" : "getClient",
+        "parameters" : [ {
+          "description" : "client id",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ClientResponse"
+                }
+              }
+            },
+            "description" : "the client"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description" : "invalid id"
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description" : "client not found"
+          }
+        },
+        "summary" : "Get one client",
+        "tags" : [ "clients" ]
+      },
+      "patch" : {
+        "operationId" : "updateClient",
+        "parameters" : [ {
+          "description" : "client id",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateClientRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ClientResponse"
+                }
+              }
+            },
+            "description" : "client updated"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description" : "invalid field or id"
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description" : "client not found"
+          }
+        },
+        "summary" : "Change a client's name or notes",
+        "tags" : [ "clients" ]
+      }
+    },
     "/slots" : {
       "get" : {
         "operationId" : "slots",
@@ -427,6 +646,31 @@
         },
         "required" : [ "clientId", "end", "id", "serviceId", "source", "start", "status" ]
       },
+      "ClientResponse" : {
+        "type" : "object",
+        "properties" : {
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "ISO-8601 with the master's UTC offset"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "name" : {
+            "type" : [ "string", "null" ]
+          },
+          "notes" : {
+            "type" : [ "string", "null" ]
+          },
+          "phone" : {
+            "type" : "string",
+            "description" : "E.164, for example +998901234567"
+          }
+        },
+        "required" : [ "createdAt", "id", "name", "notes", "phone" ]
+      },
       "CreateAppointmentRequest" : {
         "type" : "object",
         "properties" : {
@@ -447,6 +691,28 @@
           }
         },
         "required" : [ "clientId", "serviceId", "start" ]
+      },
+      "CreateClientRequest" : {
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string",
+            "maxLength" : 100,
+            "minLength" : 0
+          },
+          "notes" : {
+            "type" : "string",
+            "maxLength" : 2000,
+            "minLength" : 0
+          },
+          "phone" : {
+            "type" : "string",
+            "description" : "any format; stored as E.164",
+            "maxLength" : 32,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "phone" ]
       },
       "ProblemDetail" : {
         "type" : "object",
@@ -512,6 +778,23 @@
           }
         },
         "required" : [ "day", "durationMin", "starts", "timeZone" ]
+      },
+      "UpdateClientRequest" : {
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string",
+            "description" : "blank clears the name",
+            "maxLength" : 100,
+            "minLength" : 0
+          },
+          "notes" : {
+            "type" : "string",
+            "description" : "blank clears the notes",
+            "maxLength" : 2000,
+            "minLength" : 0
+          }
+        }
       }
     },
     "securitySchemes" : {

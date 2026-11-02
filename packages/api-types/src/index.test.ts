@@ -86,3 +86,41 @@ describe("generated appointment command types", () => {
     expect(true).toBe(true);
   });
 });
+
+describe("generated /clients types", () => {
+  type ListGet = paths["/clients"]["get"];
+  type ListQuery = NonNullable<ListGet["parameters"]["query"]>;
+  type ListOk = ListGet["responses"][200]["content"]["application/json"];
+  type CreatePost = paths["/clients"]["post"];
+  type CreateBody = CreatePost["requestBody"]["content"]["application/json"];
+  type PatchBody = paths["/clients/{id}"]["patch"]["requestBody"]["content"]["application/json"];
+
+  it("types the list query", () => {
+    expectTypeOf<ListQuery["q"]>().toEqualTypeOf<string | undefined>();
+    expectTypeOf<ListQuery["limit"]>().toEqualTypeOf<number | undefined>();
+    expectTypeOf<ListQuery["offset"]>().toEqualTypeOf<number | undefined>();
+    expect(true).toBe(true);
+  });
+
+  it("types a client with nullable name and notes", () => {
+    type Item = ListOk[number];
+    expectTypeOf<Item["id"]>().toEqualTypeOf<string>();
+    expectTypeOf<Item["phone"]>().toEqualTypeOf<string>();
+    expectTypeOf<Item["createdAt"]>().toEqualTypeOf<string>();
+    expectTypeOf<Item["name"]>().toEqualTypeOf<string | null>();
+    expectTypeOf<Item["notes"]>().toEqualTypeOf<string | null>();
+    expect(true).toBe(true);
+  });
+
+  it("types the create body", () => {
+    expectTypeOf<CreateBody["phone"]>().toEqualTypeOf<string>();
+    expectTypeOf<CreateBody["name"]>().toEqualTypeOf<string | undefined>();
+    expectTypeOf<CreateBody["notes"]>().toEqualTypeOf<string | undefined>();
+    expect(true).toBe(true);
+  });
+
+  it("does not allow changing the phone", () => {
+    expectTypeOf<keyof PatchBody>().toEqualTypeOf<"name" | "notes">();
+    expect(true).toBe(true);
+  });
+});

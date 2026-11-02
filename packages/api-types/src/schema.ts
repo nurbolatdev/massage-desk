@@ -72,6 +72,42 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/clients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List clients or search them by name or phone */
+        get: operations["listClients"];
+        put?: never;
+        /** Add a client */
+        post: operations["createClient"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/clients/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get one client */
+        get: operations["getClient"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change a client's name or notes */
+        patch: operations["updateClient"];
+        trace?: never;
+    };
     "/slots": {
         parameters: {
             query?: never;
@@ -132,6 +168,19 @@ export interface components {
             /** @enum {string} */
             status: "confirmed" | "cancelled" | "no_show" | "done";
         };
+        ClientResponse: {
+            /**
+             * Format: date-time
+             * @description ISO-8601 with the master's UTC offset
+             */
+            createdAt: string;
+            /** Format: uuid */
+            id: string;
+            name: string | null;
+            notes: string | null;
+            /** @description E.164, for example +998901234567 */
+            phone: string;
+        };
         CreateAppointmentRequest: {
             /**
              * Format: uuid
@@ -148,6 +197,12 @@ export interface components {
              * @description ISO-8601 with offset; the end is start plus the service length
              */
             start: string;
+        };
+        CreateClientRequest: {
+            name?: string;
+            notes?: string;
+            /** @description any format; stored as E.164 */
+            phone: string;
         };
         ProblemDetail: {
             detail?: string;
@@ -181,6 +236,12 @@ export interface components {
             starts: string[];
             /** @description IANA time zone of the master */
             timeZone: string;
+        };
+        UpdateClientRequest: {
+            /** @description blank clears the name */
+            name?: string;
+            /** @description blank clears the notes */
+            notes?: string;
         };
     };
     responses: never;
@@ -405,6 +466,170 @@ export interface operations {
             };
             /** @description outside working hours, in time off or in the past */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    listClients: {
+        parameters: {
+            query?: {
+                /** @description name fragment or phone digits; blank lists everyone */
+                q?: string;
+                /** @description page size, 1..200 */
+                limit?: number;
+                /** @description rows to skip */
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description clients, alphabetically by name */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientResponse"][];
+                };
+            };
+            /** @description invalid query parameter */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    createClient: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateClientRequest"];
+            };
+        };
+        responses: {
+            /** @description client created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientResponse"];
+                };
+            };
+            /** @description missing or invalid field, or invalid phone number */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description a client with this phone already exists */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    getClient: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description client id */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description the client */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientResponse"];
+                };
+            };
+            /** @description invalid id */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description client not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    updateClient: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description client id */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateClientRequest"];
+            };
+        };
+        responses: {
+            /** @description client updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientResponse"];
+                };
+            };
+            /** @description invalid field or id */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description client not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

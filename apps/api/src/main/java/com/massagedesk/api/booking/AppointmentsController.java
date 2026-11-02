@@ -6,8 +6,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Parameter;
-import com.massagedesk.api.events.EventActor;
-import com.massagedesk.api.security.StaffRole;
+import com.massagedesk.api.security.StaffActors;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -56,7 +55,7 @@ class AppointmentsController {
         try {
             return AppointmentResponse.from(appointments.create(
                     request.clientId(), request.serviceId(), request.start().toInstant(),
-                    AppointmentSource.MANUAL, actor(authentication)));
+                    AppointmentSource.MANUAL, StaffActors.of(authentication)));
         } catch (BookingException e) {
             throw http(e);
         }
@@ -83,7 +82,7 @@ class AppointmentsController {
             @Valid @RequestBody RescheduleAppointmentRequest request,
             @Parameter(hidden = true) Authentication authentication) {
         try {
-            return AppointmentResponse.from(appointments.reschedule(id, request.start().toInstant(), actor(authentication)));
+            return AppointmentResponse.from(appointments.reschedule(id, request.start().toInstant(), StaffActors.of(authentication)));
         } catch (BookingException e) {
             throw http(e);
         }
@@ -105,7 +104,7 @@ class AppointmentsController {
             @Parameter(description = "appointment id") @PathVariable UUID id,
             @Parameter(hidden = true) Authentication authentication) {
         try {
-            return AppointmentResponse.from(appointments.cancel(id, actor(authentication)));
+            return AppointmentResponse.from(appointments.cancel(id, StaffActors.of(authentication)));
         } catch (BookingException e) {
             throw http(e);
         }
@@ -127,16 +126,10 @@ class AppointmentsController {
             @Parameter(description = "appointment id") @PathVariable UUID id,
             @Parameter(hidden = true) Authentication authentication) {
         try {
-            return AppointmentResponse.from(appointments.markNoShow(id, actor(authentication)));
+            return AppointmentResponse.from(appointments.markNoShow(id, StaffActors.of(authentication)));
         } catch (BookingException e) {
             throw http(e);
         }
-    }
-
-    private static EventActor actor(Authentication authentication) {
-        boolean admin = authentication.getAuthorities().stream()
-                .anyMatch(a -> StaffRole.ADMIN.authority().equals(a.getAuthority()));
-        return admin ? EventActor.ADMIN : EventActor.MASTER;
     }
 
     private static ResponseStatusException http(BookingException e) {
