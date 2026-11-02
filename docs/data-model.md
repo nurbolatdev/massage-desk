@@ -9,7 +9,7 @@ Source of truth: Flyway migrations in [`apps/api/src/main/resources/db`](../apps
 ## Connecting to the Supabase dev project
 1. In the project dashboard open **Connect** and copy the **session pooler** connection details (port 5432).
 2. Create `apps/api/.env` (git-ignored) from `apps/api/.env.example`:
-   `DATABASE_URL=jdbc:postgresql://<pooler-host>:5432/postgres?sslmode=require`, `DATABASE_USER=postgres.<project-ref>`, `DATABASE_PASSWORD`, `SUPABASE_URL`.
+   `DATABASE_URL=jdbc:postgresql://<pooler-host>:5432/postgres?sslmode=require`, `DATABASE_USER=postgres.<project-ref>`, `DATABASE_PASSWORD`, `SUPABASE_URL=https://<project-ref>.supabase.co` (no trailing slash; used to verify staff tokens, required with profile `supabase`).
 3. Run from `apps/api`: `./mvnw spring-boot:run -Dspring-boot.run.profiles=supabase,seed`.
    The `supabase` profile reads `.env` and applies both migration locations; `seed` adds the dev data.
    For prod use `supabase` only.
