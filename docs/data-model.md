@@ -87,4 +87,7 @@ Appointment events (entity type `appointment`, written by `AppointmentService` i
 - `appointment_rescheduled` — `client_id`, `service_id`, `previous_start`, `previous_end`, `start`, `end`
 - `appointment_cancelled`, `appointment_no_show` — `client_id`, `service_id`, `start`, `end`
 
+Client events (entity type `client`, written by `ClientService` in the creating transaction, payload `{}`, actor from the token role):
+- `client_created`
+
 The actor comes from the token role (`master` or `admin`); the bot will use `bot`. A refused action writes no event.

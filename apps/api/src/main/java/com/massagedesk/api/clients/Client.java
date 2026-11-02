@@ -38,12 +38,35 @@ public class Client {
     }
 
     public Client(String phone, String name) {
+        this(phone, name, null);
+    }
+
+    public Client(String phone, String name, String notes) {
         Objects.requireNonNull(phone, "phone");
         if (!PhoneNumbers.isE164(phone)) {
             throw new IllegalArgumentException("phone must be E.164");
         }
         this.phone = phone;
-        this.name = name;
+        this.name = clean(name);
+        this.notes = clean(notes);
+    }
+
+    /** Sets the name; blank clears it. */
+    public void rename(String name) {
+        this.name = clean(name);
+    }
+
+    /** Sets the notes; blank clears them. */
+    public void changeNotes(String notes) {
+        this.notes = clean(notes);
+    }
+
+    private static String clean(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     public UUID getId() {
