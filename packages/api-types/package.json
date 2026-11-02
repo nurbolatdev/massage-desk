@@ -14,6 +14,7 @@
   ],
   "scripts": {
     "generate": "openapi-typescript ../../apps/api/openapi.json -o src/schema.ts",
+    "check:generated": "openapi-typescript ../../apps/api/openapi.json -o src/schema.ts --check",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"

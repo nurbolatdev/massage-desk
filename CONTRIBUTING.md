@@ -8,7 +8,7 @@
 ## Workflow
 1. Take an issue; branch from a fresh `develop`.
 2. Small commits, one logical step each, in [Conventional Commits](https://www.conventionalcommits.org/) style: `feat(booking): …`, `fix(mobile): …`, `test(schedule): …`.
-3. `npm run check` must print `GATE PASS` before every commit.
+3. `npm run check` must print `GATE PASS` before every commit. When an endpoint changes, run `npm run api:types` (needs Docker) and commit `apps/api/openapi.json` and `packages/api-types/src/schema.ts`; the gate fails if they are out of date.
 4. Open a pull request into `develop` with the template (`Closes #<issue>`). CI runs the same gate.
 5. Merge with a merge commit (not squash) after review.
 
