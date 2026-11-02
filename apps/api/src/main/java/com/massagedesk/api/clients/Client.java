@@ -38,7 +38,11 @@ public class Client {
     }
 
     public Client(String phone, String name) {
-        this.phone = Objects.requireNonNull(phone, "phone");
+        Objects.requireNonNull(phone, "phone");
+        if (!PhoneNumbers.isE164(phone)) {
+            throw new IllegalArgumentException("phone must be E.164");
+        }
+        this.phone = phone;
         this.name = name;
     }
 
