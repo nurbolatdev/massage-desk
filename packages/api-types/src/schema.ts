@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+    "/slots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Free start times for a service on a day */
+        get: operations["slots"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/webhook/whatsapp": {
         parameters: {
             query?: never;
@@ -24,7 +41,34 @@ export interface paths {
 }
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: never;
+    schemas: {
+        ProblemDetail: {
+            detail?: string;
+            /** Format: uri */
+            instance?: string;
+            properties?: {
+                [key: string]: unknown;
+            };
+            /** Format: int32 */
+            status?: number;
+            title?: string;
+            /** Format: uri */
+            type?: string;
+        };
+        SlotsResponse: {
+            /** Format: date */
+            day: string;
+            /**
+             * Format: int32
+             * @description service length in minutes
+             */
+            durationMin: number;
+            /** @description free start times, ISO-8601 with the master's UTC offset */
+            starts: string[];
+            /** @description IANA time zone of the master */
+            timeZone: string;
+        };
+    };
     responses: never;
     parameters: never;
     requestBodies: never;
@@ -33,6 +77,49 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    slots: {
+        parameters: {
+            query: {
+                /** @description id of an active service */
+                serviceId: string;
+                /** @description local date in the master's time zone, YYYY-MM-DD */
+                day: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description free start times, possibly empty */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SlotsResponse"];
+                };
+            };
+            /** @description invalid or missing serviceId or day */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description service not found or inactive */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
     verify: {
         parameters: {
             query?: {
