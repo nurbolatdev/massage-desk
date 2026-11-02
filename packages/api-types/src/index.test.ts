@@ -58,3 +58,31 @@ describe("generated /appointments types", () => {
     expect(true).toBe(true);
   });
 });
+
+describe("generated appointment command types", () => {
+  type Status = "confirmed" | "cancelled" | "no_show" | "done";
+  type Reschedule = paths["/appointments/{id}/reschedule"]["post"];
+  type Cancel = paths["/appointments/{id}/cancel"]["post"];
+  type NoShow = paths["/appointments/{id}/no-show"]["post"];
+
+  it("types the reschedule body and path parameter", () => {
+    expectTypeOf<Reschedule["requestBody"]["content"]["application/json"]["start"]>().toEqualTypeOf<string>();
+    expectTypeOf<Reschedule["parameters"]["path"]["id"]>().toEqualTypeOf<string>();
+    expect(true).toBe(true);
+  });
+
+  it("has no request body for cancel and no-show", () => {
+    expectTypeOf<Cancel["requestBody"]>().toEqualTypeOf<undefined>();
+    expectTypeOf<NoShow["requestBody"]>().toEqualTypeOf<undefined>();
+    expectTypeOf<Cancel["parameters"]["path"]["id"]>().toEqualTypeOf<string>();
+    expectTypeOf<NoShow["parameters"]["path"]["id"]>().toEqualTypeOf<string>();
+    expect(true).toBe(true);
+  });
+
+  it("types the 200 status union for all three", () => {
+    expectTypeOf<Reschedule["responses"][200]["content"]["application/json"]["status"]>().toEqualTypeOf<Status>();
+    expectTypeOf<Cancel["responses"][200]["content"]["application/json"]["status"]>().toEqualTypeOf<Status>();
+    expectTypeOf<NoShow["responses"][200]["content"]["application/json"]["status"]>().toEqualTypeOf<Status>();
+    expect(true).toBe(true);
+  });
+});

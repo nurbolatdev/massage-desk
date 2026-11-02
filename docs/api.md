@@ -31,7 +31,9 @@ insert into profiles (user_id, role, display_name) values ('<auth user id>', 'ma
 | POST | `/webhook/whatsapp` | M2 | Incoming messages |
 | GET | `/slots?serviceId&day` | ✅ M1 | Free start times for a service on a day |
 | POST | `/appointments` | ✅ M1 | Create; `409` when the time is taken |
-| PATCH | `/appointments/{id}` | M1 | Reschedule, cancel, no-show |
+| POST | `/appointments/{id}/reschedule` | ✅ M1 | Move, keeping the booked length |
+| POST | `/appointments/{id}/cancel` | ✅ M1 | Cancel; frees the time |
+| POST | `/appointments/{id}/no-show` | ✅ M1 | Mark a no-show after the start |
 | GET | `/clients` | M1 | List and search clients |
 | GET/PUT | `/settings/*` | M1 | Services, working hours, time off |
 | GET/POST | `/conversations/*` | M2 | Chats, master replies, take-over |
@@ -73,3 +75,11 @@ Response `201`:
 - `404` (`application/problem+json`): the client does not exist, or the service does not exist or is inactive.
 - `409` (`application/problem+json`): the time is already booked.
 - `422` (`application/problem+json`): the time is outside working hours, in time off or in the past.
+
+### Reschedule, cancel and no-show
+
+- `POST /appointments/{id}/reschedule` with `{"start":"2026-11-03T13:00:00+05:00"}` moves the appointment. The booked length is kept (not the current service length) and the same time rules as for creation apply. Errors: `400`, `404`, `409` (time taken), `422`.
+- `POST /appointments/{id}/cancel` (no body) cancels it and frees the time. Errors: `400`, `404`, `409`.
+- `POST /appointments/{id}/no-show` (no body) marks that the client did not come; allowed only once the visit has started, otherwise `409`. Errors: `400`, `404`, `409`.
+
+All three return the updated appointment (same shape as the create response). Any action on an appointment that is not `confirmed` gives `409` with `appointment is <status>`; repeated actions are not idempotent. Errors are `application/problem+json`.

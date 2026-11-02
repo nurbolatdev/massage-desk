@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.jayway.jsonpath.JsonPath;
 import com.massagedesk.api.TestcontainersConfiguration;
 import com.massagedesk.api.clients.Client;
 import com.massagedesk.api.clients.ClientRepository;
@@ -177,6 +178,134 @@ class AppointmentsControllerTests {
 
         // last statement: the database transaction is aborted by the exclusion violation
         postJson(body("2026-11-03T10:30:00+05:00"))
+                .andExpect(status().isConflict())
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+                .andExpect(jsonPath("$.detail").value("time is already booked"));
+    }
+
+    private String createAt(String start) throws Exception {
+        String json = postJson(body(start)).andExpect(status().isCreated()).andReturn()
+                .getResponse().getContentAsString();
+        return JsonPath.read(json, "$.id");
+    }
+
+    private ResultActions action(String id, String name, String json) throws Exception {
+        var request = post("/appointments/" + id + "/" + name)
+                .with(jwt().authorities(new SimpleGrantedAuthority(StaffRole.MASTER.authority())));
+        if (json != null) {
+            request = request.contentType(MediaType.APPLICATION_JSON).content(json);
+        }
+        return mvc.perform(request);
+    }
+
+    private ResultActions reschedule(String id, String start) throws Exception {
+        return action(id, "reschedule", "{\"start\":\"" + start + "\"}");
+    }
+
+    @Test
+    void reschedulesAppointment() throws Exception {
+        String id = createAt("2026-11-03T10:00:00+05:00");
+
+        reschedule(id, "2026-11-03T13:00:00+05:00")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(id))
+                .andExpect(jsonPath("$.start").value("2026-11-03T13:00:00+05:00"))
+                .andExpect(jsonPath("$.end").value("2026-11-03T14:00:00+05:00"))
+                .andExpect(jsonPath("$.status").value("confirmed"));
+    }
+
+    @Test
+    void rescheduleOutsideHoursIsUnprocessable() throws Exception {
+        String id = createAt("2026-11-03T10:00:00+05:00");
+
+        reschedule(id, "2026-11-03T09:00:00+05:00")
+                .andExpect(status().isUnprocessableContent())
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+                .andExpect(jsonPath("$.detail")
+                        .value("time is outside working hours, in time off or in the past"));
+    }
+
+    @Test
+    void rescheduleWithoutStartIsBadRequest() throws Exception {
+        String id = createAt("2026-11-03T10:00:00+05:00");
+
+        action(id, "reschedule", "{}")
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
+    }
+
+    @Test
+    void cancelsAppointment() throws Exception {
+        String id = createAt("2026-11-03T10:00:00+05:00");
+
+        action(id, "cancel", null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("cancelled"));
+    }
+
+    @Test
+    void cancelTwiceIsConflict() throws Exception {
+        String id = createAt("2026-11-03T10:00:00+05:00");
+        action(id, "cancel", null).andExpect(status().isOk());
+
+        action(id, "cancel", null)
+                .andExpect(status().isConflict())
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+                .andExpect(jsonPath("$.detail").value("appointment is cancelled"));
+    }
+
+    @Test
+    void marksNoShowAfterStart() throws Exception {
+        UUID id = UUID.randomUUID();
+        jdbc.update("""
+                insert into appointments (id, client_id, service_id, period, status)
+                values (?, ?, ?, tstzrange('2026-11-02 09:00+05'::timestamptz, '2026-11-02 10:00+05'::timestamptz),
+                        'confirmed')
+                """, id, client.getId(), classic.getId());
+
+        action(id.toString(), "no-show", null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("no_show"));
+    }
+
+    @Test
+    void noShowBeforeStartIsConflict() throws Exception {
+        String id = createAt("2026-11-03T10:00:00+05:00");
+
+        action(id, "no-show", null)
+                .andExpect(status().isConflict())
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+                .andExpect(jsonPath("$.detail").value("appointment has not started yet"));
+    }
+
+    @Test
+    void unknownAppointmentIsNotFound() throws Exception {
+        String id = UUID.randomUUID().toString();
+
+        reschedule(id, "2026-11-03T13:00:00+05:00").andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.detail").value("appointment not found"));
+        action(id, "cancel", null).andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.detail").value("appointment not found"));
+        action(id, "no-show", null).andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.detail").value("appointment not found"));
+    }
+
+    @Test
+    void invalidIdIsBadRequest() throws Exception {
+        action("abc", "cancel", null).andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void rescheduleIntoTakenTimeIsConflict() throws Exception {
+        String id = createAt("2026-11-03T10:00:00+05:00");
+        jdbc.update("""
+                insert into appointments (client_id, service_id, period, status)
+                values (?, ?, tstzrange('2026-11-03 13:00+05'::timestamptz, '2026-11-03 14:00+05'::timestamptz),
+                        'confirmed')
+                """, client.getId(), classic.getId());
+
+        // last statement: the database transaction is aborted by the exclusion violation
+        reschedule(id, "2026-11-03T13:30:00+05:00")
                 .andExpect(status().isConflict())
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
                 .andExpect(jsonPath("$.detail").value("time is already booked"));

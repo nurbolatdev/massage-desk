@@ -81,6 +81,203 @@
         "tags" : [ "booking" ]
       }
     },
+    "/appointments/{id}/cancel" : {
+      "post" : {
+        "operationId" : "cancelAppointment",
+        "parameters" : [ {
+          "description" : "appointment id",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AppointmentResponse"
+                }
+              }
+            },
+            "description" : "appointment cancelled"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description" : "invalid id"
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description" : "appointment not found"
+          },
+          "409" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description" : "the appointment is not confirmed"
+          }
+        },
+        "summary" : "Cancel an appointment",
+        "tags" : [ "booking" ]
+      }
+    },
+    "/appointments/{id}/no-show" : {
+      "post" : {
+        "operationId" : "markNoShow",
+        "parameters" : [ {
+          "description" : "appointment id",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AppointmentResponse"
+                }
+              }
+            },
+            "description" : "appointment marked as no-show"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description" : "invalid id"
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description" : "appointment not found"
+          },
+          "409" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description" : "the appointment is not confirmed or has not started yet"
+          }
+        },
+        "summary" : "Mark that the client did not come",
+        "tags" : [ "booking" ]
+      }
+    },
+    "/appointments/{id}/reschedule" : {
+      "post" : {
+        "operationId" : "rescheduleAppointment",
+        "parameters" : [ {
+          "description" : "appointment id",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RescheduleAppointmentRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AppointmentResponse"
+                }
+              }
+            },
+            "description" : "appointment moved"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description" : "missing or invalid field or id"
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description" : "appointment not found"
+          },
+          "409" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description" : "the time is already booked, or the appointment is not confirmed"
+          },
+          "422" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description" : "outside working hours, in time off or in the past"
+          }
+        },
+        "summary" : "Move an appointment to another start, keeping its length",
+        "tags" : [ "booking" ]
+      }
+    },
     "/slots" : {
       "get" : {
         "operationId" : "slots",
@@ -277,6 +474,17 @@
             "format" : "uri"
           }
         }
+      },
+      "RescheduleAppointmentRequest" : {
+        "type" : "object",
+        "properties" : {
+          "start" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "ISO-8601 with offset; the booked length is kept"
+          }
+        },
+        "required" : [ "start" ]
       },
       "SlotsResponse" : {
         "type" : "object",
