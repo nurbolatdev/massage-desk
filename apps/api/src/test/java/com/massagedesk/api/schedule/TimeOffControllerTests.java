@@ -9,11 +9,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.jayway.jsonpath.JsonPath;
 import com.massagedesk.api.TestcontainersConfiguration;
 import com.massagedesk.api.clients.Client;
 import com.massagedesk.api.clients.ClientRepository;
 import com.massagedesk.api.security.StaffRole;
+import java.lang.reflect.RecordComponent;
 import java.math.BigDecimal;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -271,13 +277,13 @@ class TimeOffControllerTests {
         appointment(client, service(), "2026-11-03 10:00+05", "2026-11-03 11:00+05", "confirmed");
 
         String json = postJson(DAY_OFF).andReturn().getResponse().getContentAsString();
-        java.util.Map<String, Object> parsed = com.jayway.jsonpath.JsonPath.read(json, "$");
+        Map<String, Object> parsed = JsonPath.read(json, "$");
 
-        java.util.List<String> documented = java.util.Arrays.stream(ScheduleConflictProblem.class.getRecordComponents())
-                .map(java.lang.reflect.RecordComponent::getName).toList();
         // "type" is left out of the body while it is the default "about:blank"
-        assertThat(parsed.keySet()).containsAll(java.util.List.of("title", "status", "detail", "instance", "conflicts"));
-        assertThat(documented).containsAll(parsed.keySet());
+        Set<String> documented = new HashSet<>(Arrays.stream(ScheduleConflictProblem.class.getRecordComponents())
+                .map(RecordComponent::getName).toList());
+        documented.remove("type");
+        assertThat(parsed.keySet()).isEqualTo(documented);
     }
 
     @ParameterizedTest

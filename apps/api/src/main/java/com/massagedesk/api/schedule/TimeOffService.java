@@ -80,13 +80,7 @@ public class TimeOffService {
     }
 
     private static List<ScheduleException.Conflict> conflicts(List<Appointment> found, ZoneId zone) {
-        return found.stream()
-                .map(a -> new ScheduleException.Conflict(
-                        a.getId(),
-                        a.getClient().getName(),
-                        a.getPeriod().start().atZone(zone).toOffsetDateTime(),
-                        a.getPeriod().end().atZone(zone).toOffsetDateTime()))
-                .toList();
+        return found.stream().map(a -> ScheduleException.Conflict.of(a, zone)).toList();
     }
 
     /** The event holds the period only: the free-text reason may contain private details. */

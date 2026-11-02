@@ -87,6 +87,7 @@ class ProblemResponsesTests {
         return result
                 .andExpect(status().is(status))
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+                .andExpect(jsonPath("$.type").doesNotExist())
                 .andExpect(jsonPath("$.title").value(title))
                 .andExpect(jsonPath("$.status").value(status))
                 .andExpect(jsonPath("$.detail").value(detail))

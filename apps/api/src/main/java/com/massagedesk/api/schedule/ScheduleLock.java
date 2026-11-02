@@ -1,7 +1,6 @@
 package com.massagedesk.api.schedule;
 
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,8 +21,11 @@ public class ScheduleLock {
     /** Advisory lock key shared by all schedule writes (one master). */
     public static final long KEY = 7_301_001L;
 
-    @PersistenceContext
-    private EntityManager entityManager;
+    private final EntityManager entityManager;
+
+    public ScheduleLock(EntityManager entityManager) {
+        this.entityManager = entityManager;
+    }
 
     /** Waits for and takes the lock; fails when called outside a transaction. */
     @Transactional(propagation = Propagation.MANDATORY)

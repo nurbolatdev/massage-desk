@@ -1,6 +1,8 @@
 package com.massagedesk.api.schedule;
 
+import com.massagedesk.api.booking.Appointment;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -21,6 +23,15 @@ public class ScheduleException extends RuntimeException {
 
     /** A confirmed appointment in the way of a change, with times in the master's offset. */
     public record Conflict(UUID appointmentId, String clientName, OffsetDateTime start, OffsetDateTime end) {
+
+        /** Describes an appointment in the master's offset; reads the client through its association. */
+        public static Conflict of(Appointment appointment, ZoneId zone) {
+            return new Conflict(
+                    appointment.getId(),
+                    appointment.getClient().getName(),
+                    appointment.getPeriod().start().atZone(zone).toOffsetDateTime(),
+                    appointment.getPeriod().end().atZone(zone).toOffsetDateTime());
+        }
     }
 
     private final Reason reason;

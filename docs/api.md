@@ -199,7 +199,7 @@ There is no delete: appointments refer to services, so a service is deactivated 
 - `409` (`application/problem+json`): `time off overlaps confirmed appointments`. Besides the usual members the body has `conflicts`, ordered by start:
 
 ```json
-{"status":409,"detail":"time off overlaps confirmed appointments","conflicts":[{"appointmentId":"<uuid>","clientName":"Aigul","start":"2026-11-03T10:00:00+05:00","end":"2026-11-03T11:00:00+05:00"}]}
+{"title":"Conflict","status":409,"detail":"time off overlaps confirmed appointments","instance":"/time-off","code":"APPOINTMENT_CONFLICT","conflicts":[{"appointmentId":"<uuid>","clientName":"Aigul","start":"2026-11-03T10:00:00+05:00","end":"2026-11-03T11:00:00+05:00"}]}
 ```
 
   `clientName` is `null` when the client has no name.

@@ -148,6 +148,6 @@ class ScheduleRaceTests {
         } finally {
             pool.shutdownNow();
         }
-        System.out.println("ScheduleRaceTests: booking won " + bookingWon + ", time off won " + timeOffWon);
+        assertThat(bookingWon + timeOffWon).isEqualTo(ROUNDS);
     }
 }

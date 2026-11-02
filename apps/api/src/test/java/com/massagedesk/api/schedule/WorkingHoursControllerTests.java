@@ -196,9 +196,14 @@ class WorkingHoursControllerTests {
     }
 
     private UUID appointment(String phone, String name, String start, String end, String status) {
+        return appointment(phone, name, start, end, status, 60);
+    }
+
+    private UUID appointment(String phone, String name, String start, String end, String status,
+            int serviceMinutes) {
         Client client = clients.saveAndFlush(new Client(phone, name));
         MassageService service = services.saveAndFlush(
-                new MassageService("Hours conflict service", 60, new BigDecimal("1000.00"), 1));
+                new MassageService("Hours conflict service", serviceMinutes, new BigDecimal("1000.00"), 1));
         return jdbc.queryForObject("""
                 insert into appointments (client_id, service_id, period, status)
                 values (?, ?, tstzrange(cast(? as timestamptz), cast(? as timestamptz)), ?)
@@ -260,6 +265,22 @@ class WorkingHoursControllerTests {
         tuesdayAppointment();
 
         putHours(week(block(2, "10:00", "14:30"), block(2, "14:45", "18:00"))).andExpect(status().isConflict());
+    }
+
+    @Test
+    void theBookedPeriodDecidesNotTheCurrentServiceDuration() throws Exception {
+        appointment("+998900000865", "Hours client", TUESDAY_APPOINTMENT_START, TUESDAY_APPOINTMENT_END,
+                "confirmed", 90);
+
+        putHours(week(block(2, "10:00", "15:00"))).andExpect(status().isOk());
+    }
+
+    @Test
+    void aLongerBookedPeriodThanTheServiceIsRefused() throws Exception {
+        appointment("+998900000865", "Hours client", "2026-11-03 14:00+05", "2026-11-03 15:30+05",
+                "confirmed", 60);
+
+        putHours(week(block(2, "10:00", "15:00"))).andExpect(status().isConflict());
     }
 
     @Test

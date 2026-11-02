@@ -69,9 +69,10 @@ public class WorkingHoursService {
      * Replaces the whole week in one transaction. The rules are checked over the complete set
      * before anything is written. The schedule lock orders parallel replacements and also orders the
      * week against bookings and time off: in READ COMMITTED two replacements would otherwise both
-     * delete the old rows and both insert, leaving the union of two weeks or a constraint failure. The old rows go with a bulk delete that runs at once;
-     * {@code deleteAll()} would let Hibernate flush the inserts first, and the new rows would hit
-     * the exclusion constraint against the old ones.
+     * delete the old rows and both insert, leaving the union of two weeks or a constraint failure.
+     * The old rows go with a bulk delete that runs at once; {@code deleteAll()} would let Hibernate
+     * flush the inserts first, and the new rows would hit the exclusion constraint against the old
+     * ones.
      *
      * <p>Confirmed appointments that start from now within {@link #CONFLICT_HORIZON} and do not fit
      * inside one block of the new week refuse the command with {@code APPOINTMENT_CONFLICT} and the
@@ -91,7 +92,7 @@ public class WorkingHoursService {
                     "confirmed appointments are outside the new working hours", conflicts);
         }
         List<Block> before = workingHours.findAllByOrderByWeekdayAscStartTimeAsc().stream()
-                .map(w -> new Block(w.getWeekday(), w.getStartTime(), w.getEndTime()))
+                .map(WorkingHoursService::block)
                 .toList();
         workingHours.deleteAllInBatch();
         workingHours.saveAll(blocks.stream()
@@ -99,9 +100,7 @@ public class WorkingHoursService {
                 .toList());
         workingHours.flush();
         List<WorkingHours> stored = workingHours.findAllByOrderByWeekdayAscStartTimeAsc();
-        List<Block> after = stored.stream()
-                .map(w -> new Block(w.getWeekday(), w.getStartTime(), w.getEndTime()))
-                .toList();
+        List<Block> after = stored.stream().map(WorkingHoursService::block).toList();
         if (!before.equals(after)) {
             Map<String, Object> payload = new LinkedHashMap<>();
             payload.put("from", week(before));
@@ -111,6 +110,10 @@ public class WorkingHoursService {
             recorder.record(DomainEventType.WORKING_HOURS_REPLACED, actor, payload);
         }
         return stored;
+    }
+
+    private static Block block(WorkingHours w) {
+        return new Block(w.getWeekday(), w.getStartTime(), w.getEndTime());
     }
 
     private static List<Map<String, Object>> week(List<Block> blocks) {
@@ -132,11 +135,7 @@ public class WorkingHoursService {
         return appointments.findConfirmedOverlapping(now, now.plus(CONFLICT_HORIZON)).stream()
                 .filter(a -> !a.getPeriod().start().isBefore(now))
                 .filter(a -> !fits(calculator, week, a, zone))
-                .map(a -> new ScheduleException.Conflict(
-                        a.getId(),
-                        a.getClient().getName(),
-                        a.getPeriod().start().atZone(zone).toOffsetDateTime(),
-                        a.getPeriod().end().atZone(zone).toOffsetDateTime()))
+                .map(a -> ScheduleException.Conflict.of(a, zone))
                 .toList();
     }
 
@@ -144,10 +143,12 @@ public class WorkingHoursService {
             SlotCalculator calculator, Map<DayOfWeek, List<SlotCalculator.WorkingBlock>> week, Appointment a,
             ZoneId zone) {
         Instant start = a.getPeriod().start();
+        // the booked period counts, not the service's current duration (the service may have changed)
+        Duration booked = Duration.between(start, a.getPeriod().end());
         LocalDate day = LocalDate.ofInstant(start, zone);
         List<SlotCalculator.WorkingBlock> dayBlocks = week.getOrDefault(day.getDayOfWeek(), List.of());
         return calculator.fits(new SlotCalculator.Request(
-                day, zone, dayBlocks, List.of(), a.getService().getDuration(), slotProperties.step(), null), start);
+                day, zone, dayBlocks, List.of(), booked, slotProperties.step(), null), start);
     }
 
     private static void validate(List<Block> blocks) {
