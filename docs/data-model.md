@@ -98,7 +98,14 @@ Appointment events (entity type `appointment`, written by `AppointmentService` i
 - `appointment_rescheduled` — `client_id`, `service_id`, `previous_start`, `previous_end`, `start`, `end`
 - `appointment_cancelled`, `appointment_no_show` — `client_id`, `service_id`, `start`, `end`
 
-Client events (entity type `client`, written by `ClientService` in the creating transaction, payload `{}`, actor from the token role):
-- `client_created`
+Client events (entity type `client`, written by `ClientService` in the changing transaction, actor from the token role):
+- `client_created` — payload `{}`
+- `client_updated` — only when something really changed; payload as below, with the changed fields `name` and/or `notes` named only
+
+Service events (entity type `service`, written by `ServiceCatalog`):
+- `service_created` — snapshot: `name`, `duration_min`, `price` (plain decimal string), `sort_order`
+- `service_updated`, `service_deactivated` — change payload over `name`, `duration_min`, `price`, `sort_order`, `active`; a change that turns `active` from true to false is `service_deactivated`, any other effective change (reactivation included) is `service_updated`
+
+Change payload: `{"changed": [field, ...], "from": {...}, "to": {...}}`, snake_case field names. `from`/`to` hold values only for fields that are not personal data; personal fields (client `name` and `notes`) appear in `changed` only, because events are append-only and outlive the rows, so personal text copied there could never be erased. A change that changes nothing writes no event. Some events are not about a single entity and are stored with `entity_id` null (`DomainEventRecorder.record(type, actor, payload)`).
 
 The actor comes from the token role (`master` or `admin`); the bot will use `bot`. A refused action writes no event.

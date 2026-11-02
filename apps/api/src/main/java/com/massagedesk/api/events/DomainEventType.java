@@ -9,7 +9,15 @@ public enum DomainEventType {
     APPOINTMENT_CREATED("appointment"),
     APPOINTMENT_RESCHEDULED("appointment"),
     APPOINTMENT_CANCELLED("appointment"),
-    APPOINTMENT_NO_SHOW("appointment");
+    APPOINTMENT_NO_SHOW("appointment"),
+    CLIENT_UPDATED("client"),
+    SERVICE_CREATED("service"),
+    SERVICE_UPDATED("service"),
+    SERVICE_DEACTIVATED("service"),
+    WORKING_HOURS_REPLACED("working_hours"),
+    TIME_OFF_CREATED("time_off"),
+    TIME_OFF_DELETED("time_off"),
+    SETTINGS_CHANGED("settings");
 
     private final String entityType;
 

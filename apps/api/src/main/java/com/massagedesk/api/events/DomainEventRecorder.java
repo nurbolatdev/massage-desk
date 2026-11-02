@@ -32,6 +32,17 @@ public class DomainEventRecorder {
     public DomainEvent record(DomainEventType type, UUID entityId, EventActor actor, Map<String, ?> payload) {
         Objects.requireNonNull(type, "type");
         Objects.requireNonNull(entityId, "entityId");
+        return save(type, entityId, actor, payload);
+    }
+
+    /** Records an event that is not about a single entity: {@code entity_id} is stored as null. */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public DomainEvent record(DomainEventType type, EventActor actor, Map<String, ?> payload) {
+        return save(type, null, actor, payload);
+    }
+
+    private DomainEvent save(DomainEventType type, UUID entityId, EventActor actor, Map<String, ?> payload) {
+        Objects.requireNonNull(type, "type");
         Objects.requireNonNull(actor, "actor");
         Objects.requireNonNull(payload, "payload");
         String json = jsonMapper.writeValueAsString(payload);

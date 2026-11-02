@@ -102,9 +102,11 @@ class ClientsController {
     @PatchMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE)
     ClientResponse updateClient(@Parameter(description = "client id") @PathVariable UUID id,
-            @Valid @RequestBody UpdateClientRequest request) {
+            @Valid @RequestBody UpdateClientRequest request,
+            @Parameter(hidden = true) Authentication authentication) {
         try {
-            return ClientResponse.from(clients.update(id, request.name(), request.notes()));
+            return ClientResponse.from(clients.update(
+                    id, request.name(), request.notes(), StaffActors.of(authentication)));
         } catch (ClientException e) {
             throw http(e);
         }
