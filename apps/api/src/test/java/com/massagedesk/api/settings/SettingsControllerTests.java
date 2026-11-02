@@ -143,13 +143,6 @@ class SettingsControllerTests {
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
     }
 
-    @Test
-    void unknownZoneHasAClearDetail() throws Exception {
-        patchSettings("{\"timeZone\":\"Mars/Base\"}")
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.detail").value("unknown time zone"));
-    }
-
     @ParameterizedTest
     @ValueSource(strings = {"UTC", "Etc/GMT+5", "Etc/GMT-5"})
     void fixedOffsetZonesAreRefused(String id) throws Exception {

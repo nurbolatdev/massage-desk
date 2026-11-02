@@ -17,8 +17,13 @@ public final class PhoneNumbers {
 
     private static final Pattern E164 = Pattern.compile("^\\+[0-9]{9,15}$");
 
-    /** Digits (any script), plain spaces and the separators {@code + - ( ) .}; nothing else. */
-    private static final Pattern ALLOWED_CHARACTERS = Pattern.compile("^[\\p{Nd} +\\-().]+$");
+    /**
+     * Digits 0-9, Arabic-Indic (U+0660-0669), Extended Arabic-Indic (U+06F0-06F9) and fullwidth
+     * (U+FF10-FF19), plain spaces and the separators {@code + - ( ) .}; nothing else. The same set
+     * is used in the shared TypeScript package, because the two libraries map different digit scripts.
+     */
+    private static final Pattern ALLOWED_CHARACTERS =
+            Pattern.compile("^[0-9\\u0660-\\u0669\\u06F0-\\u06F9\\uFF10-\\uFF19 +\\-().]+$");
 
     private PhoneNumbers() {
     }

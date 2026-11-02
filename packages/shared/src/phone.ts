@@ -7,8 +7,12 @@ export type PhoneRegion = CountryCode;
 
 const E164 = /^\+[0-9]{9,15}$/;
 
-/** Digits (any script), plain spaces and the separators + - ( ) . ; nothing else. */
-const ALLOWED_CHARACTERS = /^[\p{Nd} +\-().]+$/u;
+/**
+ * Digits 0-9, Arabic-Indic (U+0660-0669), Extended Arabic-Indic (U+06F0-06F9) and fullwidth
+ * (U+FF10-FF19), plain spaces and the separators + - ( ) . ; nothing else. The same set is used
+ * in the API, because the two libraries map different digit scripts.
+ */
+const ALLOWED_CHARACTERS = /^[0-9\u0660-\u0669\u06F0-\u06F9\uFF10-\uFF19 +\-().]+$/;
 
 /**
  * Normalizes a typed phone number to E.164 ("+998901234567").

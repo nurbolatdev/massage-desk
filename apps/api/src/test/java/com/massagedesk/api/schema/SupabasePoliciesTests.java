@@ -249,6 +249,14 @@ class SupabasePoliciesTests {
 					where proname = 'is_staff' and pronamespace = 'public'::regnamespace""").iterator().next())
 							.contains("search_path=public, pg_temp");
 		}
+		try (Connection connection = superuser()) {
+			assertThat(strings(connection, """
+					select p.prosecdef::text || ',' || p.provolatile::text || ',' || pg_get_userbyid(p.proowner) || ','
+					       || has_function_privilege('authenticated', 'public.is_staff()', 'EXECUTE')::text
+					from pg_proc p
+					where p.proname = 'is_staff' and p.pronamespace = 'public'::regnamespace"""))
+							.containsExactly("true,s,api_owner,true");
+		}
 		boolean staff = as("authenticated", STRANGER, c -> {
 			try (Statement statement = c.createStatement()) {
 				statement.execute("create temp table profiles (user_id uuid)");
@@ -320,12 +328,15 @@ class SupabasePoliciesTests {
 	@ParameterizedTest(name = "{0}")
 	@MethodSource("inserts")
 	void staffCannotInsert(String table, String insert) throws SQLException {
+		assertThat(hasInsertPrivilege(table)).as(table + " granted").isTrue();
 		assertThatThrownBy(() -> as("authenticated", STAFF, c -> {
 			try (Statement statement = c.createStatement()) {
 				return statement.executeUpdate(insert);
 			}
-		})).as(table).isInstanceOfSatisfying(SQLException.class,
-				e -> assertThat(e.getSQLState()).isEqualTo("42501"));
+		})).as(table).isInstanceOfSatisfying(SQLException.class, e -> {
+			assertThat(e.getSQLState()).isEqualTo("42501");
+			assertThat(e.getMessage()).contains("row-level security");
+		});
 	}
 
 	private static boolean hasInsertPrivilege(String table) throws SQLException {
