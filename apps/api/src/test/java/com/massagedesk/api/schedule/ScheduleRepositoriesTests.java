@@ -109,4 +109,41 @@ class ScheduleRepositoriesTests {
         assertThat(found.getPeriod()).isEqualTo(new TimeRange(
                 Instant.parse("2026-11-02T05:00:00Z"), Instant.parse("2026-11-02T13:00:00Z")));
     }
+
+    @Test
+    void findsOnlyActiveServiceById() {
+        MassageService active = services.saveAndFlush(
+                new MassageService("Classic", 60, new BigDecimal("100000.00"), 1));
+        MassageService inactive = services.saveAndFlush(
+                new MassageService("Old", 45, new BigDecimal("1.00"), 2));
+        jdbc.update("update services set active = false where id = ?", inactive.getId());
+        entityManager.clear();
+
+        assertThat(services.findByIdAndActiveTrue(active.getId())).isPresent();
+        assertThat(services.findByIdAndActiveTrue(inactive.getId())).isEmpty();
+        assertThat(services.findByIdAndActiveTrue(UUID.randomUUID())).isEmpty();
+    }
+
+    @Test
+    void findsTimeOffOverlappingWindow() {
+        insertTimeOff("2026-11-01 00:00+05", "2026-11-03 11:00+05");
+        insertTimeOff("2026-11-03 13:00+05", "2026-11-03 14:00+05");
+        insertTimeOff("2026-11-02 20:00+05", "2026-11-03 00:00+05");
+        insertTimeOff("2026-11-04 00:00+05", "2026-11-04 02:00+05");
+        entityManager.clear();
+
+        List<TimeOff> found = timeOff.findOverlapping(
+                Instant.parse("2026-11-02T19:00:00Z"), Instant.parse("2026-11-03T19:00:00Z"));
+
+        assertThat(found).extracting(TimeOff::getPeriod).containsExactly(
+                new TimeRange(Instant.parse("2026-10-31T19:00:00Z"), Instant.parse("2026-11-03T06:00:00Z")),
+                new TimeRange(Instant.parse("2026-11-03T08:00:00Z"), Instant.parse("2026-11-03T09:00:00Z")));
+    }
+
+    private void insertTimeOff(String start, String end) {
+        jdbc.update("""
+                insert into time_off (id, period, reason)
+                values (?, tstzrange(?::timestamptz, ?::timestamptz), 'Test')
+                """, UUID.randomUUID(), start, end);
+    }
 }

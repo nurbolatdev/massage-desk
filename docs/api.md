@@ -16,6 +16,8 @@ Every staff request sends `Authorization: Bearer <Supabase access token>`. The t
 - `401`: token missing, invalid, expired, or issued for another audience or issuer.
 - `403`: valid token, but the user is not staff or the role is not enough.
 
+Errors from the endpoints below use RFC 9457 problem details (`application/problem+json`).
+
 To add a staff member, create the user in Supabase Auth, then run:
 
 ```sql
@@ -27,7 +29,7 @@ insert into profiles (user_id, role, display_name) values ('<auth user id>', 'ma
 | GET | `/health` | ✅ M0 | Liveness and readiness |
 | GET | `/webhook/whatsapp` | ✅ M0 | Meta webhook verification |
 | POST | `/webhook/whatsapp` | M2 | Incoming messages |
-| GET | `/slots?serviceId&day` | M1 | Free start times for a service on a day |
+| GET | `/slots?serviceId&day` | ✅ M1 | Free start times for a service on a day |
 | POST | `/appointments` | M1 | Create; `409` on time conflict |
 | PATCH | `/appointments/{id}` | M1 | Reschedule, cancel, no-show |
 | GET | `/clients` | M1 | List and search clients |
@@ -35,3 +37,18 @@ insert into profiles (user_id, role, display_name) values ('<auth user id>', 'ma
 | GET/POST | `/conversations/*` | M2 | Chats, master replies, take-over |
 | POST | `/devices` | M4 | Register a push token |
 | GET | `/admin/*` | M1–M5 | Statistics and diagnostics (admin only) |
+
+## Free time
+
+`GET /slots?serviceId=<uuid>&day=YYYY-MM-DD` returns the free start times of an active service on one day. `day` is a local date in the master's time zone.
+
+```json
+{"day":"2026-11-03","timeZone":"Asia/Tashkent","durationMin":60,"starts":["2026-11-03T10:00:00+05:00","2026-11-03T10:30:00+05:00"]}
+```
+
+Working hours (with breaks), time off and confirmed appointments are taken into account; times in the past are never offered. A day without working hours gives an empty `starts`.
+
+- `400` (`application/problem+json`): `serviceId` or `day` is missing or invalid.
+- `404` (`application/problem+json`): the service does not exist or is inactive.
+
+Configuration: `APP_SLOTS_STEP` (grid of offered start times, default `30m`) and `APP_SLOTS_MIN_NOTICE` (how far ahead the first start is, default `0m`).

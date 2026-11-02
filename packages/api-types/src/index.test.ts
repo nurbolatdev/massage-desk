@@ -17,3 +17,22 @@ describe("generated api types", () => {
     expect(true).toBe(true);
   });
 });
+
+describe("generated /slots types", () => {
+  type SlotsGet = paths["/slots"]["get"];
+  type SlotsQuery = SlotsGet["parameters"]["query"];
+  type SlotsOk = SlotsGet["responses"][200]["content"]["application/json"];
+
+  it("types the required query parameters", () => {
+    expectTypeOf<SlotsQuery["serviceId"]>().toEqualTypeOf<string>();
+    expectTypeOf<SlotsQuery["day"]>().toEqualTypeOf<string>();
+  });
+
+  it("types the 200 body with required fields", () => {
+    expectTypeOf<SlotsOk["starts"]>().toEqualTypeOf<string[]>();
+    expectTypeOf<SlotsOk["durationMin"]>().toEqualTypeOf<number>();
+    expectTypeOf<SlotsOk["timeZone"]>().toEqualTypeOf<string>();
+    expectTypeOf<SlotsOk["day"]>().toEqualTypeOf<string>();
+    expect(true).toBe(true);
+  });
+});
