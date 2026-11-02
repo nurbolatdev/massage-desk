@@ -11,6 +11,8 @@ import java.time.DayOfWeek;
 import java.time.LocalTime;
 import java.util.Objects;
 import java.util.UUID;
+import org.hibernate.annotations.JdbcType;
+import org.hibernate.type.descriptor.jdbc.LocalTimeJdbcType;
 
 /**
  * A working block of one weekday. Several rows per day are blocks around a break
@@ -28,9 +30,12 @@ public class WorkingHours {
     @Column(name = "weekday", nullable = false)
     private DayOfWeek weekday;
 
+    // local wall-clock time: bound as is, never shifted by hibernate.jdbc.time_zone or the JVM zone
+    @JdbcType(LocalTimeJdbcType.class)
     @Column(name = "start_time", nullable = false)
     private LocalTime startTime;
 
+    @JdbcType(LocalTimeJdbcType.class)
     @Column(name = "end_time", nullable = false)
     private LocalTime endTime;
 
