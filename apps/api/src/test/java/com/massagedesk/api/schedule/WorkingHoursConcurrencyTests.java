@@ -3,6 +3,7 @@ package com.massagedesk.api.schedule;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.massagedesk.api.TestcontainersConfiguration;
+import com.massagedesk.api.events.EventActor;
 import com.massagedesk.api.schedule.WorkingHoursService.Block;
 import java.time.DayOfWeek;
 import java.time.LocalTime;
@@ -42,6 +43,7 @@ class WorkingHoursConcurrencyTests {
     @AfterEach
     void cleanUp() {
         jdbc.update("delete from working_hours");
+        jdbc.update("delete from events where type = 'working_hours_replaced'");
     }
 
     @Test
@@ -62,7 +64,7 @@ class WorkingHoursConcurrencyTests {
                 futures.add(pool.submit(() -> {
                     start.await();
                     return service.replaceWeek(List.of(new Block(
-                            DayOfWeek.TUESDAY, LocalTime.parse(times[0]), LocalTime.parse(times[1]))), false);
+                            DayOfWeek.TUESDAY, LocalTime.parse(times[0]), LocalTime.parse(times[1]))), false, EventActor.MASTER);
                 }));
             }
             start.countDown();

@@ -88,6 +88,7 @@ class ScheduleLockTests {
         jdbc.update("delete from appointments where client_id = ?", clientId);
         jdbc.update("delete from clients where id = ?", clientId);
         jdbc.update("delete from services where id = ?", serviceId);
+        jdbc.update("delete from events where type in ('time_off_created', 'time_off_deleted', 'working_hours_replaced')");
         jdbc.update("delete from time_off");
         jdbc.update("delete from working_hours");
     }
@@ -133,10 +134,10 @@ class ScheduleLockTests {
                     clientId, serviceId, Instant.parse("2026-11-03T05:00:00Z"), AppointmentSource.MANUAL, EventActor.MASTER);
             case "reschedule" -> appointments.reschedule(bookedId, Instant.parse("2026-11-03T10:00:00Z"), EventActor.MASTER);
             case "timeOff" -> timeOff.create(
-                    Instant.parse("2026-11-03T19:00:00Z"), Instant.parse("2026-11-04T19:00:00Z"), null, false);
+                    Instant.parse("2026-11-03T19:00:00Z"), Instant.parse("2026-11-04T19:00:00Z"), null, false, EventActor.MASTER);
             case "workingHours" -> workingHours.replaceWeek(List.of(
                     new Block(DayOfWeek.TUESDAY, LocalTime.of(10, 0), LocalTime.of(16, 0)),
-                    new Block(DayOfWeek.WEDNESDAY, LocalTime.of(10, 0), LocalTime.of(12, 0))), false);
+                    new Block(DayOfWeek.WEDNESDAY, LocalTime.of(10, 0), LocalTime.of(12, 0))), false, EventActor.MASTER);
             default -> throw new IllegalArgumentException(operation);
         }
     }

@@ -1,5 +1,6 @@
 package com.massagedesk.api.schedule;
 
+import com.massagedesk.api.security.StaffActors;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -15,6 +16,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -79,11 +81,12 @@ class TimeOffController {
                     schema = @Schema(implementation = ScheduleConflictProblem.class)))
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
-    TimeOffResponse createTimeOff(@Valid @RequestBody CreateTimeOffRequest request) {
+    TimeOffResponse createTimeOff(@Valid @RequestBody CreateTimeOffRequest request,
+            @Parameter(hidden = true) Authentication authentication) {
         try {
             return TimeOffResponse.from(service.create(
                     request.start().toInstant(), request.end().toInstant(), request.reason(),
-                    Boolean.TRUE.equals(request.force())));
+                    Boolean.TRUE.equals(request.force()), StaffActors.of(authentication)));
         } catch (ScheduleException e) {
             throw ScheduleErrors.http(e);
         }
@@ -99,9 +102,10 @@ class TimeOffController {
                     schema = @Schema(implementation = ProblemDetail.class)))
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    void deleteTimeOff(@Parameter(description = "time off id") @PathVariable UUID id) {
+    void deleteTimeOff(@Parameter(description = "time off id") @PathVariable UUID id,
+            @Parameter(hidden = true) Authentication authentication) {
         try {
-            service.delete(id);
+            service.delete(id, StaffActors.of(authentication));
         } catch (ScheduleException e) {
             throw ScheduleErrors.http(e);
         }

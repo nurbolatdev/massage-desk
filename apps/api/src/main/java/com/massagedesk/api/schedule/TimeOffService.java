@@ -2,13 +2,18 @@ package com.massagedesk.api.schedule;
 
 import com.massagedesk.api.booking.Appointment;
 import com.massagedesk.api.booking.AppointmentRepository;
+import com.massagedesk.api.events.DomainEventRecorder;
+import com.massagedesk.api.events.DomainEventType;
+import com.massagedesk.api.events.EventActor;
 import com.massagedesk.api.settings.SettingsRepository;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,10 +34,13 @@ public class TimeOffService {
     private final SettingsRepository settings;
     private final Clock clock;
     private final ScheduleLock scheduleLock;
+    private final DomainEventRecorder recorder;
 
     public TimeOffService(
             TimeOffRepository timeOff, AppointmentRepository appointments, SettingsRepository settings,
-            Clock clock, ScheduleLock scheduleLock) {
+            Clock clock, ScheduleLock scheduleLock,
+            DomainEventRecorder recorder) {
+        this.recorder = recorder;
         this.scheduleLock = scheduleLock;
         this.timeOff = timeOff;
         this.appointments = appointments;
@@ -45,7 +53,8 @@ public class TimeOffService {
      * they refuse the command with {@code APPOINTMENT_CONFLICT} and the list of those appointments.
      */
     @Transactional
-    public TimeOffView create(Instant start, Instant end, String reason, boolean force) {
+    public TimeOffView create(Instant start, Instant end, String reason, boolean force,
+            EventActor actor) {
         if (!start.isBefore(end)) {
             throw invalid("time off must start before it ends");
         }
@@ -63,6 +72,10 @@ public class TimeOffService {
         }
         String cleaned = reason == null || reason.isBlank() ? null : reason.trim();
         TimeOff saved = timeOff.saveAndFlush(new TimeOff(new TimeRange(start, end), cleaned));
+        Map<String, Object> payload = period(saved);
+        payload.put("forced", force);
+        payload.put("conflict_ids", overlapping.stream().map(Appointment::getId).toList());
+        recorder.record(DomainEventType.TIME_OFF_CREATED, saved.getId(), actor, payload);
         return view(saved, zone);
     }
 
@@ -76,11 +89,21 @@ public class TimeOffService {
                 .toList();
     }
 
+    /** The event holds the period only: the free-text reason may contain private details. */
+    private static Map<String, Object> period(TimeOff t) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("start", t.getPeriod().start().toString());
+        payload.put("end", t.getPeriod().end().toString());
+        return payload;
+    }
+
     @Transactional
-    public void delete(UUID id) {
+    public void delete(UUID id, EventActor actor) {
         TimeOff found = timeOff.findById(id).orElseThrow(
                 () -> new ScheduleException(ScheduleException.Reason.TIME_OFF_NOT_FOUND, "time off not found"));
         timeOff.delete(found);
+        timeOff.flush();
+        recorder.record(DomainEventType.TIME_OFF_DELETED, id, actor, period(found));
     }
 
     /** Time off overlapping the local days {@code from..to}, both inclusive, ordered by start. */

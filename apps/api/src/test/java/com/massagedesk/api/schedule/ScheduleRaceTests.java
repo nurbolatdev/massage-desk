@@ -78,6 +78,7 @@ class ScheduleRaceTests {
         deleteRound();
         jdbc.update("delete from clients where id = ?", clientId);
         jdbc.update("delete from services where id = ?", serviceId);
+        jdbc.update("delete from events where type in ('time_off_created', 'time_off_deleted', 'working_hours_replaced')");
         jdbc.update("delete from time_off");
         jdbc.update("delete from working_hours");
     }
@@ -85,6 +86,7 @@ class ScheduleRaceTests {
     private void deleteRound() {
         jdbc.update("delete from events where entity_id in (select id from appointments where client_id = ?)", clientId);
         jdbc.update("delete from appointments where client_id = ?", clientId);
+        jdbc.update("delete from events where type in ('time_off_created', 'time_off_deleted', 'working_hours_replaced')");
         jdbc.update("delete from time_off");
     }
 

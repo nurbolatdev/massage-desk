@@ -2,6 +2,9 @@ package com.massagedesk.api.schedule;
 
 import com.massagedesk.api.booking.Appointment;
 import com.massagedesk.api.booking.AppointmentRepository;
+import com.massagedesk.api.events.DomainEventRecorder;
+import com.massagedesk.api.events.DomainEventType;
+import com.massagedesk.api.events.EventActor;
 import com.massagedesk.api.settings.SettingsRepository;
 import java.time.Clock;
 import java.time.DayOfWeek;
@@ -10,7 +13,9 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -31,22 +36,27 @@ public class WorkingHoursService {
      */
     static final Duration CONFLICT_HORIZON = Duration.ofDays(60);
 
+    private static final DateTimeFormatter HH_MM = DateTimeFormatter.ofPattern("HH:mm");
+
     private final WorkingHoursRepository workingHours;
     private final ScheduleLock scheduleLock;
     private final AppointmentRepository appointments;
     private final SettingsRepository settings;
     private final SlotProperties slotProperties;
     private final Clock clock;
+    private final DomainEventRecorder recorder;
 
     public WorkingHoursService(
             WorkingHoursRepository workingHours, ScheduleLock scheduleLock, AppointmentRepository appointments,
-            SettingsRepository settings, SlotProperties slotProperties, Clock clock) {
+            SettingsRepository settings, SlotProperties slotProperties, Clock clock,
+            DomainEventRecorder recorder) {
         this.workingHours = workingHours;
         this.scheduleLock = scheduleLock;
         this.appointments = appointments;
         this.settings = settings;
         this.slotProperties = slotProperties;
         this.clock = clock;
+        this.recorder = recorder;
     }
 
     /** The whole week ordered by weekday, then start. */
@@ -67,25 +77,50 @@ public class WorkingHoursService {
      * inside one block of the new week refuse the command with {@code APPOINTMENT_CONFLICT} and the
      * list of those appointments, unless {@code force} is set. Appointments are never changed.
      * Appointments that already started are not reported.
+     *
+     * <p>A replacement that changes the week writes one {@code working_hours_replaced} event with the
+     * old and the new week; an identical week writes none.
      */
     @Transactional
-    public List<WorkingHours> replaceWeek(List<Block> blocks, boolean force) {
+    public List<WorkingHours> replaceWeek(List<Block> blocks, boolean force, EventActor actor) {
         validate(blocks);
         scheduleLock.acquire();
-        if (!force) {
-            ZoneId zone = settings.get().getTimeZone();
-            List<ScheduleException.Conflict> conflicts = uncovered(blocks, zone);
-            if (!conflicts.isEmpty()) {
-                throw new ScheduleException(ScheduleException.Reason.APPOINTMENT_CONFLICT,
-                        "confirmed appointments are outside the new working hours", conflicts);
-            }
+        List<ScheduleException.Conflict> conflicts = uncovered(blocks, settings.get().getTimeZone());
+        if (!force && !conflicts.isEmpty()) {
+            throw new ScheduleException(ScheduleException.Reason.APPOINTMENT_CONFLICT,
+                    "confirmed appointments are outside the new working hours", conflicts);
         }
+        List<Block> before = workingHours.findAllByOrderByWeekdayAscStartTimeAsc().stream()
+                .map(w -> new Block(w.getWeekday(), w.getStartTime(), w.getEndTime()))
+                .toList();
         workingHours.deleteAllInBatch();
         workingHours.saveAll(blocks.stream()
                 .map(b -> new WorkingHours(b.weekday(), b.start(), b.end()))
                 .toList());
         workingHours.flush();
-        return workingHours.findAllByOrderByWeekdayAscStartTimeAsc();
+        List<WorkingHours> stored = workingHours.findAllByOrderByWeekdayAscStartTimeAsc();
+        List<Block> after = stored.stream()
+                .map(w -> new Block(w.getWeekday(), w.getStartTime(), w.getEndTime()))
+                .toList();
+        if (!before.equals(after)) {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("from", week(before));
+            payload.put("to", week(after));
+            payload.put("forced", force);
+            payload.put("conflict_ids", conflicts.stream().map(ScheduleException.Conflict::appointmentId).toList());
+            recorder.record(DomainEventType.WORKING_HOURS_REPLACED, actor, payload);
+        }
+        return stored;
+    }
+
+    private static List<Map<String, Object>> week(List<Block> blocks) {
+        return blocks.stream().map(b -> {
+            Map<String, Object> entry = new LinkedHashMap<>();
+            entry.put("weekday", b.weekday().getValue());
+            entry.put("start", b.start().format(HH_MM));
+            entry.put("end", b.end().format(HH_MM));
+            return entry;
+        }).toList();
     }
 
     private List<ScheduleException.Conflict> uncovered(List<Block> blocks, ZoneId zone) {

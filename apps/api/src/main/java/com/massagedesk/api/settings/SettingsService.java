@@ -1,5 +1,9 @@
 package com.massagedesk.api.settings;
 
+import com.massagedesk.api.events.Changes;
+import com.massagedesk.api.events.DomainEventRecorder;
+import com.massagedesk.api.events.DomainEventType;
+import com.massagedesk.api.events.EventActor;
 import java.time.ZoneId;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -10,8 +14,11 @@ public class SettingsService {
 
     private final SettingsRepository settings;
 
-    public SettingsService(SettingsRepository settings) {
+    private final DomainEventRecorder recorder;
+
+    public SettingsService(SettingsRepository settings, DomainEventRecorder recorder) {
         this.settings = settings;
+        this.recorder = recorder;
     }
 
     @Transactional(readOnly = true)
@@ -19,10 +26,16 @@ public class SettingsService {
         return settings.get();
     }
 
-    /** A null argument leaves the field unchanged; a blank address clears it. */
+    /**
+     * A null argument leaves the field unchanged; a blank address clears it. A change writes one
+     * {@code settings_changed} event (the address is only named, never copied).
+     */
     @Transactional
-    public Settings update(String timeZone, String address, Boolean botEnabled) {
+    public Settings update(String timeZone, String address, Boolean botEnabled, EventActor actor) {
         Settings row = settings.get();
+        ZoneId oldZone = row.getTimeZone();
+        String oldAddress = row.getAddress();
+        boolean oldBot = row.isBotEnabled();
         if (timeZone != null) {
             row.changeTimeZone(region(timeZone.trim()));
         }
@@ -32,7 +45,15 @@ public class SettingsService {
         if (botEnabled != null) {
             row.changeBotEnabled(botEnabled);
         }
-        return settings.saveAndFlush(row);
+        Settings saved = settings.saveAndFlush(row);
+        Changes changes = new Changes()
+                .value("time_zone", oldZone.getId(), saved.getTimeZone().getId())
+                .personal("address", oldAddress, saved.getAddress())
+                .value("bot_enabled", oldBot, saved.isBotEnabled());
+        if (!changes.isEmpty()) {
+            recorder.record(DomainEventType.SETTINGS_CHANGED, actor, changes.payload());
+        }
+        return saved;
     }
 
     private static ZoneId region(String id) {

@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.massagedesk.api.TestcontainersConfiguration;
 import com.massagedesk.api.clients.Client;
 import com.massagedesk.api.clients.ClientRepository;
+import com.massagedesk.api.events.EventActor;
 import com.massagedesk.api.schedule.WorkingHoursService.Block;
 import java.util.UUID;
 import java.math.BigDecimal;
@@ -62,7 +63,7 @@ class WorkingHoursServiceTests {
         List<WorkingHours> stored = service.replaceWeek(List.of(
                 block(DayOfWeek.TUESDAY, "14:00", "18:00"),
                 block(DayOfWeek.MONDAY, "09:00", "13:00"),
-                block(DayOfWeek.TUESDAY, "09:00", "12:00")), false);
+                block(DayOfWeek.TUESDAY, "09:00", "12:00")), false, EventActor.MASTER);
 
         assertThat(stored).extracting(WorkingHours::getWeekday, WorkingHours::getStartTime,
                         WorkingHours::getEndTime)
@@ -76,44 +77,44 @@ class WorkingHoursServiceTests {
     @Test
     void secondReplaceRemovesTheFirstSetCompletely() {
         service.replaceWeek(List.of(block(DayOfWeek.MONDAY, "09:00", "13:00"),
-                block(DayOfWeek.FRIDAY, "09:00", "13:00")), false);
+                block(DayOfWeek.FRIDAY, "09:00", "13:00")), false, EventActor.MASTER);
 
-        service.replaceWeek(List.of(block(DayOfWeek.MONDAY, "09:00", "13:00")), false);
+        service.replaceWeek(List.of(block(DayOfWeek.MONDAY, "09:00", "13:00")), false, EventActor.MASTER);
 
         assertThat(count()).isEqualTo(1);
     }
 
     @Test
     void emptyListClearsTheWeek() {
-        service.replaceWeek(List.of(block(DayOfWeek.MONDAY, "09:00", "13:00")), false);
+        service.replaceWeek(List.of(block(DayOfWeek.MONDAY, "09:00", "13:00")), false, EventActor.MASTER);
 
-        assertThat(service.replaceWeek(List.of(), false)).isEmpty();
+        assertThat(service.replaceWeek(List.of(), false, EventActor.MASTER)).isEmpty();
 
         assertThat(count()).isZero();
     }
 
     @Test
     void blockThatDoesNotStartBeforeItEndsIsRefused() {
-        assertThatThrownBy(() -> service.replaceWeek(List.of(block(DayOfWeek.MONDAY, "09:00", "09:00")), false))
+        assertThatThrownBy(() -> service.replaceWeek(List.of(block(DayOfWeek.MONDAY, "09:00", "09:00")), false, EventActor.MASTER))
                 .isInstanceOfSatisfying(ScheduleException.class, e -> {
                     assertThat(e.reason()).isEqualTo(ScheduleException.Reason.INVALID_HOURS);
                     assertThat(e.getMessage()).isEqualTo("block must start before it ends");
                 });
-        assertThatThrownBy(() -> service.replaceWeek(List.of(block(DayOfWeek.MONDAY, "13:00", "09:00")), false))
+        assertThatThrownBy(() -> service.replaceWeek(List.of(block(DayOfWeek.MONDAY, "13:00", "09:00")), false, EventActor.MASTER))
                 .isInstanceOf(ScheduleException.class)
                 .hasMessage("block must start before it ends");
     }
 
     @Test
     void overlappingAndTouchingBlocksOfOneDayAreRefusedAndTheOldWeekStays() {
-        service.replaceWeek(List.of(block(DayOfWeek.MONDAY, "09:00", "13:00")), false);
+        service.replaceWeek(List.of(block(DayOfWeek.MONDAY, "09:00", "13:00")), false, EventActor.MASTER);
 
         assertThatThrownBy(() -> service.replaceWeek(List.of(
-                block(DayOfWeek.TUESDAY, "09:00", "13:00"), block(DayOfWeek.TUESDAY, "12:00", "15:00")), false))
+                block(DayOfWeek.TUESDAY, "09:00", "13:00"), block(DayOfWeek.TUESDAY, "12:00", "15:00")), false, EventActor.MASTER))
                 .isInstanceOf(ScheduleException.class)
                 .hasMessage("blocks of one day must not overlap or touch");
         assertThatThrownBy(() -> service.replaceWeek(List.of(
-                block(DayOfWeek.TUESDAY, "09:00", "13:00"), block(DayOfWeek.TUESDAY, "13:00", "15:00")), false))
+                block(DayOfWeek.TUESDAY, "09:00", "13:00"), block(DayOfWeek.TUESDAY, "13:00", "15:00")), false, EventActor.MASTER))
                 .isInstanceOf(ScheduleException.class)
                 .hasMessage("blocks of one day must not overlap or touch");
 
@@ -125,7 +126,7 @@ class WorkingHoursServiceTests {
     @Test
     void sameTimesOnDifferentDaysAreAccepted() {
         service.replaceWeek(List.of(block(DayOfWeek.MONDAY, "09:00", "13:00"),
-                block(DayOfWeek.TUESDAY, "09:00", "13:00"), block(DayOfWeek.SUNDAY, "09:00", "13:00")), false);
+                block(DayOfWeek.TUESDAY, "09:00", "13:00"), block(DayOfWeek.SUNDAY, "09:00", "13:00")), false, EventActor.MASTER);
 
         assertThat(count()).isEqualTo(3);
     }
@@ -134,13 +135,13 @@ class WorkingHoursServiceTests {
     void replacedBlocksReachFreeTime() {
         MassageService classic = services.saveAndFlush(
                 new MassageService("Hours check", 60, new BigDecimal("100000.00"), 900));
-        service.replaceWeek(List.of(block(DayOfWeek.TUESDAY, "10:00", "12:00")), false);
+        service.replaceWeek(List.of(block(DayOfWeek.TUESDAY, "10:00", "12:00")), false, EventActor.MASTER);
 
         var slots = slotService.freeStarts(classic.getId(), LocalDate.parse("2026-11-03")).orElseThrow();
 
         assertThat(slots.starts()).hasSize(3);
 
-        service.replaceWeek(List.of(block(DayOfWeek.TUESDAY, "14:00", "15:00")), false);
+        service.replaceWeek(List.of(block(DayOfWeek.TUESDAY, "14:00", "15:00")), false, EventActor.MASTER);
 
         assertThat(slotService.freeStarts(classic.getId(), LocalDate.parse("2026-11-03")).orElseThrow().starts())
                 .hasSize(1);
@@ -161,9 +162,9 @@ class WorkingHoursServiceTests {
     @Test
     void weekThatLeavesAnAppointmentOutIsRefusedWithTheList() {
         UUID id = tuesdayAppointment();
-        service.replaceWeek(List.of(block(DayOfWeek.TUESDAY, "10:00", "16:00")), false);
+        service.replaceWeek(List.of(block(DayOfWeek.TUESDAY, "10:00", "16:00")), false, EventActor.MASTER);
 
-        assertThatThrownBy(() -> service.replaceWeek(List.of(block(DayOfWeek.TUESDAY, "10:00", "13:00")), false))
+        assertThatThrownBy(() -> service.replaceWeek(List.of(block(DayOfWeek.TUESDAY, "10:00", "13:00")), false, EventActor.MASTER))
                 .isInstanceOfSatisfying(ScheduleException.class, e -> {
                     assertThat(e.reason()).isEqualTo(ScheduleException.Reason.APPOINTMENT_CONFLICT);
                     assertThat(e.getMessage()).isEqualTo("confirmed appointments are outside the new working hours");
@@ -179,7 +180,7 @@ class WorkingHoursServiceTests {
     void forceStoresTheWeekOverTheAppointment() {
         tuesdayAppointment();
 
-        List<WorkingHours> stored = service.replaceWeek(List.of(block(DayOfWeek.TUESDAY, "10:00", "13:00")), true);
+        List<WorkingHours> stored = service.replaceWeek(List.of(block(DayOfWeek.TUESDAY, "10:00", "13:00")), true, EventActor.MASTER);
 
         assertThat(stored).hasSize(1);
     }
@@ -188,6 +189,6 @@ class WorkingHoursServiceTests {
     void weekThatStillCoversTheAppointmentIsStored() {
         tuesdayAppointment();
 
-        assertThat(service.replaceWeek(List.of(block(DayOfWeek.TUESDAY, "14:00", "15:00")), false)).hasSize(1);
+        assertThat(service.replaceWeek(List.of(block(DayOfWeek.TUESDAY, "14:00", "15:00")), false, EventActor.MASTER)).hasSize(1);
     }
 }

@@ -106,6 +106,12 @@ Service events (entity type `service`, written by `ServiceCatalog`):
 - `service_created` — snapshot: `name`, `duration_min`, `price` (plain decimal string), `sort_order`
 - `service_updated`, `service_deactivated` — change payload over `name`, `duration_min`, `price`, `sort_order`, `active`; a change that turns `active` from true to false is `service_deactivated`, any other effective change (reactivation included) is `service_updated`
 
+Schedule and settings events (written in the changing transaction, after the change is flushed; a refused change writes none):
+- `working_hours_replaced` — entity-less (`entity_id` null); `from`/`to` are the whole old and new week as `[{"weekday": 1, "start": "09:00", "end": "13:00"}, ...]` ordered by weekday and start, `forced` (the `force` flag of the request), `conflict_ids` (confirmed appointments left outside the new week); an identical week writes no event
+- `time_off_created` — entity type `time_off`; `start`, `end` (ISO-8601 UTC), `forced`, `conflict_ids` (confirmed appointments inside the period); the free-text reason is not copied
+- `time_off_deleted` — entity type `time_off`; `start`, `end`
+- `settings_changed` — entity-less; change payload over `time_zone`, `address` (named only, personal) and `bot_enabled`
+
 Change payload: `{"changed": [field, ...], "from": {...}, "to": {...}}`, snake_case field names. `from`/`to` hold values only for fields that are not personal data; personal fields (client `name` and `notes`) appear in `changed` only, because events are append-only and outlive the rows, so personal text copied there could never be erased. A change that changes nothing writes no event. Some events are not about a single entity and are stored with `entity_id` null (`DomainEventRecorder.record(type, actor, payload)`).
 
 The actor comes from the token role (`master` or `admin`); the bot will use `bot`. A refused action writes no event.
