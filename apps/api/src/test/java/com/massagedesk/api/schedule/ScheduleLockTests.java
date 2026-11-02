@@ -136,7 +136,7 @@ class ScheduleLockTests {
                     Instant.parse("2026-11-03T19:00:00Z"), Instant.parse("2026-11-04T19:00:00Z"), null, false);
             case "workingHours" -> workingHours.replaceWeek(List.of(
                     new Block(DayOfWeek.TUESDAY, LocalTime.of(10, 0), LocalTime.of(16, 0)),
-                    new Block(DayOfWeek.WEDNESDAY, LocalTime.of(10, 0), LocalTime.of(12, 0))));
+                    new Block(DayOfWeek.WEDNESDAY, LocalTime.of(10, 0), LocalTime.of(12, 0))), false);
             default -> throw new IllegalArgumentException(operation);
         }
     }

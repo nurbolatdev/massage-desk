@@ -476,6 +476,8 @@ export interface components {
         WorkingHoursRequest: {
             /** @description every block of the week, at most 50 */
             blocks: components["schemas"]["WorkingBlock"][];
+            /** @description store even if confirmed appointments conflict; the appointments are kept */
+            force?: boolean;
         };
         WorkingHoursResponse: {
             blocks: components["schemas"]["WorkingBlock"][];
@@ -1276,6 +1278,15 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description confirmed appointments are outside the new hours; send force to store anyway */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ScheduleConflictProblem"];
                 };
             };
             /** @description a block ends before it starts, or blocks of one day overlap or touch */

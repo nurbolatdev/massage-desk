@@ -1,5 +1,6 @@
 package com.massagedesk.api.schedule;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -8,7 +9,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.massagedesk.api.TestcontainersConfiguration;
+import com.massagedesk.api.clients.Client;
+import com.massagedesk.api.clients.ClientRepository;
 import com.massagedesk.api.security.StaffRole;
+import java.math.BigDecimal;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,6 +46,12 @@ class WorkingHoursControllerTests {
 
     @Autowired
     private JdbcTemplate jdbc;
+
+    @Autowired
+    private ClientRepository clients;
+
+    @Autowired
+    private MassageServiceRepository services;
 
     @BeforeEach
     void clearHours() {
@@ -171,5 +182,142 @@ class WorkingHoursControllerTests {
     @Test
     void noTokenIsUnauthorized() throws Exception {
         mvc.perform(get("/working-hours")).andExpect(status().isUnauthorized());
+    }
+
+    private static final String TUESDAY_APPOINTMENT_START = "2026-11-03 14:00+05";
+    private static final String TUESDAY_APPOINTMENT_END = "2026-11-03 15:00+05";
+
+    private static String week(String... blocks) {
+        return "{\"blocks\":[" + String.join(",", blocks) + "]}";
+    }
+
+    private static String forced(String json) {
+        return json.substring(0, json.length() - 1) + ",\"force\":true}";
+    }
+
+    private UUID appointment(String phone, String name, String start, String end, String status) {
+        Client client = clients.saveAndFlush(new Client(phone, name));
+        MassageService service = services.saveAndFlush(
+                new MassageService("Hours conflict service", 60, new BigDecimal("1000.00"), 1));
+        return jdbc.queryForObject("""
+                insert into appointments (client_id, service_id, period, status)
+                values (?, ?, tstzrange(cast(? as timestamptz), cast(? as timestamptz)), ?)
+                returning id
+                """, UUID.class, client.getId(), service.getId(), start, end, status);
+    }
+
+    private UUID tuesdayAppointment() {
+        return appointment("+998900000865", "Hours client", TUESDAY_APPOINTMENT_START, TUESDAY_APPOINTMENT_END,
+                "confirmed");
+    }
+
+    private void storeTuesday(String start, String end) throws Exception {
+        putHours(week(block(2, start, end))).andExpect(status().isOk());
+    }
+
+    private String storedWeek() {
+        return jdbc.queryForObject("""
+                select coalesce(string_agg(weekday || ' ' || start_time || '-' || end_time, ',' order by weekday,
+                start_time), '') from working_hours
+                """, String.class);
+    }
+
+    @Test
+    void hoursThatLeaveAnAppointmentOutAskForConfirmation() throws Exception {
+        UUID id = tuesdayAppointment();
+        storeTuesday("10:00", "16:00");
+
+        putHours(week(block(2, "10:00", "13:00")))
+                .andExpect(status().isConflict())
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+                .andExpect(jsonPath("$.detail").value("confirmed appointments are outside the new working hours"))
+                .andExpect(jsonPath("$.conflicts.length()").value(1))
+                .andExpect(jsonPath("$.conflicts[0].appointmentId").value(id.toString()))
+                .andExpect(jsonPath("$.conflicts[0].clientName").value("Hours client"))
+                .andExpect(jsonPath("$.conflicts[0].start").value("2026-11-03T14:00:00+05:00"))
+                .andExpect(jsonPath("$.conflicts[0].end").value("2026-11-03T15:00:00+05:00"))
+                .andExpect(jsonPath("$.properties").doesNotExist());
+        assertThat(storedWeek()).isEqualTo("2 10:00:00-16:00:00");
+    }
+
+    @Test
+    void hoursThatStillCoverTheAppointmentAreStored() throws Exception {
+        tuesdayAppointment();
+        storeTuesday("10:00", "16:00");
+
+        putHours(week(block(2, "10:00", "15:00"))).andExpect(status().isOk());
+    }
+
+    @Test
+    void hoursThatCoverTheAppointmentOnlyPartlyAreRefused() throws Exception {
+        tuesdayAppointment();
+
+        putHours(week(block(2, "14:30", "18:00"))).andExpect(status().isConflict());
+    }
+
+    @Test
+    void aBreakInsideTheAppointmentIsRefused() throws Exception {
+        tuesdayAppointment();
+
+        putHours(week(block(2, "10:00", "14:30"), block(2, "14:45", "18:00"))).andExpect(status().isConflict());
+    }
+
+    @Test
+    void forceStoresTheWeekAndKeepsTheAppointment() throws Exception {
+        UUID id = tuesdayAppointment();
+
+        putHours(forced(week(block(2, "10:00", "13:00")))).andExpect(status().isOk());
+
+        assertThat(storedWeek()).isEqualTo("2 10:00:00-13:00:00");
+        assertThat(jdbc.queryForObject("select status from appointments where id = ?", String.class, id))
+                .isEqualTo("confirmed");
+    }
+
+    @Test
+    void forceFalseStillAsksForConfirmation() throws Exception {
+        tuesdayAppointment();
+        String json = week(block(2, "10:00", "13:00"));
+
+        putHours(json.substring(0, json.length() - 1) + ",\"force\":false}").andExpect(status().isConflict());
+    }
+
+    @Test
+    void anAppointmentBeyondTheHorizonIsNotReported() throws Exception {
+        appointment("+998900000865", "Hours client", "2027-01-04 14:00+05", "2027-01-04 15:00+05", "confirmed");
+
+        putHours(week(block(2, "10:00", "13:00"))).andExpect(status().isOk());
+    }
+
+    @Test
+    void anAppointmentThatAlreadyStartedIsNotReported() throws Exception {
+        appointment("+998900000865", "Hours client", "2026-11-02 10:00+05", "2026-11-02 11:00+05", "confirmed");
+
+        putHours(week(block(2, "10:00", "13:00"))).andExpect(status().isOk());
+    }
+
+    @Test
+    void aCancelledAppointmentIsNotReported() throws Exception {
+        appointment("+998900000865", "Hours client", TUESDAY_APPOINTMENT_START, TUESDAY_APPOINTMENT_END,
+                "cancelled");
+
+        putHours(week(block(2, "10:00", "13:00"))).andExpect(status().isOk());
+    }
+
+    @Test
+    void theMastersTimeZoneDecidesTheLocalDay() throws Exception {
+        jdbc.update("update settings set time_zone = 'America/New_York'");
+        appointment("+998900000866", "Hours client", "2026-11-03 21:00-05", "2026-11-03 22:00-05", "confirmed");
+
+        putHours(week(block(2, "21:00", "23:00"))).andExpect(status().isOk());
+        putHours(week(block(2, "10:00", "13:00"))).andExpect(status().isConflict());
+    }
+
+    @Test
+    void invalidHoursAreRefusedBeforeConflictsAreChecked() throws Exception {
+        tuesdayAppointment();
+
+        putHours(week(block(2, "13:00", "09:00")))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.detail").value("block must start before it ends"));
     }
 }

@@ -62,7 +62,7 @@ class WorkingHoursConcurrencyTests {
                 futures.add(pool.submit(() -> {
                     start.await();
                     return service.replaceWeek(List.of(new Block(
-                            DayOfWeek.TUESDAY, LocalTime.parse(times[0]), LocalTime.parse(times[1]))));
+                            DayOfWeek.TUESDAY, LocalTime.parse(times[0]), LocalTime.parse(times[1]))), false);
                 }));
             }
             start.countDown();

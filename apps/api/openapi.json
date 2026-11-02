@@ -982,6 +982,16 @@
             },
             "description" : "missing or invalid field"
           },
+          "409" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ScheduleConflictProblem"
+                }
+              }
+            },
+            "description" : "confirmed appointments are outside the new hours; send force to store anyway"
+          },
           "422" : {
             "content" : {
               "application/problem+json" : {
@@ -1447,6 +1457,10 @@
             },
             "maxItems" : 50,
             "minItems" : 0
+          },
+          "force" : {
+            "type" : "boolean",
+            "description" : "store even if confirmed appointments conflict; the appointments are kept"
           }
         },
         "required" : [ "blocks" ]

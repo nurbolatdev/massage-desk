@@ -168,6 +168,19 @@ describe("generated /working-hours types", () => {
 
   it("types the blocks of the request", () => {
     expectTypeOf<PutBody["blocks"][number]>().toEqualTypeOf<Block>();
+    expectTypeOf<PutBody["force"]>().toEqualTypeOf<boolean | undefined>();
+    expect(true).toBe(true);
+  });
+
+  it("types the 409 conflicts", () => {
+    type Conflict = paths["/working-hours"]["put"]["responses"][409]["content"]["application/problem+json"];
+    expectTypeOf<Conflict["conflicts"][number]>().toEqualTypeOf<{
+      appointmentId: string;
+      clientName: string | null;
+      start: string;
+      end: string;
+    }>();
+    expectTypeOf<Conflict["detail"]>().toEqualTypeOf<string>();
     expect(true).toBe(true);
   });
 });

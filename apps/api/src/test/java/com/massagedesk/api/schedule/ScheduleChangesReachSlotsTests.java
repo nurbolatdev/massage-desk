@@ -125,6 +125,11 @@ class ScheduleChangesReachSlotsTests {
         sendJson(put("/working-hours"), "{\"blocks\":" + blocksJson + "}").andExpect(status().isOk());
     }
 
+    private void putHoursForced(String blocksJson) throws Exception {
+        sendJson(put("/working-hours"), "{\"blocks\":" + blocksJson + ",\"force\":true}")
+                .andExpect(status().isOk());
+    }
+
     private String tuesday(String start, String end) {
         return "{\"weekday\":2,\"start\":\"" + start + "\",\"end\":\"" + end + "\"}";
     }
@@ -151,7 +156,8 @@ class ScheduleChangesReachSlotsTests {
         bookingRefused(client, service, "2026-11-03T10:00:00+05:00");
         book(client, service, "2026-11-03T14:00:00+05:00");
 
-        putHours("[]");
+        sendJson(put("/working-hours"), "{\"blocks\":[]}").andExpect(status().isConflict());
+        putHoursForced("[]");
         slots(service).andExpect(status().isOk()).andExpect(jsonPath("$.starts", empty()));
     }
 

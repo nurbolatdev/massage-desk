@@ -144,9 +144,15 @@ There is no delete: appointments refer to services, so a service is deactivated 
 - A weekday without blocks is a day off every week. `{"blocks":[]}` makes every day a day off.
 - A break is a gap between two blocks of one day. Blocks of one day must neither overlap nor touch (`09:00-13:00` and `13:00-17:00` must be sent as one block `09:00-17:00`).
 - The week is replaced atomically: either all blocks are stored or none. At most 50 blocks.
-- The new hours apply to `/slots` and to new appointments at once. Appointments already made are not touched, also when they fall outside the new hours.
+- The new hours apply to `/slots` and to new appointments at once. Appointments already made are never changed or cancelled.
+- Optional `force` (boolean, default `false`). If confirmed appointments that start from now within the next 60 days do not fit inside one block of the new week, the request answers `409` with `conflicts` (`appointmentId`, `clientName` or `null`, `start`, `end` in the master's offset, ordered by start), and the old week stays. With `"force": true` the week is stored anyway. Appointments that have already started and appointments further than 60 days ahead are not checked.
+
+```json
+{"blocks":[{"weekday":2,"start":"10:00","end":"13:00"}],"force":true}
+```
 
 - `400` (`application/problem+json`): missing or invalid field.
+- `409` (`application/problem+json`): `confirmed appointments are outside the new working hours`, with `conflicts`.
 - `422` (`application/problem+json`): `block must start before it ends`; `blocks of one day must not overlap or touch`.
 
 ## Time off
