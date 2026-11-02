@@ -11,3 +11,8 @@ spring:
   docker:
     compose:
       enabled: false
+
+app:
+  supabase:
+    # required: no default, startup fails without it
+    url: ${SUPABASE_URL}

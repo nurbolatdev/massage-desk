@@ -14,6 +14,14 @@ spring:
   docker:
     compose:
       lifecycle-management: start-only
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${app.supabase.url}/auth/v1
+          jwk-set-uri: ${app.supabase.url}/auth/v1/.well-known/jwks.json
+          audiences: authenticated
+          jws-algorithms: ES256,RS256
 
 server:
   port: ${PORT:8080}
@@ -33,6 +41,9 @@ management:
         enabled: true
 
 app:
+  supabase:
+    # default is the local Supabase CLI address; dev and prod set SUPABASE_URL
+    url: ${SUPABASE_URL:http://127.0.0.1:54321}
   whatsapp:
     verify-token: ${WHATSAPP_VERIFY_TOKEN:}
 
