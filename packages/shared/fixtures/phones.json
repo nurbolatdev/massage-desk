@@ -11,6 +11,10 @@
     { "input": "+998 90 123 45 6", "expected": { "UZ": null, "KZ": null } },
     { "input": "", "expected": { "UZ": null, "KZ": null } },
     { "input": "привет", "expected": { "UZ": null, "KZ": null } },
-    { "input": "٩٩٨٩٠١٢٣٤٥٦٧", "expected": { "UZ": "+998901234567", "KZ": null } }
+    { "input": "٩٩٨٩٠١٢٣٤٥٦٧", "expected": { "UZ": "+998901234567", "KZ": null } },
+    { "input": "+998 90 123 ABCD", "expected": { "UZ": null, "KZ": null } },
+    { "input": "+998 90 FLOWERS", "expected": { "UZ": null, "KZ": null } },
+    { "input": "+998 90 123 45 67 ext 12", "expected": { "UZ": null, "KZ": null } },
+    { "input": "phone: +998901234567", "expected": { "UZ": null, "KZ": null } }
   ]
 }

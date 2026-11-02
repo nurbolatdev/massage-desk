@@ -27,8 +27,10 @@ class PhoneNumbersTests {
         JsonNode cases = JsonMapper.builder().build().readTree(Files.readString(FIXTURE)).get("cases");
         List<Arguments> result = new ArrayList<>();
         for (JsonNode c : cases) {
+            JsonNode expectedByRegion = c.get("expected");
+            assertThat(expectedByRegion.propertyNames()).containsExactlyInAnyOrder("UZ", "KZ");
             for (String region : List.of("UZ", "KZ")) {
-                JsonNode expected = c.get("expected").get(region);
+                JsonNode expected = expectedByRegion.get(region);
                 result.add(Arguments.of(c.get("input").asString(), region, expected.isNull() ? null : expected.asString()));
             }
         }

@@ -17,21 +17,28 @@ public final class PhoneNumbers {
 
     private static final Pattern E164 = Pattern.compile("^\\+[0-9]{9,15}$");
 
+    /** Digits (any script), plain spaces and the separators {@code + - ( ) .}; nothing else. */
+    private static final Pattern ALLOWED_CHARACTERS = Pattern.compile("^[\\p{Nd} +\\-().]+$");
+
     private PhoneNumbers() {
     }
 
     /**
      * Parses the input (read in {@code defaultRegion} when it has no plus sign), accepts only valid
-     * numbers and returns them in E.164 form.
+     * numbers and returns them in E.164 form. Input with letters or other characters, and numbers
+     * with an extension, are refused.
      */
     public static Optional<String> normalize(String input, String defaultRegion) {
         if (input == null || input.isBlank()) {
             return Optional.empty();
         }
+        if (!ALLOWED_CHARACTERS.matcher(input).matches()) {
+            return Optional.empty();
+        }
         PhoneNumberUtil util = PhoneNumberUtil.getInstance();
         try {
             PhoneNumber number = util.parse(input, defaultRegion);
-            if (!util.isValidNumber(number)) {
+            if (number.hasExtension() || !util.isValidNumber(number)) {
                 return Optional.empty();
             }
             String e164 = util.format(number, PhoneNumberUtil.PhoneNumberFormat.E164);

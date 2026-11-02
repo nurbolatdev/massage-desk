@@ -7,7 +7,7 @@ const Fixture = z.object({
   cases: z.array(
     z.object({
       input: z.string(),
-      expected: z.object({ UZ: z.string().nullable(), KZ: z.string().nullable() }),
+      expected: z.strictObject({ UZ: z.string().nullable(), KZ: z.string().nullable() }),
     }),
   ),
 });
