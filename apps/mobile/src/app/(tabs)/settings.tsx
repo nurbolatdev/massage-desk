@@ -23,9 +23,12 @@ export default function SettingsScreen() {
   const confirm = async () => {
     setBusy(true);
     setError(undefined);
-    const ok = await signOut();
-    setBusy(false);
-    if (!ok) setError(SIGN_OUT_FAILED);
+    try {
+      const ok = await signOut();
+      if (!ok) setError(SIGN_OUT_FAILED);
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (

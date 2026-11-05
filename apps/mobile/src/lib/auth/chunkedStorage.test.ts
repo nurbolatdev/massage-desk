@@ -92,4 +92,15 @@ describe("createChunkedStorage", () => {
     data.delete(`${KEY}.n`);
     expect(await storage.getItem(KEY)).toBeNull();
   });
+
+  it("returns null when the store throws on read", async () => {
+    const { store } = createFakeStore();
+    const failing: ChunkStore = {
+      ...store,
+      getItemAsync: async () => {
+        throw new Error("keystore unavailable");
+      },
+    };
+    expect(await createChunkedStorage(failing).getItem(KEY)).toBeNull();
+  });
 });

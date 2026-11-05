@@ -15,6 +15,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const submitting = useRef(false);
   const passwordRef = useRef<ComponentRef<typeof TextInput>>(null);
 
   function onEmailChange(text: string) {
@@ -28,7 +29,7 @@ export default function LoginScreen() {
   }
 
   async function submit() {
-    if (busy) {
+    if (submitting.current) {
       return;
     }
     const checked = validateSignIn(email, password);
@@ -37,6 +38,7 @@ export default function LoginScreen() {
       return;
     }
     setError(null);
+    submitting.current = true;
     setBusy(true);
     try {
       const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -45,11 +47,12 @@ export default function LoginScreen() {
       });
       if (signInError) {
         setError(signInErrorMessage(signInError));
-        setBusy(false);
       }
       // On success the route guard switches to the tabs; nothing else to do here.
     } catch (thrown) {
       setError(signInErrorMessage(thrown));
+    } finally {
+      submitting.current = false;
       setBusy(false);
     }
   }

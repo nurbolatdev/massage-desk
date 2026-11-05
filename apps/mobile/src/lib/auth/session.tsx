@@ -10,9 +10,8 @@ import {
 } from "react";
 import { AppState } from "react-native";
 
+import { initialSessionState, isLocalSignOutDone, type SessionState, type Status } from "./sessionLogic";
 import { supabase } from "./supabase";
-
-type Status = "loading" | "signedIn" | "signedOut";
 
 type SessionValue = {
   status: Status;
@@ -28,16 +27,23 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let active = true;
-    const apply = (next: Session | null) => {
-      setSession(next);
-      setStatus(next ? "signedIn" : "signedOut");
+    const apply = (next: SessionState) => {
+      setSession(next.session);
+      setStatus(next.status);
     };
 
-    supabase.auth.getSession().then(({ data }) => {
-      if (active) apply(data.session);
-    });
-    const { data } = supabase.auth.onAuthStateChange((_event, next) => {
-      if (active) apply(next);
+    supabase.auth
+      .getSession()
+      .then(({ data, error }) => {
+        if (active) apply(initialSessionState(data.session, error));
+      })
+      .catch(() => {
+        if (active) apply(initialSessionState(null, null));
+      });
+    // The first state comes from getSession(); INITIAL_SESSION is ignored on purpose.
+    const { data } = supabase.auth.onAuthStateChange((event, next) => {
+      if (!active || event === "INITIAL_SESSION") return;
+      apply(initialSessionState(next, null));
     });
 
     return () => {
@@ -63,8 +69,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = useCallback(async () => {
-    const { error } = await supabase.auth.signOut({ scope: "local" });
-    return error === null;
+    try {
+      const { error } = await supabase.auth.signOut({ scope: "local" });
+      if (isLocalSignOutDone(error)) return true;
+      const { data } = await supabase.auth.getSession();
+      return data.session === null;
+    } catch {
+      return false;
+    }
   }, []);
 
   const value = useMemo(

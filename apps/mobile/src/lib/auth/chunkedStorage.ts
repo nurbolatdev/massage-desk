@@ -52,15 +52,20 @@ async function removeChunks(store: ChunkStore, key: string, from: number, to: nu
 export function createChunkedStorage(store: ChunkStore): SupportedStorage {
   return {
     async getItem(key) {
-      const count = await readCount(store, key);
-      if (count === null) return null;
-      let value = "";
-      for (let i = 0; i < count; i++) {
-        const chunk = await store.getItemAsync(`${key}.${i}`);
-        if (chunk === null) return null;
-        value += chunk;
+      try {
+        const count = await readCount(store, key);
+        if (count === null) return null;
+        let value = "";
+        for (let i = 0; i < count; i++) {
+          const chunk = await store.getItemAsync(`${key}.${i}`);
+          if (chunk === null) return null;
+          value += chunk;
+        }
+        return value;
+      } catch {
+        // An unreadable store means "signed out", never a crash.
+        return null;
       }
-      return value;
     },
 
     async setItem(key, value) {

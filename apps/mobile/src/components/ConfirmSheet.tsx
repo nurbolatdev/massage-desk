@@ -29,15 +29,18 @@ export function ConfirmSheet({
   error,
 }: Props) {
   const insets = useSafeAreaInsets();
+  const cancel = () => {
+    if (!busy) onCancel();
+  };
 
   return (
-    <Modal transparent animationType="slide" visible={visible} onRequestClose={onCancel} statusBarTranslucent>
+    <Modal transparent animationType="slide" visible={visible} onRequestClose={cancel} statusBarTranslucent>
       <View style={styles.root}>
         <Pressable
           accessibilityLabel={cancelLabel}
           accessibilityRole="button"
           disabled={busy}
-          onPress={onCancel}
+          onPress={cancel}
           style={styles.scrim}
         />
         <View style={[styles.sheet, { paddingBottom: space[28] + insets.bottom }]}>
@@ -48,7 +51,7 @@ export function ConfirmSheet({
             <Text style={styles.text}>{text}</Text>
             {error ? <ErrorBanner message={error} /> : null}
             <Button label={confirmLabel} onPress={onConfirm} disabled={busy} />
-            <Button label={cancelLabel} onPress={onCancel} variant="soft" disabled={busy} />
+            <Button label={cancelLabel} onPress={cancel} variant="soft" disabled={busy} />
           </ScrollView>
         </View>
       </View>
