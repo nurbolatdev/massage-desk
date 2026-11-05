@@ -194,6 +194,10 @@ The master runs the schedule in the app; admin panel basics; event log; deploy a
   1. `feat(mobile): today schedule from the api with loading and offline states`
   1. `feat(mobile): realtime updates for appointments`
   1. `test(mobile): data layer tests` (jest-expo is set up in M1-9)
+  1. `docs(mobile): data layer, realtime and offline`
+  1. `fix(mobile): crash-free online hook and disabled write button offline`
+  1. `refactor(mobile): review cleanups for the data layer`
+  1. `fix(mobile): legible disabled button on a light card`
 
 ### M1-11 · Today on real data
 

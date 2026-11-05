@@ -6,10 +6,15 @@ interface Props {
   onPress: () => void;
   variant?: "primary" | "secondary";
   disabled?: boolean;
+  /** Background the button sits on: "onPrimary" = green card, "onSurface" = white card (disabled look only). */
+  tone?: "onPrimary" | "onSurface";
 }
 
-export function BigButton({ label, onPress, variant = "primary", disabled = false }: Props) {
+export function BigButton({ label, onPress, variant = "primary", disabled = false, tone = "onSurface" }: Props) {
   const primary = variant === "primary";
+  const onPrimaryCard = tone === "onPrimary";
+  const disabledStyle = onPrimaryCard ? styles.disabledOnPrimary : styles.disabledOnSurface;
+  const disabledText = onPrimaryCard ? colors.onPrimaryMuted : colors.muted;
   return (
     <Pressable
       accessibilityRole="button"
@@ -19,14 +24,14 @@ export function BigButton({ label, onPress, variant = "primary", disabled = fals
       style={({ pressed }) => [
         styles.base,
         primary ? styles.primary : styles.secondary,
-        disabled && styles.disabled,
+        disabled && disabledStyle,
         pressed && !disabled && styles.pressed,
       ]}
     >
       <Text
         style={[
           styles.label,
-          { color: disabled ? colors.onPrimaryMuted : primary ? colors.onPrimary : colors.primary },
+          { color: disabled ? disabledText : primary ? colors.onPrimary : colors.primary },
         ]}
       >
         {label}
@@ -46,7 +51,8 @@ const styles = StyleSheet.create({
   },
   primary: { backgroundColor: colors.primary },
   secondary: { backgroundColor: colors.surface, borderWidth: 2, borderColor: colors.primary },
-  disabled: { backgroundColor: "transparent", borderWidth: 2, borderColor: colors.stoneLight },
+  disabledOnPrimary: { backgroundColor: colors.primary, borderWidth: 2, borderColor: colors.stoneLight },
+  disabledOnSurface: { backgroundColor: colors.surface, borderWidth: 2, borderColor: colors.borderStrong },
   pressed: { opacity: 0.8 },
   label: { fontSize: fontSize.bodyLarge, fontWeight: "600" },
 });
