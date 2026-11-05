@@ -22,6 +22,15 @@ export function connectFocusManager(): () => void {
   return () => subscription.remove();
 }
 
+// onlineManager methods use private fields, so they must be called on the manager itself.
+export function subscribeOnline(listener: () => void): () => void {
+  return onlineManager.subscribe(listener);
+}
+
+export function getOnlineSnapshot(): boolean {
+  return onlineManager.isOnline();
+}
+
 export function useOnline(): boolean {
-  return useSyncExternalStore(onlineManager.subscribe, onlineManager.isOnline);
+  return useSyncExternalStore(subscribeOnline, getOnlineSnapshot);
 }

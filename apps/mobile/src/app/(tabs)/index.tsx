@@ -59,7 +59,7 @@ export default function TodayScreen() {
                 <Text style={styles.nextService}>{next.serviceName}</Text>
                 <View style={styles.actions}>
                   <BigButton label="Позвонить" onPress={() => void callPhone(next.clientPhone)} />
-                  <BigButton label="Написать" variant="secondary" onPress={() => void openWhatsApp(next.clientPhone)} />
+                  <BigButton label="Написать" variant="secondary" disabled={!online} onPress={() => void openWhatsApp(next.clientPhone)} />
                 </View>
               </View>
             ) : (
