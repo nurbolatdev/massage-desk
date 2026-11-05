@@ -8,6 +8,8 @@ import { SessionProvider, useSession } from "@/lib/auth/session";
 function RootNavigator() {
   const { status } = useSession();
 
+  // While loading both guards are false on purpose: nothing renders under the LaunchScreen overlay
+  // (the dev warning "All routes in this navigator are protected" is expected).
   return (
     <>
       <Stack screenOptions={{ headerShown: false }}>

@@ -10,7 +10,7 @@ import {
 } from "react";
 import { AppState } from "react-native";
 
-import { initialSessionState, isLocalSignOutDone, type SessionState, type Status } from "./sessionLogic";
+import { sessionStateFrom, isLocalSignOutDone, type SessionState, type Status } from "./sessionLogic";
 import { supabase } from "./supabase";
 
 type SessionValue = {
@@ -35,15 +35,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     supabase.auth
       .getSession()
       .then(({ data, error }) => {
-        if (active) apply(initialSessionState(data.session, error));
+        if (active) apply(sessionStateFrom(data.session, error));
       })
       .catch(() => {
-        if (active) apply(initialSessionState(null, null));
+        if (active) apply(sessionStateFrom(null, null));
       });
     // The first state comes from getSession(); INITIAL_SESSION is ignored on purpose.
     const { data } = supabase.auth.onAuthStateChange((event, next) => {
       if (!active || event === "INITIAL_SESSION") return;
-      apply(initialSessionState(next, null));
+      apply(sessionStateFrom(next, null));
     });
 
     return () => {
@@ -87,6 +87,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   return <SessionContext value={value}>{children}</SessionContext>;
 }
 
+/** `status` "signedIn" with `session: null` means offline, token not yet refreshed. */
 export function useSession(): SessionValue {
   const value = useContext(SessionContext);
   if (!value) {

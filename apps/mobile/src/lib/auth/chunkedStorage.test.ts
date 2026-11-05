@@ -1,4 +1,4 @@
-import { describe, expect, it, test } from "@jest/globals";
+import { describe, expect, it } from "@jest/globals";
 import { createChunkedStorage, type ChunkStore } from "./chunkedStorage";
 
 const MAX_BYTES = 2048;

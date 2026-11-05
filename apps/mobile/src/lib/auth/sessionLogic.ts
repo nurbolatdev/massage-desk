@@ -2,6 +2,7 @@ import { isAuthRetryableFetchError, type AuthError, type Session } from "@supaba
 
 export type Status = "loading" | "signedIn" | "signedOut";
 
+/** `signedIn` with `session: null` means offline with the token not yet refreshed; the API client must handle it. */
 export type SessionState = { status: Exclude<Status, "loading">; session: Session | null };
 
 /**
@@ -9,7 +10,7 @@ export type SessionState = { status: Exclude<Status, "loading">; session: Sessio
  * refreshed because the device is offline keeps the master signed in: later
  * `TOKEN_REFRESHED` or `SIGNED_OUT` events settle it.
  */
-export function initialSessionState(session: Session | null, error: AuthError | null): SessionState {
+export function sessionStateFrom(session: Session | null, error: AuthError | null): SessionState {
   if (session) return { status: "signedIn", session };
   if (error && isAuthRetryableFetchError(error)) return { status: "signedIn", session: null };
   return { status: "signedOut", session: null };
