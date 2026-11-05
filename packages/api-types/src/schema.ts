@@ -11,7 +11,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** Appointments that touch the local days from..to */
+        get: operations["listAppointments"];
         put?: never;
         /** Book a service for a client */
         post: operations["createAppointment"];
@@ -283,6 +284,32 @@ export interface components {
              */
             start: string;
         };
+        AppointmentListItem: {
+            /** Format: uuid */
+            clientId: string;
+            /** @description null when the client has no name */
+            clientName: string | null;
+            clientPhone: string;
+            /**
+             * Format: date-time
+             * @description ISO-8601 with the master's UTC offset
+             */
+            end: string;
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            serviceId: string;
+            serviceName: string;
+            /** @enum {string} */
+            source: "bot" | "manual";
+            /**
+             * Format: date-time
+             * @description ISO-8601 with the master's UTC offset
+             */
+            start: string;
+            /** @enum {string} */
+            status: "confirmed" | "cancelled" | "no_show" | "done";
+        };
         AppointmentResponse: {
             /** Format: uuid */
             clientId: string;
@@ -490,6 +517,40 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    listAppointments: {
+        parameters: {
+            query: {
+                /** @description first local day, YYYY-MM-DD, inclusive */
+                from: string;
+                /** @description last local day, YYYY-MM-DD, inclusive */
+                to: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description appointments of all statuses ordered by start */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppointmentListItem"][];
+                };
+            };
+            /** @description missing or invalid date, or range too long */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+        };
+    };
     createAppointment: {
         parameters: {
             query?: never;

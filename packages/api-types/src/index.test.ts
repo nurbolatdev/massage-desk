@@ -59,6 +59,32 @@ describe("generated /appointments types", () => {
   });
 });
 
+describe("generated GET /appointments types", () => {
+  type ListGet = paths["/appointments"]["get"];
+  type Item = components["schemas"]["AppointmentListItem"];
+  type BadRequest = ListGet["responses"][400]["content"]["application/problem+json"];
+
+  it("types the required list window", () => {
+    expectTypeOf<ListGet["parameters"]["query"]["from"]>().toEqualTypeOf<string>();
+    expectTypeOf<ListGet["parameters"]["query"]["to"]>().toEqualTypeOf<string>();
+    expect(true).toBe(true);
+  });
+
+  it("types a list item with a nullable client name", () => {
+    expectTypeOf<Item["clientName"]>().toEqualTypeOf<string | null>();
+    expectTypeOf<Item["clientPhone"]>().toEqualTypeOf<string>();
+    expectTypeOf<Item["serviceName"]>().toEqualTypeOf<string>();
+    expectTypeOf<Item["start"]>().toEqualTypeOf<string>();
+    expectTypeOf<Item["status"]>().toEqualTypeOf<"confirmed" | "cancelled" | "no_show" | "done">();
+    expect(true).toBe(true);
+  });
+
+  it("types the 400 as ApiProblem", () => {
+    expectTypeOf<BadRequest>().toEqualTypeOf<ApiProblem>();
+    expect(true).toBe(true);
+  });
+});
+
 describe("generated appointment command types", () => {
   type Status = "confirmed" | "cancelled" | "no_show" | "done";
   type Reschedule = paths["/appointments/{id}/reschedule"]["post"];

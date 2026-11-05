@@ -68,6 +68,7 @@ insert into profiles (user_id, role, display_name) values ('<auth user id>', 'ma
 | GET | `/webhook/whatsapp` | ✅ M0 | Meta webhook verification |
 | POST | `/webhook/whatsapp` | M2 | Incoming messages |
 | GET | `/slots?serviceId&day` | ✅ M1 | Free start times for a service on a day |
+| GET | `/appointments?from&to` | ✅ M1 | Appointments touching the local days |
 | POST | `/appointments` | ✅ M1 | Create; `409` when the time is taken |
 | POST | `/appointments/{id}/reschedule` | ✅ M1 | Move, keeping the booked length |
 | POST | `/appointments/{id}/cancel` | ✅ M1 | Cancel; frees the time |
@@ -125,6 +126,18 @@ Response `201`:
 - `404` (`application/problem+json`): the client does not exist, or the service does not exist or is inactive.
 - `409` (`application/problem+json`): the time is already booked.
 - `422` (`application/problem+json`): the time is outside working hours, in time off or in the past.
+
+### List
+
+`GET /appointments?from=2026-11-03&to=2026-11-03` returns the appointments that touch the local days `from..to` (both inclusive, in the master's time zone), as an array:
+
+```json
+[{"id":"<uuid>","clientId":"<uuid>","clientName":"Aigul","clientPhone":"+998900000801","serviceId":"<uuid>","serviceName":"Classic","start":"2026-11-03T10:00:00+05:00","end":"2026-11-03T11:00:00+05:00","status":"confirmed","source":"bot"}]
+```
+
+All statuses are returned (`confirmed`, `cancelled`, `no_show`, `done`), ordered by start. An appointment that crosses midnight is listed for both days. `clientName` may be `null`. The range is at most 62 days.
+
+- `400` (`application/problem+json`, `INVALID_REQUEST`): a date is missing or invalid; `dates must be within 2000-01-01..2100-12-31`; `from must not be after to`; `range must be at most 62 days`.
 
 ### Reschedule, cancel and no-show
 
