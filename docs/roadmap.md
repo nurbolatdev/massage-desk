@@ -171,9 +171,14 @@ The master runs the schedule in the app; admin panel basics; event log; deploy a
 - **Pull request:** `feat(mobile): sign-in and session`
 - **Depends on:** M1-4
 - **Commits:**
+  1. `test(mobile): jest-expo setup`
   1. `feat(mobile): supabase auth client with secure storage`
+  1. `feat(mobile): design tokens, button and brand logo`
+  1. `feat(mobile): text field and sign-in error messages`
   1. `feat(mobile): sign-in screen`
   1. `feat(mobile): guard routes without a session`
+  1. `feat(mobile): sign out with confirmation`
+  1. `docs(mobile): sign-in, session and tests`
 
 ### M1-10 · Data layer, realtime, offline
 
@@ -184,7 +189,7 @@ The master runs the schedule in the app; admin panel basics; event log; deploy a
   1. `feat(mobile): api client from generated types`
   1. `feat(mobile): query cache persisted for offline`
   1. `feat(mobile): realtime updates for appointments`
-  1. `test(mobile): jest-expo setup and first tests`
+  1. `test(mobile): data layer tests` (jest-expo is set up in M1-9)
 
 ### M1-11 · Today on real data
 
