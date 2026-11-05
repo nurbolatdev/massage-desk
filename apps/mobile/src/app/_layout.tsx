@@ -4,6 +4,7 @@ import { StatusBar } from "expo-status-bar";
 
 import { LaunchScreen } from "@/components/LaunchScreen";
 import { SessionProvider, useSession } from "@/lib/auth/session";
+import { QueryProvider } from "@/lib/query/QueryProvider";
 
 function RootNavigator() {
   const { status } = useSession();
@@ -32,8 +33,10 @@ function RootNavigator() {
 export default function RootLayout() {
   return (
     <SessionProvider>
-      <StatusBar style="dark" />
-      <RootNavigator />
+      <QueryProvider>
+        <StatusBar style="dark" />
+        <RootNavigator />
+      </QueryProvider>
     </SessionProvider>
   );
 }
