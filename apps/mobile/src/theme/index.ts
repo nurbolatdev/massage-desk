@@ -8,6 +8,7 @@ export const colors = {
   textMuted: "#5C5C5C",
   primary: "#1F6F5C",
   onPrimary: "#FFFFFF",
+  onPrimaryMuted: "#CDEDE3",
   confirmed: "#2E7D32",
   attention: "#E07A00",
   cancelled: "#9E9E9E",

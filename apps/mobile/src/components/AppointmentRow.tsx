@@ -11,12 +11,12 @@ const statusColor: Record<Appointment["status"], string> = {
   no_show: colors.cancelled,
 };
 
-export function AppointmentRow({ appointment }: { appointment: Appointment }) {
+export function AppointmentRow({ appointment, timeZone }: { appointment: Appointment; timeZone?: string }) {
   const inactive = !isActiveStatus(appointment.status);
   return (
     <View style={styles.row}>
       <View style={[styles.marker, { backgroundColor: statusColor[appointment.status] }]} />
-      <Text style={[styles.time, inactive && styles.inactive]}>{formatTime(appointment.start)}</Text>
+      <Text style={[styles.time, inactive && styles.inactive]}>{formatTime(appointment.start, timeZone)}</Text>
       <View style={styles.info}>
         <Text style={[styles.name, inactive && styles.inactive]}>{appointment.clientName}</Text>
         <Text style={styles.service}>

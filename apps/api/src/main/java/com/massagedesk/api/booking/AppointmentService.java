@@ -15,11 +15,15 @@ import com.massagedesk.api.settings.SettingsRepository;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,6 +44,11 @@ public class AppointmentService {
             AppointmentStatus status,
             AppointmentSource source,
             ZoneId zone) {
+    }
+
+    /** An appointment with the names a list needs; {@code clientName} may be null. */
+    public record AppointmentListView(
+            AppointmentView appointment, String clientName, String clientPhone, String serviceName) {
     }
 
     private final AppointmentRepository appointments;
@@ -136,6 +145,31 @@ public class AppointmentService {
         Appointment saved = flush(appointment);
         recorder.record(DomainEventType.APPOINTMENT_NO_SHOW, saved.getId(), actor, payload(saved));
         return view(saved);
+    }
+
+    /**
+     * Appointments of any status touching the local days {@code from..to}, both inclusive, ordered
+     * by start. Three queries whatever the count: appointments, then clients and services by id.
+     */
+    @Transactional(readOnly = true)
+    public List<AppointmentListView> between(LocalDate from, LocalDate to) {
+        ZoneId zone = settings.get().getTimeZone();
+        Instant windowStart = from.atStartOfDay(zone).toInstant();
+        Instant windowEnd = to.plusDays(1).atStartOfDay(zone).toInstant();
+        List<Appointment> found = appointments.findOverlapping(windowStart, windowEnd);
+        Map<UUID, Client> clientsById = new HashMap<>();
+        clients.findAllById(found.stream().map(a -> a.getClient().getId()).collect(Collectors.toSet()))
+                .forEach(c -> clientsById.put(c.getId(), c));
+        Map<UUID, MassageService> servicesById = new HashMap<>();
+        services.findAllById(found.stream().map(a -> a.getService().getId()).collect(Collectors.toSet()))
+                .forEach(s -> servicesById.put(s.getId(), s));
+        return found.stream().map(a -> {
+            Client client = clientsById.get(a.getClient().getId());
+            MassageService service = servicesById.get(a.getService().getId());
+            AppointmentView view = new AppointmentView(
+                    a.getId(), client.getId(), service.getId(), a.getPeriod(), a.getStatus(), a.getSource(), zone);
+            return new AppointmentListView(view, client.getName(), client.getPhone(), service.getName());
+        }).toList();
     }
 
     private Appointment locked(UUID id) {

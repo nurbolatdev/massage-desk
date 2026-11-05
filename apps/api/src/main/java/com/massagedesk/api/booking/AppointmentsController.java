@@ -9,16 +9,23 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Parameter;
 import com.massagedesk.api.security.StaffActors;
 import jakarta.validation.Valid;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.UUID;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 /** Appointment commands for the master's app. Rules live in the service; this maps them to HTTP. */
 @Tag(name = "booking")
@@ -26,10 +33,37 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/appointments")
 class AppointmentsController {
 
+    private static final long MAX_RANGE_DAYS = 62;
+    private static final LocalDate MIN_DAY = LocalDate.of(2000, 1, 1);
+    private static final LocalDate MAX_DAY = LocalDate.of(2100, 12, 31);
+
     private final AppointmentService appointments;
 
     AppointmentsController(AppointmentService appointments) {
         this.appointments = appointments;
+    }
+
+    @Operation(summary = "Appointments that touch the local days from..to")
+    @ApiResponse(responseCode = "200", description = "appointments of all statuses ordered by start")
+    @ApiResponse(responseCode = "400", description = "missing or invalid date, or range too long",
+            content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                    schema = @Schema(implementation = ApiProblem.class)))
+    @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
+    List<AppointmentListItem> listAppointments(
+            @Parameter(description = "first local day, YYYY-MM-DD, inclusive")
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @Parameter(description = "last local day, YYYY-MM-DD, inclusive")
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        if (from.isBefore(MIN_DAY) || to.isAfter(MAX_DAY)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "dates must be within 2000-01-01..2100-12-31");
+        }
+        if (from.isAfter(to)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "from must not be after to");
+        }
+        if (ChronoUnit.DAYS.between(from, to) + 1 > MAX_RANGE_DAYS) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "range must be at most 62 days");
+        }
+        return appointments.between(from, to).stream().map(AppointmentListItem::from).toList();
     }
 
     @Operation(summary = "Book a service for a client")

@@ -13,6 +13,55 @@
   } ],
   "paths" : {
     "/appointments" : {
+      "get" : {
+        "operationId" : "listAppointments",
+        "parameters" : [ {
+          "description" : "first local day, YYYY-MM-DD, inclusive",
+          "in" : "query",
+          "name" : "from",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "date"
+          }
+        }, {
+          "description" : "last local day, YYYY-MM-DD, inclusive",
+          "in" : "query",
+          "name" : "to",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "date"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/AppointmentListItem"
+                  }
+                }
+              }
+            },
+            "description" : "appointments of all statuses ordered by start"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "description" : "missing or invalid date, or range too long"
+          }
+        },
+        "summary" : "Appointments that touch the local days from..to",
+        "tags" : [ "booking" ]
+      },
       "post" : {
         "operationId" : "createAppointment",
         "requestBody" : {
@@ -1079,6 +1128,52 @@
           }
         },
         "required" : [ "appointmentId", "clientName", "end", "start" ]
+      },
+      "AppointmentListItem" : {
+        "type" : "object",
+        "properties" : {
+          "clientId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "clientName" : {
+            "type" : [ "string", "null" ],
+            "description" : "null when the client has no name"
+          },
+          "clientPhone" : {
+            "type" : "string"
+          },
+          "end" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "ISO-8601 with the master's UTC offset"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "serviceId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "serviceName" : {
+            "type" : "string"
+          },
+          "source" : {
+            "type" : "string",
+            "enum" : [ "bot", "manual" ]
+          },
+          "start" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "ISO-8601 with the master's UTC offset"
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "confirmed", "cancelled", "no_show", "done" ]
+          }
+        },
+        "required" : [ "clientId", "clientName", "clientPhone", "end", "id", "serviceId", "serviceName", "source", "start", "status" ]
       },
       "AppointmentResponse" : {
         "type" : "object",
