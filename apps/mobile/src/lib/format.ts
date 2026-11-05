@@ -8,7 +8,10 @@ export function formatTime(date: Date, timeZone?: string): string {
 }
 
 /** "Вторник, 27 октября" */
-export function formatDayTitle(date: Date): string {
-  const s = dayFormat.format(date);
+export function formatDayTitle(date: Date, timeZone?: string): string {
+  const s =
+    timeZone === undefined
+      ? dayFormat.format(date)
+      : new Intl.DateTimeFormat("ru-RU", { weekday: "long", day: "numeric", month: "long", timeZone }).format(date);
   return s.charAt(0).toUpperCase() + s.slice(1);
 }

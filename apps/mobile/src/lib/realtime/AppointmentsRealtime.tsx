@@ -12,12 +12,17 @@ import {
   type ChangeClient,
 } from "./appointmentChanges";
 
+// Unique per subscription: removeChannel is fire-and-forget, and channel(name)
+// would return the channel that is still leaving.
+let channelCounter = 0;
+
 // Adapts the Supabase client to the narrow interface used by the subscription.
 function createChangeClient(): ChangeClient {
   const channels = new Map<ChangeChannel, RealtimeChannel>();
   return {
     channel(name) {
-      const raw = supabase.channel(name);
+      channelCounter += 1;
+      const raw = supabase.channel(`${name}-${channelCounter}`);
       const channel: ChangeChannel = {
         on(filter, onEvent) {
           raw.on("postgres_changes", filter, () => onEvent());

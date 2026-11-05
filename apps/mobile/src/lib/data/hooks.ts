@@ -39,10 +39,8 @@ export function useTodayAppointments(now: Date) {
 
   return {
     timeZone,
-    day,
     appointments: appointments.data,
     dataUpdatedAt: appointments.dataUpdatedAt,
-    isPending: settings.isPending || (day !== undefined && appointments.isPending),
     error: settings.error ?? appointments.error,
     refetch,
   };

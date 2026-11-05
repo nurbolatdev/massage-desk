@@ -32,6 +32,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: space[14],
   },
   texts: { flex: 1 },
-  title: { fontSize: 18, fontWeight: "700", color: colors.onPrimary },
+  title: { ...typography.body, fontWeight: "700", color: colors.onPrimary },
   text: { ...typography.secondary, color: colors.onPrimaryMuted },
 });

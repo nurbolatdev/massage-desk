@@ -19,7 +19,7 @@ export default function TodayScreen() {
   const today = useTodayAppointments(now);
   const hasData = today.appointments !== undefined;
   const state = todayState({ online, hasData, error: today.error });
-  const appointments = [...(today.appointments ?? [])].sort((a, b) => a.start.getTime() - b.start.getTime());
+  const appointments = today.appointments ?? [];
   const next = appointments.find((a) => a.status === "confirmed" && a.end > now);
   const timeZone = today.timeZone;
   const savedAt =
@@ -30,7 +30,7 @@ export default function TodayScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.date}>{formatDayTitle(now)}</Text>
+        <Text style={styles.date}>{formatDayTitle(now, timeZone)}</Text>
 
         {state.view === "loading" && <TodaySkeleton />}
 
