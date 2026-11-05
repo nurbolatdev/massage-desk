@@ -1,0 +1,46 @@
+import { ApiError } from "@/lib/api/errors";
+
+export const OFFLINE_TITLE = "Нет интернета";
+export const OFFLINE_EMPTY_TEXT = "Расписание появится, когда телефон подключится к интернету.";
+export const LOAD_ERROR_TEXT = "Не получилось загрузить расписание. Попробуйте ещё раз.";
+export const FORBIDDEN_TEXT = "Этот аккаунт не подключён к расписанию. Напишите Нурболату.";
+
+export function offlineSavedText(savedAt: string): string {
+  return `Показано расписание, сохранённое в ${savedAt}. Изменения недоступны.`;
+}
+
+export type TodayView = "loading" | "offlineEmpty" | "error" | "list";
+
+export interface TodayStateInput {
+  online: boolean;
+  hasData: boolean;
+  error: Error | null;
+}
+
+export interface TodayState {
+  view: TodayView;
+  showOfflineBanner: boolean;
+  /** Text of the error banner; set only when `view` is "error". */
+  errorText: string | null;
+  /** The «Обновить» button is shown with the error (not for forbidden). */
+  canRetry: boolean;
+}
+
+export function todayState({ online, hasData, error }: TodayStateInput): TodayState {
+  if (hasData) {
+    return { view: "list", showOfflineBanner: !online, errorText: null, canRetry: false };
+  }
+  if (!online) {
+    return { view: "offlineEmpty", showOfflineBanner: false, errorText: null, canRetry: false };
+  }
+  if (error !== null) {
+    const forbidden = error instanceof ApiError && error.kind === "forbidden";
+    return {
+      view: "error",
+      showOfflineBanner: false,
+      errorText: forbidden ? FORBIDDEN_TEXT : LOAD_ERROR_TEXT,
+      canRetry: !forbidden,
+    };
+  }
+  return { view: "loading", showOfflineBanner: false, errorText: null, canRetry: false };
+}
