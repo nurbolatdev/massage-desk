@@ -1,3 +1,4 @@
+import { afterEach, describe, expect, it, jest } from "@jest/globals";
 import { Linking } from "react-native";
 import { callPhone, openWhatsApp } from "@/lib/contact";
 

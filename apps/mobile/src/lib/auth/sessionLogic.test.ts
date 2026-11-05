@@ -1,3 +1,4 @@
+import { describe, expect, it } from "@jest/globals";
 import { AuthApiError, AuthRetryableFetchError, type Session } from "@supabase/supabase-js";
 
 import { initialSessionState, isLocalSignOutDone } from "./sessionLogic";
