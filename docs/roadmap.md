@@ -186,8 +186,12 @@ The master runs the schedule in the app; admin panel basics; event log; deploy a
 - **Pull request:** `feat(mobile): data layer with realtime and offline cache`
 - **Depends on:** M1-5, M1-9
 - **Commits:**
+  1. `feat(appointments): appointments of local days with names`
+  1. `feat(appointments): list endpoint`
   1. `feat(mobile): api client from generated types`
   1. `feat(mobile): query cache persisted for offline`
+  1. `feat(mobile): schedule queries in the master's time zone`
+  1. `feat(mobile): today schedule from the api with loading and offline states`
   1. `feat(mobile): realtime updates for appointments`
   1. `test(mobile): data layer tests` (jest-expo is set up in M1-9)
 
@@ -197,8 +201,8 @@ The master runs the schedule in the app; admin panel basics; event log; deploy a
 - **Pull request:** `feat(mobile): today screen on real data`
 - **Depends on:** M1-10
 - **Commits:**
-  1. `feat(mobile): today screen from the api`
-  1. `feat(mobile): empty and offline states`
+  1. `feat(mobile): today screen layout from the mockups`
+  1. `feat(mobile): empty and bot-off states`
   1. `test(mobile): next client selection`
 
 ### M1-12 · Appointment card
