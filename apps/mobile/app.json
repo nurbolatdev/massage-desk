@@ -33,7 +33,8 @@
           "resizeMode": "contain",
           "backgroundColor": "#FAF6EF"
         }
-      ]
+      ],
+      ["expo-secure-store", { "configureAndroidBackup": true }]
     ],
     "scheme": "massagedesk",
     "experiments": {
