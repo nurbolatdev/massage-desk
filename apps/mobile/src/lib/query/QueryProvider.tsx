@@ -4,6 +4,7 @@ import { PersistQueryClientProvider, type Persister } from "@tanstack/react-quer
 import { useEffect, useState, type ReactNode } from "react";
 
 import { useSession } from "@/lib/auth/session";
+import { AppointmentsRealtime } from "@/lib/realtime/AppointmentsRealtime";
 
 import { connectFocusManager, connectOnlineManager } from "./online";
 import { CACHE_MAX_AGE, CACHE_VERSION, createPersister, createQueryClient } from "./queryClient";
@@ -43,6 +44,7 @@ export function QueryProvider({ children }: { children: ReactNode }) {
       persistOptions={{ persister, maxAge: CACHE_MAX_AGE, buster: CACHE_VERSION }}
     >
       <CacheGuard persister={persister} />
+      <AppointmentsRealtime />
       {children}
     </PersistQueryClientProvider>
   );
