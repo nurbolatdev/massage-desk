@@ -19,7 +19,7 @@ export function BotOffBanner({ online }: { online: boolean }) {
           accessibilityState={{ disabled }}
           disabled={disabled}
           onPress={() => enable.mutate()}
-          style={[styles.button, disabled && styles.buttonDisabled]}
+          style={({ pressed }) => [styles.button, disabled && styles.buttonDisabled, pressed && !disabled && styles.pressed]}
         >
           <Text style={[styles.buttonText, disabled && styles.buttonTextDisabled]}>{ENABLE_BOT_LABEL}</Text>
         </Pressable>
@@ -56,4 +56,5 @@ const styles = StyleSheet.create({
   buttonDisabled: { backgroundColor: colors.disabledBg },
   buttonText: { ...typography.secondary, fontWeight: "700", color: colors.onPrimary },
   buttonTextDisabled: { color: colors.neutralFg },
+  pressed: { opacity: 0.8 },
 });
