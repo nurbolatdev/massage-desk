@@ -287,6 +287,7 @@ The master runs the schedule in the app; admin panel basics; event log; deploy a
   1. `fix(admin): align states, buttons and phone menu with the mockups`
   1. `fix(admin): stricter design guard and session cleanup`
   1. `fix(admin): phone padding on the not-found page`
+  1. `fix(admin): offline state when the session is not refreshed`
 
 ### M1-17 · Admin: schedule
 
@@ -294,6 +295,7 @@ The master runs the schedule in the app; admin panel basics; event log; deploy a
 - **Pull request:** `feat(admin): schedule`
 - **Depends on:** M1-7, M1-16
 - **Commits:**
+  1. `feat(api): cors for the admin origin`
   1. `feat(admin): calendar with drag-and-drop reschedule`
   1. `feat(admin): working hours editor`
   1. `test(admin): reschedule conflict is shown`
@@ -312,6 +314,7 @@ The master runs the schedule in the app; admin panel basics; event log; deploy a
 - **Branch:** `feature/admin-settings`
 - **Pull request:** `feat(admin): services and settings`
 - **Depends on:** M1-8, M1-16
+- **Also (from M1-16):** the server forbids user management for master.
 - **Commits:**
   1. `feat(admin): services and prices`
   1. `feat(admin): business settings and time zone`

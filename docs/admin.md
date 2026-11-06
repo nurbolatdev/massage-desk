@@ -36,4 +36,5 @@ Tokens in `apps/admin/src/styles/index.css` follow `docs/design.md`. A test bloc
 
 ## Known gaps
 
-CORS is added with the first API page (M1-17).
+- CORS for the admin origin is added in M1-17.
+- The design guard does not catch shadows (`drop-shadow-*`, `inset-shadow-*`, `text-shadow-*`), `aspect-*`, `z-N`, `opacity-N`, `duration-N`/`delay-N`, `h-px`/`w-px` or underline offsets; extend it in a separate commit.
