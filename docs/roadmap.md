@@ -221,6 +221,7 @@ The master runs the schedule in the app; admin panel basics; event log; deploy a
   1. `fix(mobile): warn when the today schedule failed to refresh`
   1. `fix(mobile): pressed state for the bot switch-on button`
   1. `docs: today screen status and deferred items in the roadmap`
+  1. `fix(mobile): refresh warning only when appointments failed`
 
 ### M1-12 · Appointment card
 
@@ -326,7 +327,7 @@ The master runs the schedule in the app; admin panel basics; event log; deploy a
 ### M1-22 · Pilot M1: a week with the master 👤
 
 Owner step, no code.
-- **Depends on:** M1-21
+- **Depends on:** M1-21, M1-23
 
 ### M1-23 · Breaks on Today
 
@@ -335,6 +336,7 @@ Today shows a break between working blocks as free time; read the working hours 
 - **Branch:** `feature/mobile-today-breaks`
 - **Pull request:** `fix(mobile): show breaks on today`
 - **Depends on:** M1-11
+- **Issue:** #55
 - **Commits:**
   1. `feat(mobile): working hours of the master's day`
   1. `fix(mobile): show a break instead of free time on today`
