@@ -42,7 +42,8 @@ const styles = StyleSheet.create({
   link: {
     flexDirection: "row",
     alignItems: "center",
-    gap: space[12],
+    gap: space[10],
+    marginTop: space[6],
     minHeight: size.iconButton,
     paddingVertical: space[14],
     paddingHorizontal: space[20],

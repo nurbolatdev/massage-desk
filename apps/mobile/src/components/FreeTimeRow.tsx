@@ -1,16 +1,15 @@
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { TIME_MIN_WIDTH } from "@/components/AppointmentRow";
 import { formatTime } from "@/lib/format";
 import { minutesBetween } from "@/lib/data/todaySchedule";
 import { freeTimeText } from "@/lib/data/todayState";
 import { colors, radii, space, typography } from "@/theme";
 
-// from the Main mockup
-const TIME_MIN_WIDTH = 56;
-
 export function FreeTimeRow({ start, end, timeZone }: { start: Date; end: Date; timeZone?: string }) {
+  const { fontScale } = useWindowDimensions();
   return (
     <View style={styles.row}>
-      <Text style={styles.time}>{formatTime(start, timeZone)}</Text>
+      <Text style={[styles.time, { minWidth: Math.round(TIME_MIN_WIDTH * fontScale) }]}>{formatTime(start, timeZone)}</Text>
       <Text style={styles.text}>{freeTimeText(formatTime(end, timeZone), minutesBetween(start, end))}</Text>
     </View>
   );
@@ -28,6 +27,6 @@ const styles = StyleSheet.create({
     borderColor: colors.borderDashed,
     borderRadius: radii[16],
   },
-  time: { ...typography.secondary, fontWeight: "700", color: colors.muted, minWidth: TIME_MIN_WIDTH },
+  time: { ...typography.secondary, fontWeight: "700", color: colors.muted },
   text: { ...typography.secondary, color: colors.muted, flex: 1 },
 });

@@ -17,7 +17,7 @@ export function TodayHeader({ now, timeZone, botEnabled }: Props) {
   const router = useRouter();
   return (
     <View style={styles.header}>
-      <View>
+      <View style={styles.titles}>
         <Text style={styles.weekday}>{formatWeekday(now, timeZone)}</Text>
         <Text style={styles.date}>{formatDayMonth(now, timeZone)}</Text>
       </View>
@@ -41,13 +41,14 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-start",
     flexWrap: "wrap",
     gap: space[8],
     paddingTop: space[24],
     paddingHorizontal: space[20],
     paddingBottom: space[12],
   },
+  titles: { gap: space[2] },
   weekday: { ...typography.body, color: colors.muted },
   date: { ...typography.title, letterSpacing: -0.5, color: colors.ink },
   pill: {

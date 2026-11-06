@@ -17,6 +17,8 @@ export const EMPTY_TEXT = "Бот запишет клиентов на своб�
 export const BOT_OFF_TEXT = "Бот выключен";
 export const BOT_OFF_TITLE = "Бот не отвечает клиентам";
 export const BOT_OFF_TEXT_LONG = "Все новые сообщения приходят вам в «Чаты»";
+export const CALL_LABEL = "Позвонить";
+export const WRITE_LABEL = "Написать";
 export const ENABLE_BOT_LABEL = "Включить";
 export const ENABLE_BOT_FAILED = "Не получилось включить бота. Проверьте интернет и попробуйте ещё раз.";
 
@@ -35,7 +37,7 @@ export function untilText(time: string): string {
 }
 
 export function serviceLine(name: string, minutes: number): string {
-  return `${name} · ${minutes} мин`;
+  return `${name} · ${minutes}\u00a0мин`;
 }
 
 export function moreClientsTitle(n: number): string {

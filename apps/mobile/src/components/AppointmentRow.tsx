@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { isActiveStatus } from "@massage-desk/shared";
 import { formatTime } from "@/lib/format";
 import { minutesBetween } from "@/lib/data/todaySchedule";
@@ -8,14 +8,15 @@ import type { Appointment } from "@/types";
 
 // from the Main mockup
 const ROW_MIN_HEIGHT = 64;
-const TIME_MIN_WIDTH = 56;
+export const TIME_MIN_WIDTH = 56;
 
 export function AppointmentRow({ appointment, timeZone }: { appointment: Appointment; timeZone?: string }) {
+  const { fontScale } = useWindowDimensions();
   const inactive = !isActiveStatus(appointment.status);
   const minutes = minutesBetween(appointment.start, appointment.end);
   return (
     <View style={styles.row}>
-      <Text style={[styles.time, inactive && styles.inactive]}>{formatTime(appointment.start, timeZone)}</Text>
+      <Text style={[styles.time, { minWidth: Math.round(TIME_MIN_WIDTH * fontScale) }, inactive && styles.inactive]}>{formatTime(appointment.start, timeZone)}</Text>
       <View style={styles.info}>
         <Text style={[styles.name, inactive && styles.inactive]}>{appointment.clientName}</Text>
         <Text style={[styles.service, inactive && styles.inactive]}>
@@ -43,7 +44,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     boxShadow: `0 1px 0 ${colors.line}`,
   },
-  time: { ...typography.body, fontWeight: "800", color: colors.ink, minWidth: TIME_MIN_WIDTH },
+  time: { ...typography.body, fontWeight: "800", color: colors.ink },
   info: { flex: 1, minWidth: 0, gap: space[2] },
   name: { ...typography.body, fontWeight: "700", color: colors.ink },
   service: { ...typography.secondary, color: colors.muted },

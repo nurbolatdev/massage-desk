@@ -58,7 +58,7 @@ export default function TodayScreen() {
               <>
                 <NextClientCard appointment={schedule.next} now={now} timeZone={timeZone} online={online} />
                 {schedule.rows.length > 0 && (
-                  <>
+                  <View style={styles.section}>
                     <Text style={styles.heading}>{moreClientsTitle(schedule.laterCount)}</Text>
                     <View style={styles.rows}>
                       {schedule.rows.map((row) =>
@@ -69,7 +69,7 @@ export default function TodayScreen() {
                         ),
                       )}
                     </View>
-                  </>
+                  </View>
                 )}
               </>
             )}
@@ -94,6 +94,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   content: { flexGrow: 1, paddingTop: space[4], paddingHorizontal: space[16], paddingBottom: space[24], gap: space[14] },
   errorBox: { gap: space[12] },
-  heading: { ...typography.subtitle, color: colors.ink, marginTop: space[4], marginHorizontal: space[4] },
+  heading: { ...typography.subtitle, color: colors.ink, marginHorizontal: space[4] },
+  section: { gap: space[8] },
   rows: { gap: space[8] },
 });

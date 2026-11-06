@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import type { ComponentProps } from "react";
-import { Pressable, StyleSheet, Text } from "react-native";
+import { Pressable, StyleSheet, Text, useWindowDimensions } from "react-native";
 import { colors, radii, size, space, typography } from "@/theme";
 
 // from the Main mockup
@@ -25,6 +25,7 @@ export function BigButton({
   tone = "onSurface",
   icon,
 }: Props) {
+  const { fontScale } = useWindowDimensions();
   const primary = variant === "primary";
   const onPrimaryCard = tone === "onPrimary";
   const textColor = labelColor(primary, onPrimaryCard, disabled);
@@ -36,6 +37,7 @@ export function BigButton({
       onPress={onPress}
       style={({ pressed }) => [
         styles.base,
+        { flexBasis: Math.round(BUTTON_FLEX_BASIS * fontScale) },
         onPrimaryCard ? (primary ? styles.primaryOnPrimary : styles.secondaryOnPrimary) : primary ? styles.primary : styles.secondary,
         disabled && (onPrimaryCard ? styles.disabledOnPrimary : styles.disabledOnSurface),
         pressed && !disabled && styles.pressed,
@@ -59,7 +61,6 @@ function labelColor(primary: boolean, onPrimaryCard: boolean, disabled: boolean)
 const styles = StyleSheet.create({
   base: {
     flexGrow: 1,
-    flexBasis: BUTTON_FLEX_BASIS,
     minHeight: size.buttonSecondary,
     borderRadius: radii[16],
     flexDirection: "row",

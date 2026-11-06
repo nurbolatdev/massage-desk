@@ -3,7 +3,7 @@ import { BigButton } from "@/components/BigButton";
 import { callPhone, openWhatsApp } from "@/lib/contact";
 import { formatTime } from "@/lib/format";
 import { minutesBetween } from "@/lib/data/todaySchedule";
-import { nextClientLabel, serviceLine, untilText } from "@/lib/data/todayState";
+import { CALL_LABEL, WRITE_LABEL, nextClientLabel, serviceLine, untilText } from "@/lib/data/todayState";
 import { colors, radii, space, typography } from "@/theme";
 import type { Appointment } from "@/types";
 
@@ -29,13 +29,13 @@ export function NextClientCard({ appointment, now, timeZone, online }: Props) {
       </View>
       <View style={styles.actions}>
         <BigButton
-          label="Позвонить"
+          label={CALL_LABEL}
           icon="phone"
           tone="onPrimary"
           onPress={() => void callPhone(appointment.clientPhone)}
         />
         <BigButton
-          label="Написать"
+          label={WRITE_LABEL}
           icon="message-circle"
           variant="secondary"
           tone="onPrimary"

@@ -214,6 +214,8 @@ The master runs the schedule in the app; admin panel basics; event log; deploy a
   1. `feat(mobile): tomorrow summary and bot switch-on data`
   1. `feat(mobile): empty and bot-off states`
   1. `test(mobile): next client selection`
+  1. `docs: today task commits in the roadmap`
+  1. `fix(mobile): align today screen with the mockups`
 
 ### M1-12 · Appointment card
 

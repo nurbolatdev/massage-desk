@@ -86,7 +86,7 @@ describe("text builders", () => {
   });
 
   it("serviceLine", () => {
-    expect(serviceLine("Массаж спины", 60)).toBe("Массаж спины · 60 мин");
+    expect(serviceLine("Массаж спины", 60)).toBe("Массаж спины · 60\u00a0мин");
   });
 
   it("tomorrowText", () => {

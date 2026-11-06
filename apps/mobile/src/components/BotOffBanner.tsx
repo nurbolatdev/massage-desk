@@ -43,7 +43,7 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     backgroundColor: colors.surface,
   },
-  texts: { flex: 1, flexBasis: 180 },
+  texts: { flex: 1 },
   title: { ...typography.body, fontWeight: "700", color: colors.ink },
   text: { ...typography.secondary, color: colors.muted },
   button: {
