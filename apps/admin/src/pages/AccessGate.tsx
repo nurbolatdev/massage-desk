@@ -1,4 +1,4 @@
-import { CircleAlert, Lock, RefreshCw } from "lucide-react";
+import { CircleAlert, Lock, RefreshCw, WifiOff } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { PageSkeleton } from "@/components/PageSkeleton";
@@ -6,6 +6,9 @@ import { SignOutButton } from "@/components/SignOutButton";
 import { StateCard } from "@/components/StateCard";
 import { icon } from "@/components/icon";
 import { Button } from "@/components/ui/button";
+import { SESSION_OFFLINE_TEXT, SESSION_OFFLINE_TITLE, accessView } from "@/lib/auth/access";
+import { useAuth } from "@/lib/auth/authContext";
+import { supabase } from "@/lib/auth/supabase";
 import { RoleContext } from "@/lib/auth/roleContext";
 import { useRole } from "@/lib/auth/useRole";
 
@@ -14,12 +17,32 @@ function FullPage({ children }: { children: ReactNode }) {
 }
 
 export function AccessGate({ children }: { children: ReactNode }) {
+  const hasSession = useAuth().session !== null;
   const { data: role, isPending, isError, refetch } = useRole();
+  const view = accessView({ hasSession, isPending, isError, role });
 
-  if (isPending) {
+  if (view === "offline") {
+    return (
+      <FullPage>
+        <StateCard
+          icon={WifiOff}
+          title={SESSION_OFFLINE_TITLE}
+          text={SESSION_OFFLINE_TEXT}
+          action={
+            // Reading the session refreshes an expired token; the auth provider picks up the result.
+            <Button variant="secondary" onClick={() => void supabase.auth.getSession()}>
+              <RefreshCw size={icon.button} strokeWidth={icon.stroke} aria-hidden="true" />
+              Повторить
+            </Button>
+          }
+        />
+      </FullPage>
+    );
+  }
+  if (view === "loading") {
     return <PageSkeleton fullPage />;
   }
-  if (isError) {
+  if (view === "error") {
     return (
       <FullPage>
         <StateCard
@@ -36,7 +59,7 @@ export function AccessGate({ children }: { children: ReactNode }) {
       </FullPage>
     );
   }
-  if (role === null) {
+  if (view === "denied" || role === null || role === undefined) {
     return (
       <FullPage>
         <StateCard

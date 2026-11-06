@@ -19,3 +19,24 @@ export async function fetchRole(client: SupabaseClient, userId: string): Promise
   }
   return roleFromProfile(data);
 }
+
+export const SESSION_OFFLINE_TITLE = "Нет интернета";
+export const SESSION_OFFLINE_TEXT = "Проверьте подключение и попробуйте ещё раз.";
+
+export type AccessViewInput = {
+  hasSession: boolean;
+  isPending: boolean;
+  isError: boolean;
+  role: StaffRole | null | undefined;
+};
+
+export type AccessView = "offline" | "loading" | "error" | "denied" | "allowed";
+
+/** Decides what the access gate shows; signed in without a session means offline, token not refreshed. */
+export function accessView({ hasSession, isPending, isError, role }: AccessViewInput): AccessView {
+  if (!hasSession) return "offline";
+  if (isPending) return "loading";
+  if (isError) return "error";
+  if (role === null || role === undefined) return "denied";
+  return "allowed";
+}
