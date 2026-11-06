@@ -4,12 +4,23 @@ Expo SDK 58, Expo Router (`apps/mobile/src/app`), installed as an APK via EAS Bu
 
 | Tab | Purpose | Status |
 |---|---|---|
-| Today | Next client in large type, call and WhatsApp buttons, day list | API data, offline banner; design in M1-11 |
+| Today | Next client in large type, call and WhatsApp buttons, day list | Done in M1-11; see [Today](#today) |
 | Calendar | Week and month | M1 |
 | Chats | Conversations and "I'll answer" take-over | M2 |
 | Settings | Days off and vacation | M1 |
 
 **UX for an elderly user:** text 18–34, touch targets ≥ 56dp, high contrast, verbs on buttons, confirmation for destructive actions, plain wording. Tokens only from `src/theme`.
+
+## Today
+
+Done: next client in large type with call and WhatsApp buttons; the rest of the day with free time; empty, bot-off, loading, offline and error states; a warning with «Обновить» when a refresh fails.
+
+Later:
+
+- opening an appointment from the list ([M1-12](roadmap.md#m1))
+- the «Записать клиента» button and the «Запись создана» confirmation ([M1-13](roadmap.md#m1))
+- the «ждут вашего ответа» banner and the badge on Chats ([M2-5](roadmap.md#m2))
+- breaks in the working hours are still shown as free time ([M1-23](roadmap.md#m1))
 
 ## Data
 

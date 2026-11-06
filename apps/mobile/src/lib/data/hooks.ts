@@ -1,9 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api, unwrap } from "@/lib/api";
 
 import { fetchAppointments, toAppointments } from "./appointments";
-import { localDay } from "./days";
+import { localDay, nextDay } from "./days";
 import { queryKeys } from "./queryKeys";
 
 const SETTINGS_STALE_TIME = 5 * 60 * 1000;
@@ -39,9 +39,29 @@ export function useTodayAppointments(now: Date) {
 
   return {
     timeZone,
+    botEnabled: settings.data?.botEnabled,
     appointments: appointments.data,
     dataUpdatedAt: appointments.dataUpdatedAt,
     error: settings.error ?? appointments.error,
+    appointmentsError: appointments.error,
     refetch,
   };
+}
+
+export function useTomorrowAppointments(now: Date, enabled: boolean) {
+  const settings = useSettings();
+  const timeZone = settings.data?.timeZone;
+  const day = timeZone === undefined ? undefined : nextDay(localDay(now, timeZone));
+  const appointments = useAppointments(day ?? "", day ?? "", enabled && day !== undefined);
+  return { appointments: appointments.data };
+}
+
+export function useEnableBot() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => unwrap(api.PATCH("/settings", { body: { botEnabled: true } })),
+    onSuccess: (settings) => {
+      queryClient.setQueryData(queryKeys.settings, settings);
+    },
+  });
 }

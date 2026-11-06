@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { localDay } from "./days";
+import { localDay, nextDay } from "./days";
 
 describe("localDay", () => {
   it("uses the master's zone, not UTC", () => {
@@ -13,5 +13,14 @@ describe("localDay", () => {
     expect(localDay(new Date("2026-10-24T22:30:00Z"), "Europe/Berlin")).toBe("2026-10-25");
     expect(localDay(new Date("2026-10-25T22:30:00Z"), "Europe/Berlin")).toBe("2026-10-25");
     expect(localDay(new Date("2026-10-25T23:00:00Z"), "Europe/Berlin")).toBe("2026-10-26");
+  });
+});
+
+describe("nextDay", () => {
+  it("moves to the next calendar day", () => {
+    expect(nextDay("2026-11-02")).toBe("2026-11-03");
+    expect(nextDay("2026-11-30")).toBe("2026-12-01");
+    expect(nextDay("2026-12-31")).toBe("2027-01-01");
+    expect(nextDay("2028-02-28")).toBe("2028-02-29");
   });
 });

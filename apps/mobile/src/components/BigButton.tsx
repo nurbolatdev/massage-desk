@@ -1,20 +1,34 @@
-import { Pressable, StyleSheet, Text } from "react-native";
-import { colors, fontSize, minTouch, radius, spacing } from "@/theme";
+import { Feather } from "@expo/vector-icons";
+import type { ComponentProps } from "react";
+import { Pressable, StyleSheet, Text, useWindowDimensions } from "react-native";
+import { colors, radii, size, space, typography } from "@/theme";
+
+// from the Main mockup
+const BUTTON_FLEX_BASIS = 140;
+const ICON_SIZE = 20;
 
 interface Props {
   label: string;
   onPress: () => void;
   variant?: "primary" | "secondary";
   disabled?: boolean;
-  /** Background the button sits on: "onPrimary" = green card, "onSurface" = white card (disabled look only). */
+  /** Background the button sits on: "onPrimary" = green card, "onSurface" = white card. */
   tone?: "onPrimary" | "onSurface";
+  icon?: ComponentProps<typeof Feather>["name"];
 }
 
-export function BigButton({ label, onPress, variant = "primary", disabled = false, tone = "onSurface" }: Props) {
+export function BigButton({
+  label,
+  onPress,
+  variant = "primary",
+  disabled = false,
+  tone = "onSurface",
+  icon,
+}: Props) {
+  const { fontScale } = useWindowDimensions();
   const primary = variant === "primary";
   const onPrimaryCard = tone === "onPrimary";
-  const disabledStyle = onPrimaryCard ? styles.disabledOnPrimary : styles.disabledOnSurface;
-  const disabledText = onPrimaryCard ? colors.onPrimaryMuted : colors.muted;
+  const textColor = labelColor(primary, onPrimaryCard, disabled);
   return (
     <Pressable
       accessibilityRole="button"
@@ -23,36 +37,45 @@ export function BigButton({ label, onPress, variant = "primary", disabled = fals
       onPress={onPress}
       style={({ pressed }) => [
         styles.base,
-        primary ? styles.primary : styles.secondary,
-        disabled && disabledStyle,
+        { flexBasis: Math.round(BUTTON_FLEX_BASIS * fontScale) },
+        onPrimaryCard ? (primary ? styles.primaryOnPrimary : styles.secondaryOnPrimary) : primary ? styles.primary : styles.secondary,
+        disabled && (onPrimaryCard ? styles.disabledOnPrimary : styles.disabledOnSurface),
         pressed && !disabled && styles.pressed,
       ]}
     >
-      <Text
-        style={[
-          styles.label,
-          { color: disabled ? disabledText : primary ? colors.onPrimary : colors.primary },
-        ]}
-      >
-        {label}
-      </Text>
+      {icon !== undefined && <Feather name={icon} size={ICON_SIZE} color={textColor} accessible={false} />}
+      <Text style={[styles.label, { color: textColor }]}>{label}</Text>
     </Pressable>
   );
 }
 
+function labelColor(primary: boolean, onPrimaryCard: boolean, disabled: boolean): string {
+  if (onPrimaryCard) {
+    if (disabled) return colors.onPrimaryMuted;
+    return primary ? colors.ink : colors.onPrimary;
+  }
+  if (disabled) return colors.muted;
+  return primary ? colors.onPrimary : colors.primary;
+}
+
 const styles = StyleSheet.create({
   base: {
-    flex: 1,
-    minHeight: minTouch,
-    borderRadius: radius,
+    flexGrow: 1,
+    flexShrink: 1,
+    minHeight: size.buttonSecondary,
+    borderRadius: radii[16],
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: spacing.md,
+    gap: space[8],
+    paddingHorizontal: space[16],
   },
   primary: { backgroundColor: colors.primary },
   secondary: { backgroundColor: colors.surface, borderWidth: 2, borderColor: colors.primary },
-  disabledOnPrimary: { backgroundColor: colors.primary, borderWidth: 2, borderColor: colors.stoneLight },
+  primaryOnPrimary: { backgroundColor: colors.surface },
+  secondaryOnPrimary: { backgroundColor: "transparent", borderWidth: 2, borderColor: colors.stoneLight },
+  disabledOnPrimary: { borderWidth: 2, borderColor: colors.stoneLight, backgroundColor: colors.primary },
   disabledOnSurface: { backgroundColor: colors.surface, borderWidth: 2, borderColor: colors.borderStrong },
   pressed: { opacity: 0.8 },
-  label: { fontSize: fontSize.bodyLarge, fontWeight: "600" },
+  label: { ...typography.body, fontWeight: "700" },
 });

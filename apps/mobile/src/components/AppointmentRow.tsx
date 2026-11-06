@@ -1,29 +1,32 @@
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { isActiveStatus } from "@massage-desk/shared";
 import { formatTime } from "@/lib/format";
-import { colors, fontSize, minTouch, spacing } from "@/theme";
+import { TIME_MIN_WIDTH } from "@/components/rowLayout";
+import { minutesBetween } from "@/lib/data/todaySchedule";
+import { MANUAL_CHIP, serviceLine } from "@/lib/data/todayState";
+import { colors, radii, space, typography } from "@/theme";
 import type { Appointment } from "@/types";
 
-const statusColor: Record<Appointment["status"], string> = {
-  confirmed: colors.confirmed,
-  done: colors.confirmed,
-  cancelled: colors.cancelled,
-  no_show: colors.cancelled,
-};
+const ROW_MIN_HEIGHT = 64;
 
 export function AppointmentRow({ appointment, timeZone }: { appointment: Appointment; timeZone?: string }) {
+  const { fontScale } = useWindowDimensions();
   const inactive = !isActiveStatus(appointment.status);
+  const minutes = minutesBetween(appointment.start, appointment.end);
   return (
     <View style={styles.row}>
-      <View style={[styles.marker, { backgroundColor: statusColor[appointment.status] }]} />
-      <Text style={[styles.time, inactive && styles.inactive]}>{formatTime(appointment.start, timeZone)}</Text>
+      <Text style={[styles.time, { minWidth: Math.round(TIME_MIN_WIDTH * fontScale) }, inactive && styles.inactive]}>{formatTime(appointment.start, timeZone)}</Text>
       <View style={styles.info}>
         <Text style={[styles.name, inactive && styles.inactive]}>{appointment.clientName}</Text>
-        <Text style={styles.service}>
-          {appointment.serviceName}
-          {inactive ? " · отменена" : ""}
+        <Text style={[styles.service, inactive && styles.inactive]}>
+          {serviceLine(appointment.serviceName, minutes)}
         </Text>
       </View>
+      {appointment.source === "manual" ? (
+        <View style={styles.chip}>
+          <Text style={styles.chipText}>{MANUAL_CHIP}</Text>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -32,15 +35,24 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "center",
-    minHeight: minTouch + spacing.md,
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    gap: space[12],
+    minHeight: ROW_MIN_HEIGHT,
+    paddingVertical: space[12],
+    paddingHorizontal: space[14],
+    borderRadius: radii[16],
+    backgroundColor: colors.surface,
+    boxShadow: `0 1px 0 ${colors.line}`,
   },
-  marker: { width: 6, alignSelf: "stretch", borderRadius: 3, marginRight: spacing.md },
-  time: { fontSize: fontSize.title, fontWeight: "700", color: colors.text, width: 80 },
-  info: { flex: 1 },
-  name: { fontSize: fontSize.bodyLarge, fontWeight: "600", color: colors.text },
-  service: { fontSize: fontSize.body, color: colors.textMuted },
-  inactive: { color: colors.cancelled, textDecorationLine: "line-through" },
+  time: { ...typography.body, fontWeight: "800", color: colors.ink },
+  info: { flex: 1, minWidth: 0, gap: space[2] },
+  name: { ...typography.body, fontWeight: "700", color: colors.ink },
+  service: { ...typography.secondary, color: colors.muted },
+  chip: {
+    paddingVertical: space[6],
+    paddingHorizontal: space[10],
+    borderRadius: radii.full,
+    backgroundColor: colors.neutralSoft,
+  },
+  chipText: { ...typography.label, color: colors.neutralStrong },
+  inactive: { color: colors.neutralFg, textDecorationLine: "line-through" },
 });

@@ -28,6 +28,13 @@ export const colors = {
   textStrong: "#34433F",
   neutralStrong: "#4A4840",
   scrim: "rgba(20,51,46,0.5)",
+  primaryStrong: "#155445",
+  primarySoft: "#DDF0E9",
+  line: "#E6DCCB",
+  borderDashed: "#B5AC9C",
+  neutralSoft: "#ECE7DF",
+  neutralFg: "#6B675C",
+  disabledBg: "#E3DCCF",
 } as const;
 
 export const fontSize = {
@@ -59,6 +66,8 @@ export const typography = {
   body: { fontSize: 18, fontWeight: "500", lineHeight: 26 },
   secondary: { fontSize: 16, fontWeight: "500", lineHeight: 22 },
   label: { fontSize: 14, fontWeight: "700", lineHeight: 18 },
+  display: { fontSize: 46, fontWeight: "800", lineHeight: 48 },
+  subtitle: { fontSize: 21, fontWeight: "700", lineHeight: 26 },
 } as const satisfies Record<string, TextStyle>;
 
 export const space = {
