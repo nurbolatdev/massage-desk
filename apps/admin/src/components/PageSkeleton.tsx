@@ -13,8 +13,8 @@ export function PageSkeleton({ fullPage = false }: { fullPage?: boolean }) {
           <div key={row} className="flex items-center gap-12" aria-hidden="true">
             <div className="size-skeleton-avatar rounded-full bg-segment-bg" />
             <div className="flex flex-1 flex-col gap-6">
-              <div className="h-14 w-skeleton-line rounded-6 bg-segment-bg" />
-              <div className="h-10 w-skeleton-line-s rounded-6 bg-segment-bg" />
+              <div className="h-14 w-3/5 rounded-6 bg-segment-bg" />
+              <div className="h-10 w-7/20 rounded-6 bg-segment-bg" />
             </div>
             <div className="h-14 w-skeleton-bar rounded-6 bg-segment-bg" />
           </div>

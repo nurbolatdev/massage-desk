@@ -13,6 +13,8 @@ describe("safeRedirect", () => {
     ["clients"],
     ["//evil.com"],
     ["/\\evil.com"],
+    ["/\t/evil.com"],
+    ["/a b"],
     ["https://evil.com"],
     ["/sign-in"],
     ["/sign-in?redirect=/x"],

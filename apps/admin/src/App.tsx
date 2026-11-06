@@ -11,6 +11,9 @@ export function App() {
   // Guards run again whenever the session changes.
   useEffect(() => {
     void router.invalidate();
+    if (auth.status === "signedOut") {
+      queryClient.clear();
+    }
   }, [auth.status]);
 
   if (auth.status === "loading") {

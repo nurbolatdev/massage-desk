@@ -35,7 +35,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-screen flex-col bg-bg-page text-ink md:flex-row">
-      <aside className="hidden w-sidebar shrink-0 flex-col gap-24 bg-stone-dark px-16 py-24 md:flex">
+      <aside className="sticky top-0 hidden h-screen w-sidebar shrink-0 flex-col gap-24 bg-stone-dark px-16 py-24 md:flex">
         <div className="px-8">
           <BrandLogo mark={34} text="title-s" />
         </div>
@@ -71,7 +71,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <SignOutButton variant="ghost-on-dark" />
       </div>
 
-      <div className="flex-1 overflow-x-clip">
+      <div className="min-w-0 flex-1">
         {!online && (
           <div className="px-14 pt-20 md:px-32 md:pt-28">
             <OfflineBanner onRetry={() => void queryClient.refetchQueries({ type: "active" })} />

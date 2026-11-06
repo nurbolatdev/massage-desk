@@ -51,7 +51,7 @@ export function SignInPage() {
         <BrandLogo mark={44} text="title-s" />
         <div className="flex max-w-aside-text flex-col gap-14">
           <h1 className="text-hero text-surface">Админка</h1>
-          <p className="text-subtitle leading-normal font-medium text-on-primary-muted">
+          <p className="text-subtitle leading-body font-medium text-on-primary-muted">
             Расписание, клиенты, переписка бота и отчёты — в одном месте.
           </p>
         </div>

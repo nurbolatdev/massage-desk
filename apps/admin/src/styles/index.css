@@ -58,30 +58,40 @@
 
   /* DESIGN.md section 3: admin type roles (size / weight / line-height). */
   --text-*: initial;
-  --text-hero: 40px;
+  --text-hero: 2.5rem;
   --text-hero--line-height: 1.15;
   --text-hero--font-weight: 800;
-  --text-title: 30px;
+  --text-title: 1.875rem;
   --text-title--line-height: 1.2;
   --text-title--font-weight: 800;
-  --text-title-s: 20px;
+  --text-title-s: 1.25rem;
   --text-title-s--line-height: 1.25;
   --text-title-s--font-weight: 800;
-  --text-subtitle: 17px;
+  --text-subtitle: 1.0625rem;
   --text-subtitle--line-height: 1.3;
   --text-subtitle--font-weight: 700;
-  --text-body: 14px;
+  --text-body: 0.875rem;
   --text-body--line-height: 1.5;
   --text-body--font-weight: 500;
-  --text-secondary: 13px;
+  --text-secondary: 0.8125rem;
   --text-secondary--line-height: 1.45;
   --text-secondary--font-weight: 600;
-  --text-label: 12px;
+  --text-label: 0.75rem;
   --text-label--line-height: 1.3;
   --text-label--font-weight: 700;
 
+  /* Tailwind defaults for line-height, tracking, containers, blur, easing and animation are dropped. */
+  --leading-*: initial;
+  --leading-body: 1.5;
+  --tracking-*: initial;
+  --container-*: initial;
+  --blur-*: initial;
+  --ease-*: initial;
+  --animate-*: initial;
+
   /* DESIGN.md section 5: spacing scale (px) and named admin sizes. */
   --spacing-*: initial;
+  --spacing-0: 0px;
   --spacing-2: 2px;
   --spacing-4: 4px;
   --spacing-6: 6px;
@@ -108,8 +118,6 @@
   --spacing-dialog: 440px;
   --spacing-skeleton-avatar: 34px;
   --spacing-skeleton-bar: 70px;
-  --spacing-skeleton-line: 156px;
-  --spacing-skeleton-line-s: 92px;
   --spacing-state-text: 320px;
   /* Sign-in layout from the login mockup: aside and form column flex bases, aside text width. */
   --spacing-aside-basis: 380px;

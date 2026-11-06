@@ -11,8 +11,7 @@ type ContentProps = ComponentProps<typeof DialogPrimitive.Content> & { showClose
 export function DialogContent({ className, children, showClose = true, ...props }: ContentProps) {
   return (
     <DialogPrimitive.Portal>
-      {/* The overlay fills the viewport (top and left at 100%, shifted back) and centres the dialog. */}
-      <DialogPrimitive.Overlay className="fixed top-full left-full z-(--z-overlay) grid h-screen w-screen -translate-x-full -translate-y-full place-items-center overflow-y-auto bg-scrim p-16">
+      <DialogPrimitive.Overlay className="fixed inset-0 z-(--z-overlay) grid place-items-center overflow-y-auto bg-scrim p-16">
         <DialogPrimitive.Content
           className={cn(
             "relative flex w-dialog max-w-full flex-col rounded-18 bg-surface shadow-dialog",

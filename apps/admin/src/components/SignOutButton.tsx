@@ -1,4 +1,3 @@
-import { useQueryClient } from "@tanstack/react-query";
 import { LogOut } from "lucide-react";
 import { useState } from "react";
 
@@ -11,7 +10,6 @@ type SignOutButtonProps = { variant: "ghost-on-dark" | "secondary" };
 
 export function SignOutButton({ variant }: SignOutButtonProps) {
   const { signOut } = useAuth();
-  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>(undefined);
@@ -21,9 +19,7 @@ export function SignOutButton({ variant }: SignOutButtonProps) {
     setError(undefined);
     const done = await signOut();
     setBusy(false);
-    if (done) {
-      queryClient.clear();
-    } else {
+    if (!done) {
       setError("Не получилось выйти. Проверьте интернет и попробуйте ещё раз.");
     }
   };

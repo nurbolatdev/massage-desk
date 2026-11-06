@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 const SRC = dirname(fileURLToPath(import.meta.url));
 
 // DESIGN.md section 5 spacing scale.
-const SCALE = new Set([2, 4, 6, 8, 10, 12, 14, 16, 20, 24, 28, 32, 40, 48, 56, 64]);
+const SCALE = new Set([0, 2, 4, 6, 8, 10, 12, 14, 16, 20, 24, 28, 32, 40, 48, 56, 64]);
 
 const SIZE_UTILITIES = [
   "gap-x", "gap-y", "gap", "min-w", "min-h", "max-w", "max-h", "inset",
@@ -17,9 +17,13 @@ const SIZE_UTILITIES = [
   "w", "h",
 ].join("|");
 const NUMERIC_UTILITY = new RegExp(
-  `(?<![\\w-])-?(?:${SIZE_UTILITIES})-(\\d+(?:\\.\\d+)?)(?![\\w.-])`,
+  `(?<![\\w-])-?(?:${SIZE_UTILITIES})-(\\d+(?:\\.\\d+)?)(?![\\w./-])`,
   "g",
 );
+const NAMED_SIZE = new RegExp(
+  `(?<![\\w-])-?(?:${SIZE_UTILITIES})-(?:xs|sm|md|lg|xl|\\d+xl)(?![\\w-])`,
+);
+const LINE_UTILITY = /(?<![\w-])(?:border|outline|ring)(?:-[trblxy])?-\d/;
 const HEX = /#[0-9a-fA-F]{3,8}\b/;
 const COLOR_FUNCTION = /\b(?:rgba?|hsla?)\(/;
 const STYLE_PROP = /\bstyle=/;
@@ -37,6 +41,8 @@ function violations(file: string, text: string): string[] {
   if (COLOR_FUNCTION.test(text)) found.push(`${file}: colour function`);
   if (STYLE_PROP.test(text)) found.push(`${file}: style prop`);
   if (ARBITRARY_VALUE.test(text)) found.push(`${file}: arbitrary value`);
+  if (NAMED_SIZE.test(text)) found.push(`${file}: named size`);
+  if (LINE_UTILITY.test(text)) found.push(`${file}: border, outline or ring width`);
   for (const match of text.matchAll(NUMERIC_UTILITY)) {
     const n = Number(match[1]);
     if (!SCALE.has(n)) found.push(`${file}: off-scale size ${match[0]}`);
@@ -61,16 +67,14 @@ describe("design guard", () => {
     expect(violations("x", 'className="p-12"')).toEqual([]);
     expect(violations("x", 'const c = "#fff"')).not.toEqual([]);
     expect(violations("x", 'className="w-[13px]"')).not.toEqual([]);
+    expect(violations("x", 'className="max-w-md"')).not.toEqual([]);
+    expect(violations("x", 'className="border-3"')).not.toEqual([]);
+    expect(violations("x", 'className="w-3/5 inset-0"')).toEqual([]);
     expect(violations("x", "<p style={{}} />")).not.toEqual([]);
   });
 
   it("keeps hex and rgba in the stylesheet inside @theme", () => {
-    let css = "";
-    try {
-      css = readFileSync(join(SRC, "styles", "index.css"), "utf8");
-    } catch {
-      return; // the stylesheet arrives with the theme
-    }
+    const css = readFileSync(join(SRC, "styles", "index.css"), "utf8");
     const start = css.indexOf("@theme");
     const open = css.indexOf("{", start);
     let depth = 0;
