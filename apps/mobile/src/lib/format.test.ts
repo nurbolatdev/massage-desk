@@ -1,10 +1,18 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { formatDayMonth, formatDayTitle, formatSpan, formatTime, formatWeekday, plural } from "./format";
+import { formatDayMonth, formatDayTitle, formatSpan, formatTime, formatTimeShort, formatWeekday, plural } from "./format";
 
 describe("formatTime", () => {
   it("formats in the given zone", () => {
     expect(formatTime(new Date("2026-11-03T05:00:00Z"), "Asia/Tashkent")).toBe("10:00");
+  });
+});
+
+describe("formatTimeShort", () => {
+  it("drops the leading zero while formatTime keeps it", () => {
+    const instant = new Date("2026-11-03T04:00:00Z");
+    expect(formatTimeShort(instant, "Asia/Tashkent")).toBe("9:00");
+    expect(formatTime(instant, "Asia/Tashkent")).toBe("09:00");
   });
 });
 

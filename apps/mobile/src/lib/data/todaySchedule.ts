@@ -55,3 +55,13 @@ export function todaySchedule(appointments: readonly Appointment[], now: Date): 
   }
   return { kind: "schedule", next, rows, laterCount: later.length };
 }
+
+/** Confirmed appointments of a day: how many, and when the first one starts. */
+export function tomorrowSummary(
+  appointments: readonly Appointment[],
+): { count: number; first: Date } | null {
+  const confirmed = appointments.filter((a) => a.status === "confirmed");
+  const first = confirmed.map((a) => a.start).sort((a, b) => a.getTime() - b.getTime())[0];
+  if (first === undefined) return null;
+  return { count: confirmed.length, first };
+}

@@ -14,6 +14,11 @@ export function formatTime(date: Date, timeZone?: string): string {
   return cached(`time|${timeZone ?? ""}`, { hour: "2-digit", minute: "2-digit", timeZone }).format(date);
 }
 
+/** "9:00" (no leading zero); used only where the mockups show it so. */
+export function formatTimeShort(date: Date, timeZone?: string): string {
+  return cached(`timeshort|${timeZone ?? ""}`, { hour: "numeric", minute: "2-digit", timeZone }).format(date);
+}
+
 /** "Вторник, 27 октября" */
 export function formatDayTitle(date: Date, timeZone?: string): string {
   const s = cached(`day|${timeZone ?? ""}`, {
