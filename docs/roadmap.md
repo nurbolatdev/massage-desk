@@ -205,7 +205,13 @@ The master runs the schedule in the app; admin panel basics; event log; deploy a
 - **Pull request:** `feat(mobile): today screen on real data`
 - **Depends on:** M1-10
 - **Commits:**
+  1. `feat(mobile): design tokens for the today screen`
+  1. `feat(mobile): clock that ticks every minute and on resume`
+  1. `feat(mobile): today schedule model with next client and free gaps`
+  1. `feat(mobile): appointment and free-time rows from the mockups`
+  1. `feat(mobile): green next-client card`
   1. `feat(mobile): today screen layout from the mockups`
+  1. `feat(mobile): tomorrow summary and bot switch-on data`
   1. `feat(mobile): empty and bot-off states`
   1. `test(mobile): next client selection`
 
