@@ -4,7 +4,9 @@
 #                   apps/api/openapi.json matches the code
 #   packages/api-types:up-to-date — checks that src/schema.ts matches openapi.json
 #                   (fix both with `npm run api:types`)
-#   npm packages  — lint, typecheck, test, build for every workspace that has the script
+#   npm packages  — lint, typecheck, test, build for every workspace that has the script;
+#                   this includes apps/admin (lint with zero warnings, typecheck, vitest
+#                   with the design-token guard, Vite build)
 # Prints only what failed. Ends with GATE PASS or GATE FAIL.
 set -u
 
