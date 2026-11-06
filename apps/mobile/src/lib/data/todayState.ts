@@ -8,6 +8,9 @@ export const OFFLINE_EMPTY_TEXT = "Расписание появится, ког
 export const LOAD_ERROR_TEXT = "Не получилось загрузить расписание. Попробуйте ещё раз.";
 export const FORBIDDEN_TEXT = "Этот аккаунт не подключён к расписанию. Напишите Нурболату.";
 
+export const REFRESH_FAILED_TITLE = "Не получилось обновить расписание";
+export const RETRY_LABEL = "Обновить";
+
 export const NEXT_CLIENT_TITLE = "Следующий клиент";
 export const MANUAL_CHIP = "Вручную";
 export const BOT_ON_TEXT = "Бот отвечает";
@@ -52,6 +55,10 @@ export function offlineSavedText(savedAt: string): string {
   return `Показано расписание, сохранённое в ${savedAt}. Изменения недоступны.`;
 }
 
+export function refreshFailedSavedText(savedAt: string): string {
+  return `Показано на ${savedAt}`;
+}
+
 export type TodayView = "loading" | "offlineEmpty" | "error" | "list";
 
 export interface TodayStateInput {
@@ -67,23 +74,36 @@ export interface TodayState {
   errorText: string | null;
   /** The «Обновить» button is shown with the error (not for forbidden). */
   canRetry: boolean;
+  /** Online, data is shown, the last refresh failed and it was not a forbidden error. */
+  refreshFailed: boolean;
+}
+
+function isForbidden(error: Error | null): boolean {
+  return error instanceof ApiError && error.kind === "forbidden";
 }
 
 export function todayState({ online, hasData, error }: TodayStateInput): TodayState {
   if (hasData) {
-    return { view: "list", showOfflineBanner: !online, errorText: null, canRetry: false };
+    return {
+      view: "list",
+      showOfflineBanner: !online,
+      errorText: null,
+      canRetry: false,
+      refreshFailed: online && error !== null && !isForbidden(error),
+    };
   }
   if (!online) {
-    return { view: "offlineEmpty", showOfflineBanner: false, errorText: null, canRetry: false };
+    return { view: "offlineEmpty", showOfflineBanner: false, errorText: null, canRetry: false, refreshFailed: false };
   }
   if (error !== null) {
-    const forbidden = error instanceof ApiError && error.kind === "forbidden";
+    const forbidden = isForbidden(error);
     return {
       view: "error",
       showOfflineBanner: false,
       errorText: forbidden ? FORBIDDEN_TEXT : LOAD_ERROR_TEXT,
       canRetry: !forbidden,
+      refreshFailed: false,
     };
   }
-  return { view: "loading", showOfflineBanner: false, errorText: null, canRetry: false };
+  return { view: "loading", showOfflineBanner: false, errorText: null, canRetry: false, refreshFailed: false };
 }

@@ -9,11 +9,12 @@ import { ErrorBanner } from "@/components/ErrorBanner";
 import { FreeTimeRow } from "@/components/FreeTimeRow";
 import { NextClientCard } from "@/components/NextClientCard";
 import { OfflineBanner } from "@/components/OfflineBanner";
+import { RefreshFailedBanner } from "@/components/RefreshFailedBanner";
 import { TodayHeader } from "@/components/TodayHeader";
 import { TodaySkeleton } from "@/components/TodaySkeleton";
 import { useTodayAppointments, useTomorrowAppointments } from "@/lib/data/hooks";
 import { todaySchedule, tomorrowSummary } from "@/lib/data/todaySchedule";
-import { EMPTY_TITLE, FINISHED_TITLE, moreClientsTitle, todayState } from "@/lib/data/todayState";
+import { EMPTY_TITLE, FINISHED_TITLE, RETRY_LABEL, moreClientsTitle, todayState } from "@/lib/data/todayState";
 import { useOnline } from "@/lib/query/online";
 import { formatTime } from "@/lib/format";
 import { useNow } from "@/lib/time/useNow";
@@ -45,13 +46,14 @@ export default function TodayScreen() {
         {state.view === "error" && state.errorText !== null && (
           <View style={styles.errorBox}>
             <ErrorBanner message={state.errorText} />
-            {state.canRetry && <Button label="Обновить" onPress={today.refetch} />}
+            {state.canRetry && <Button label={RETRY_LABEL} onPress={today.refetch} />}
           </View>
         )}
 
         {state.view === "list" && (
           <>
             {state.showOfflineBanner && <OfflineBanner savedAt={savedAt} />}
+            {state.refreshFailed && <RefreshFailedBanner savedAt={savedAt} onRetry={today.refetch} />}
             {today.botEnabled === false && <BotOffBanner online={online} />}
 
             {schedule.kind === "schedule" && schedule.next !== null && (

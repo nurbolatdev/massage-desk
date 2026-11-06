@@ -9,6 +9,7 @@ import {
   moreClientsTitle,
   nextClientLabel,
   offlineSavedText,
+  refreshFailedSavedText,
   serviceLine,
   todayState,
   tomorrowText,
@@ -38,10 +39,46 @@ describe("todayState", () => {
     expect(state.canRetry).toBe(true);
   });
 
-  it("online error with data keeps the list without a banner", () => {
+  it("online error with data keeps the list and warns that the refresh failed", () => {
     const state = todayState({ online: true, hasData: true, error: new ApiError("network") });
     expect(state.view).toBe("list");
     expect(state.showOfflineBanner).toBe(false);
+    expect(state.refreshFailed).toBe(true);
+    expect(state.errorText).toBeNull();
+  });
+
+  it("forbidden with data keeps the list without a warning", () => {
+    const state = todayState({ online: true, hasData: true, error: new ApiError("forbidden") });
+    expect(state.view).toBe("list");
+    expect(state.refreshFailed).toBe(false);
+    expect(state.errorText).toBeNull();
+  });
+
+  it("offline with data and an error shows only the offline banner", () => {
+    const state = todayState({ online: false, hasData: true, error: new ApiError("network") });
+    expect(state.showOfflineBanner).toBe(true);
+    expect(state.refreshFailed).toBe(false);
+  });
+
+  it("offline without data and with an error is offlineEmpty", () => {
+    const state = todayState({ online: false, hasData: false, error: new ApiError("network") });
+    expect(state.view).toBe("offlineEmpty");
+    expect(state.refreshFailed).toBe(false);
+  });
+
+  it("online with data and no error has no warning", () => {
+    expect(todayState({ online: true, hasData: true, error: null }).refreshFailed).toBe(false);
+  });
+
+  it("forbidden without data still gives the forbidden text and no retry", () => {
+    const state = todayState({ online: true, hasData: false, error: new ApiError("forbidden") });
+    expect(state.errorText).toBe(FORBIDDEN_TEXT);
+    expect(state.canRetry).toBe(false);
+    expect(state.refreshFailed).toBe(false);
+  });
+
+  it("formats the refresh-failed saved time", () => {
+    expect(refreshFailedSavedText("09:35")).toBe("Показано на 09:35");
   });
 
   it("forbidden shows its own text and no retry", () => {
