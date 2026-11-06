@@ -6,19 +6,23 @@ import {
   createRouter,
   redirect,
 } from "@tanstack/react-router";
-import { Clock } from "lucide-react";
 
-import { StateCard } from "@/components/StateCard";
 import { safeRedirect } from "@/lib/auth/redirect";
 import type { AuthState } from "@/lib/auth/authContext";
 import { AccessGate } from "@/pages/AccessGate";
+import { NotFoundPage } from "@/pages/NotFoundPage";
+import { SectionPage } from "@/pages/SectionPage";
 import { SignInPage } from "@/pages/SignInPage";
+import { sections } from "@/sections";
 
 export const queryClient = new QueryClient();
 
 type RouterContext = { auth: AuthState; queryClient: QueryClient };
 
-const rootRoute = createRootRouteWithContext<RouterContext>()({ component: Outlet });
+const rootRoute = createRootRouteWithContext<RouterContext>()({
+  component: Outlet,
+  notFoundComponent: NotFoundPage,
+});
 
 const signInRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -48,20 +52,15 @@ const appRoute = createRoute({
   ),
 });
 
-// Temporary card until the section routes arrive.
-const homeRoute = createRoute({
-  getParentRoute: () => appRoute,
-  path: "/",
-  component: () => (
-    <StateCard
-      icon={Clock}
-      title="Раздел появится позже"
-      text="Записи, доход, доля бота и загруженность по часам."
-    />
-  ),
-});
+const sectionRoutes = sections.map((section) =>
+  createRoute({
+    getParentRoute: () => appRoute,
+    path: section.path,
+    component: () => <SectionPage section={section} />,
+  }),
+);
 
-const routeTree = rootRoute.addChildren([signInRoute, appRoute.addChildren([homeRoute])]);
+const routeTree = rootRoute.addChildren([signInRoute, appRoute.addChildren(sectionRoutes)]);
 
 export const router = createRouter({
   routeTree,
