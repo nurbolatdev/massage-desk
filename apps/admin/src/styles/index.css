@@ -1,0 +1,153 @@
+@import "tailwindcss";
+
+@theme {
+  /* DESIGN.md section 2: colour palette. Nothing else defines a colour. */
+  --color-*: initial;
+  --color-ink: #14332e;
+  --color-muted: #4f615b;
+  --color-neutral-soft: #ece7df;
+  --color-bg: #faf6ef;
+  --color-bg-page: #f6f1e8;
+  --color-surface: #ffffff;
+  --color-line: #e6dccb;
+  --color-divider: #f0e8db;
+  --color-border-strong: #8a8478;
+  --color-border-dashed: #b5ac9c;
+  --color-text-strong: #34433f;
+  --color-neutral-strong: #4a4840;
+  --color-neutral-fg: #6b675c;
+  --color-segment-bg: #efe7da;
+  --color-disabled-bg: #e3dccf;
+  --color-primary: #1f6f5c;
+  --color-primary-strong: #155445;
+  --color-primary-soft: #ddf0e9;
+  --color-stone-dark: #14362f;
+  --color-stone-light: #7fd6be;
+  --color-accent: #f0603c;
+  --color-accent-soft: #fde3d6;
+  --color-primary-mid: #1e8a72;
+  --color-primary-faint: #eef7f3;
+  --color-on-primary-muted: #cdede3;
+  --color-on-accent: #2b0e05;
+  --color-accent-strong: #8a2e12;
+  --color-stone-mid: #1b4038;
+  --color-brand-mid: #34a88c;
+  --color-danger: #b3261e;
+  --color-danger-soft: #f6d9d4;
+  --color-note: #fff6de;
+  --color-info-soft: #eef3f7;
+  --color-warning-icon: #c2451f;
+  --color-danger-strong: #8a1f12;
+  --color-manual-soft: #fbe7dc;
+  --color-manual-border: #e58a66;
+  --color-danger-border: #e9b4a6;
+  --color-info-strong: #1d3a52;
+
+  /* DESIGN.md section 6: scrim behind dialogs. */
+  --color-scrim: rgba(20, 51, 46, 0.5);
+
+  /* DESIGN.md section 3: Inter, weights 400-800. */
+  --font-*: initial;
+  --font-sans: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-weight-*: initial;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-extrabold: 800;
+
+  /* DESIGN.md section 3: admin type roles (size / weight / line-height). */
+  --text-*: initial;
+  --text-hero: 40px;
+  --text-hero--line-height: 1.15;
+  --text-hero--font-weight: 800;
+  --text-title: 30px;
+  --text-title--line-height: 1.2;
+  --text-title--font-weight: 800;
+  --text-title-s: 20px;
+  --text-title-s--line-height: 1.25;
+  --text-title-s--font-weight: 800;
+  --text-subtitle: 17px;
+  --text-subtitle--line-height: 1.3;
+  --text-subtitle--font-weight: 700;
+  --text-body: 14px;
+  --text-body--line-height: 1.5;
+  --text-body--font-weight: 500;
+  --text-secondary: 13px;
+  --text-secondary--line-height: 1.45;
+  --text-secondary--font-weight: 600;
+  --text-label: 12px;
+  --text-label--line-height: 1.3;
+  --text-label--font-weight: 700;
+
+  /* DESIGN.md section 5: spacing scale (px) and named admin sizes. */
+  --spacing-*: initial;
+  --spacing-2: 2px;
+  --spacing-4: 4px;
+  --spacing-6: 6px;
+  --spacing-8: 8px;
+  --spacing-10: 10px;
+  --spacing-12: 12px;
+  --spacing-14: 14px;
+  --spacing-16: 16px;
+  --spacing-20: 20px;
+  --spacing-24: 24px;
+  --spacing-28: 28px;
+  --spacing-32: 32px;
+  --spacing-40: 40px;
+  --spacing-48: 48px;
+  --spacing-56: 56px;
+  --spacing-64: 64px;
+  --spacing-target: 44px;
+  --spacing-target-s: 36px;
+  --spacing-sidebar: 240px;
+  --spacing-content: 560px;
+  --spacing-form: 400px;
+  --spacing-check: 18px;
+
+  /* DESIGN.md section 5: radius scale. */
+  --radius-*: initial;
+  --radius-4: 4px;
+  --radius-6: 6px;
+  --radius-8: 8px;
+  --radius-10: 10px;
+  --radius-12: 12px;
+  --radius-14: 14px;
+  --radius-16: 16px;
+  --radius-18: 18px;
+  --radius-22: 22px;
+  --radius-28: 28px;
+  --radius-full: 999px;
+
+  /* DESIGN.md section 6: dialog depth and layers. */
+  --shadow-*: initial;
+  --shadow-dialog: 0 20px 50px rgba(13, 34, 30, 0.25);
+  --z-content: 0;
+  --z-sticky: 10;
+  --z-toast: 50;
+  --z-overlay: 100;
+
+  /* DESIGN.md section 8: the only breakpoint, sidebar 240 + content 560. */
+  --breakpoint-*: initial;
+  --breakpoint-md: 800px;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--color-bg-page);
+    color: var(--color-ink);
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+    font-weight: var(--text-body--font-weight);
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+}
