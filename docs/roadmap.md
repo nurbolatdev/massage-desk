@@ -271,10 +271,23 @@ The master runs the schedule in the app; admin panel basics; event log; deploy a
 - **Pull request:** `feat(admin): admin panel skeleton`
 - **Depends on:** M1-5
 - **Commits:**
+  1. `chore(admin): vite react workspace with checks`
   1. `feat(admin): vite react app with brand theme`
-  1. `feat(admin): sign-in and admin-only routes`
+  1. `feat(admin): base controls in brand style`
+  1. `feat(admin): page states and confirm dialog`
+  1. `feat(admin): supabase session with remember-me storage`
+  1. `feat(admin): role check and sign-in messages`
+  1. `feat(admin): typed api client with bearer token`
+  1. `feat(admin): sign-in page and session`
+  1. `feat(admin): staff role check on every page`
+  1. `feat(admin): admin-only routes for all sections`
   1. `feat(admin): navigation for all sections`
   1. `ci: admin checks in the gate`
+  1. `docs(admin): skeleton status and setup`
+  1. `fix(admin): align states, buttons and phone menu with the mockups`
+  1. `fix(admin): stricter design guard and session cleanup`
+  1. `fix(admin): phone padding on the not-found page`
+  1. `fix(admin): offline state when the session is not refreshed`
 
 ### M1-17 · Admin: schedule
 
@@ -282,9 +295,11 @@ The master runs the schedule in the app; admin panel basics; event log; deploy a
 - **Pull request:** `feat(admin): schedule`
 - **Depends on:** M1-7, M1-16
 - **Commits:**
+  1. `feat(api): cors for the admin origin`
   1. `feat(admin): calendar with drag-and-drop reschedule`
   1. `feat(admin): working hours editor`
   1. `test(admin): reschedule conflict is shown`
+- **Also (from M1-16):** CORS allows only the admin origin from an environment variable, never "*".
 
 ### M1-18 · Admin: clients
 
@@ -300,6 +315,7 @@ The master runs the schedule in the app; admin panel basics; event log; deploy a
 - **Branch:** `feature/admin-settings`
 - **Pull request:** `feat(admin): services and settings`
 - **Depends on:** M1-8, M1-16
+- **Also (from M1-16):** the server forbids user management for master.
 - **Commits:**
   1. `feat(admin): services and prices`
   1. `feat(admin): business settings and time zone`
