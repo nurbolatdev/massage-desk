@@ -76,7 +76,7 @@ const routeTree = rootRoute.addChildren([
 export const router = createRouter({
   routeTree,
   context: {
-    auth: { status: "loading", session: null, signOut: async () => false },
+    auth: { status: "loading", session: null, signOut: async () => false, reloadSession: async () => {} },
     queryClient,
   },
 });

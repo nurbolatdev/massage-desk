@@ -7,6 +7,8 @@ export type AuthState = {
   status: Status;
   session: Session | null;
   signOut: () => Promise<boolean>;
+  /** Re-reads the session; an expired token is refreshed on the way. */
+  reloadSession: () => Promise<void>;
 };
 
 export const AuthContext = createContext<AuthState | null>(null);

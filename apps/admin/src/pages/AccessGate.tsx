@@ -1,15 +1,15 @@
 import { CircleAlert, Lock, RefreshCw, WifiOff } from "lucide-react";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import { PageSkeleton } from "@/components/PageSkeleton";
 import { SignOutButton } from "@/components/SignOutButton";
 import { StateCard } from "@/components/StateCard";
 import { icon } from "@/components/icon";
 import { Button } from "@/components/ui/button";
-import { SESSION_OFFLINE_TEXT, SESSION_OFFLINE_TITLE, accessView } from "@/lib/auth/access";
+import { accessView } from "@/lib/auth/access";
 import { useAuth } from "@/lib/auth/authContext";
-import { supabase } from "@/lib/auth/supabase";
 import { RoleContext } from "@/lib/auth/roleContext";
+import { OFFLINE_HINT, OFFLINE_TITLE } from "@/lib/auth/signInErrors";
 import { useRole } from "@/lib/auth/useRole";
 
 function FullPage({ children }: { children: ReactNode }) {
@@ -17,20 +17,35 @@ function FullPage({ children }: { children: ReactNode }) {
 }
 
 export function AccessGate({ children }: { children: ReactNode }) {
-  const hasSession = useAuth().session !== null;
+  const { status, session, reloadSession } = useAuth();
+  const [reloading, setReloading] = useState(false);
   const { data: role, isPending, isError, refetch } = useRole();
-  const view = accessView({ hasSession, isPending, isError, role });
+  const view = accessView({
+    signedIn: status === "signedIn",
+    hasSession: session !== null,
+    isPending,
+    isError,
+    role,
+  });
 
-  if (view === "offline") {
+  const retry = async () => {
+    setReloading(true);
+    try {
+      await reloadSession();
+    } finally {
+      setReloading(false);
+    }
+  };
+
+  if (view.kind === "offline") {
     return (
       <FullPage>
         <StateCard
           icon={WifiOff}
-          title={SESSION_OFFLINE_TITLE}
-          text={SESSION_OFFLINE_TEXT}
+          title={OFFLINE_TITLE}
+          text={OFFLINE_HINT}
           action={
-            // Reading the session refreshes an expired token; the auth provider picks up the result.
-            <Button variant="secondary" onClick={() => void supabase.auth.getSession()}>
+            <Button variant="secondary" disabled={reloading} onClick={() => void retry()}>
               <RefreshCw size={icon.button} strokeWidth={icon.stroke} aria-hidden="true" />
               Повторить
             </Button>
@@ -39,10 +54,10 @@ export function AccessGate({ children }: { children: ReactNode }) {
       </FullPage>
     );
   }
-  if (view === "loading") {
+  if (view.kind === "loading") {
     return <PageSkeleton fullPage />;
   }
-  if (view === "error") {
+  if (view.kind === "error") {
     return (
       <FullPage>
         <StateCard
@@ -59,7 +74,7 @@ export function AccessGate({ children }: { children: ReactNode }) {
       </FullPage>
     );
   }
-  if (view === "denied" || role === null || role === undefined) {
+  if (view.kind === "denied") {
     return (
       <FullPage>
         <StateCard
@@ -71,5 +86,5 @@ export function AccessGate({ children }: { children: ReactNode }) {
       </FullPage>
     );
   }
-  return <RoleContext.Provider value={role}>{children}</RoleContext.Provider>;
+  return <RoleContext.Provider value={view.role}>{children}</RoleContext.Provider>;
 }

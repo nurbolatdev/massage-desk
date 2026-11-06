@@ -20,23 +20,29 @@ export async function fetchRole(client: SupabaseClient, userId: string): Promise
   return roleFromProfile(data);
 }
 
-export const SESSION_OFFLINE_TITLE = "Нет интернета";
-export const SESSION_OFFLINE_TEXT = "Проверьте подключение и попробуйте ещё раз.";
-
 export type AccessViewInput = {
+  signedIn: boolean;
   hasSession: boolean;
   isPending: boolean;
   isError: boolean;
   role: StaffRole | null | undefined;
 };
 
-export type AccessView = "offline" | "loading" | "error" | "denied" | "allowed";
+export type AccessView =
+  | { kind: "allowed"; role: StaffRole }
+  | { kind: "offline" }
+  | { kind: "loading" }
+  | { kind: "error" }
+  | { kind: "denied" };
 
-/** Decides what the access gate shows; signed in without a session means offline, token not refreshed. */
-export function accessView({ hasSession, isPending, isError, role }: AccessViewInput): AccessView {
-  if (!hasSession) return "offline";
-  if (isPending) return "loading";
-  if (isError) return "error";
-  if (role === null || role === undefined) return "denied";
-  return "allowed";
+/**
+ * Decides what the access gate shows. Signed in without a session means offline (token not refreshed);
+ * signed out without a session keeps the skeleton until the router redirects to the sign-in page.
+ */
+export function accessView({ signedIn, hasSession, isPending, isError, role }: AccessViewInput): AccessView {
+  if (!hasSession) return { kind: signedIn ? "offline" : "loading" };
+  if (isPending) return { kind: "loading" };
+  if (isError) return { kind: "error" };
+  if (role === null || role === undefined) return { kind: "denied" };
+  return { kind: "allowed", role };
 }

@@ -21,26 +21,32 @@ describe("roleFromProfile", () => {
 });
 
 describe("accessView", () => {
-  const base = { hasSession: true, isPending: false, isError: false, role: "admin" as const };
+  const base = { signedIn: true, hasSession: true, isPending: false, isError: false, role: "admin" as const };
 
   it("shows offline when signed in without a session", () => {
-    expect(accessView({ ...base, hasSession: false, isPending: true, role: undefined })).toBe("offline");
+    expect(accessView({ ...base, hasSession: false, isPending: true, role: undefined })).toEqual({ kind: "offline" });
+  });
+
+  it("keeps the skeleton when signed out without a session", () => {
+    expect(accessView({ ...base, signedIn: false, hasSession: false, isPending: true, role: undefined })).toEqual({
+      kind: "loading",
+    });
   });
 
   it("shows loading while the role is loading", () => {
-    expect(accessView({ ...base, isPending: true, role: undefined })).toBe("loading");
+    expect(accessView({ ...base, isPending: true, role: undefined })).toEqual({ kind: "loading" });
   });
 
   it("shows error when the role request failed", () => {
-    expect(accessView({ ...base, isError: true, role: undefined })).toBe("error");
+    expect(accessView({ ...base, isError: true, role: undefined })).toEqual({ kind: "error" });
   });
 
   it("denies access without a role", () => {
-    expect(accessView({ ...base, role: null })).toBe("denied");
+    expect(accessView({ ...base, role: null })).toEqual({ kind: "denied" });
   });
 
   it("allows a known role", () => {
-    expect(accessView(base)).toBe("allowed");
-    expect(accessView({ ...base, role: "master" })).toBe("allowed");
+    expect(accessView(base)).toEqual({ kind: "allowed", role: "admin" });
+    expect(accessView({ ...base, role: "master" })).toEqual({ kind: "allowed", role: "master" });
   });
 });

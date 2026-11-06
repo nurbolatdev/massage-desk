@@ -2,7 +2,9 @@ import { isAuthApiError, isAuthRetryableFetchError } from "@supabase/supabase-js
 
 export const EMPTY_FIELDS_MESSAGE = "Введите email и пароль.";
 export const WRONG_CREDENTIALS_MESSAGE = "Неверный email или пароль. Проверьте и попробуйте ещё раз.";
-export const OFFLINE_MESSAGE = "Нет интернета. Проверьте подключение и попробуйте ещё раз.";
+export const OFFLINE_TITLE = "Нет интернета";
+export const OFFLINE_HINT = "Проверьте подключение и попробуйте ещё раз.";
+export const OFFLINE_MESSAGE = `${OFFLINE_TITLE}. ${OFFLINE_HINT}`;
 export const RATE_LIMIT_MESSAGE = "Слишком много попыток. Подождите минуту и попробуйте ещё раз.";
 export const GENERIC_MESSAGE = "Не получилось войти. Попробуйте ещё раз через минуту.";
 

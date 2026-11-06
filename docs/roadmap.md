@@ -299,6 +299,7 @@ The master runs the schedule in the app; admin panel basics; event log; deploy a
   1. `feat(admin): calendar with drag-and-drop reschedule`
   1. `feat(admin): working hours editor`
   1. `test(admin): reschedule conflict is shown`
+- **Also (from M1-16):** CORS allows only the admin origin from an environment variable, never "*".
 
 ### M1-18 · Admin: clients
 

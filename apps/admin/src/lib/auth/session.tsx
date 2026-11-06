@@ -15,12 +15,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<Status>("loading");
   const [session, setSession] = useState<Session | null>(null);
 
+  const apply = useCallback((next: SessionState) => {
+    setSession(next.session);
+    setStatus(next.status);
+  }, []);
+
   useEffect(() => {
     let active = true;
-    const apply = (next: SessionState) => {
-      setSession(next.session);
-      setStatus(next.status);
-    };
 
     supabase.auth
       .getSession()
@@ -40,7 +41,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       active = false;
       data.subscription.unsubscribe();
     };
-  }, []);
+  }, [apply]);
+
+  const reloadSession = useCallback(async () => {
+    try {
+      const { data, error } = await supabase.auth.getSession();
+      apply(sessionStateFrom(data.session, error));
+    } catch {
+      // Still offline: keep the current state so the retry card stays.
+    }
+  }, [apply]);
 
   const signOut = useCallback(async () => {
     try {
@@ -53,7 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const value = useMemo(() => ({ status, session, signOut }), [status, session, signOut]);
+  const value = useMemo(() => ({ status, session, signOut, reloadSession }), [status, session, signOut, reloadSession]);
 
   return <AuthContext value={value}>{children}</AuthContext>;
 }
