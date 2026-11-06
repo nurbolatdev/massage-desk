@@ -1,14 +1,13 @@
 import { StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { isActiveStatus } from "@massage-desk/shared";
 import { formatTime } from "@/lib/format";
+import { TIME_MIN_WIDTH } from "@/components/rowLayout";
 import { minutesBetween } from "@/lib/data/todaySchedule";
 import { MANUAL_CHIP, serviceLine } from "@/lib/data/todayState";
 import { colors, radii, space, typography } from "@/theme";
 import type { Appointment } from "@/types";
 
-// from the Main mockup
 const ROW_MIN_HEIGHT = 64;
-export const TIME_MIN_WIDTH = 56;
 
 export function AppointmentRow({ appointment, timeZone }: { appointment: Appointment; timeZone?: string }) {
   const { fontScale } = useWindowDimensions();

@@ -61,6 +61,7 @@ function labelColor(primary: boolean, onPrimaryCard: boolean, disabled: boolean)
 const styles = StyleSheet.create({
   base: {
     flexGrow: 1,
+    flexShrink: 1,
     minHeight: size.buttonSecondary,
     borderRadius: radii[16],
     flexDirection: "row",

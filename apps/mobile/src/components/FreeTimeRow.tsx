@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View, useWindowDimensions } from "react-native";
-import { TIME_MIN_WIDTH } from "@/components/AppointmentRow";
+import { TIME_MIN_WIDTH } from "@/components/rowLayout";
 import { formatTime } from "@/lib/format";
 import { minutesBetween } from "@/lib/data/todaySchedule";
 import { freeTimeText } from "@/lib/data/todayState";

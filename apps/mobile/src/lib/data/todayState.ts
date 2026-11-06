@@ -1,5 +1,5 @@
 import { ApiError } from "@/lib/api/errors";
-import { formatSpan, plural } from "@/lib/format";
+import { NBSP, formatSpan, plural } from "@/lib/format";
 
 import { minutesBetween } from "./todaySchedule";
 
@@ -37,7 +37,7 @@ export function untilText(time: string): string {
 }
 
 export function serviceLine(name: string, minutes: number): string {
-  return `${name} · ${minutes}\u00a0мин`;
+  return `${name} · ${minutes}${NBSP}мин`;
 }
 
 export function moreClientsTitle(n: number): string {

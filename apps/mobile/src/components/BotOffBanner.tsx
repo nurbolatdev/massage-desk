@@ -33,7 +33,6 @@ const styles = StyleSheet.create({
   wrap: { gap: space[8] },
   card: {
     flexDirection: "row",
-    flexWrap: "wrap",
     alignItems: "center",
     gap: space[12],
     paddingVertical: space[12],
@@ -43,7 +42,7 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     backgroundColor: colors.surface,
   },
-  texts: { flex: 1 },
+  texts: { flex: 1, gap: space[2] },
   title: { ...typography.body, fontWeight: "700", color: colors.ink },
   text: { ...typography.secondary, color: colors.muted },
   button: {

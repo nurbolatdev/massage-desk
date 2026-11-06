@@ -30,7 +30,7 @@ export function formatDayTitle(date: Date, timeZone?: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-const NBSP = " ";
+export const NBSP = " ";
 
 /** Russian plural form for `n`: 1 клиент, 2 клиента, 5 клиентов. */
 export function plural(n: number, one: string, few: string, many: string): string {
