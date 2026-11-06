@@ -7,6 +7,7 @@ import {
   redirect,
 } from "@tanstack/react-router";
 
+import { AppShell } from "@/components/AppShell";
 import { safeRedirect } from "@/lib/auth/redirect";
 import type { AuthState } from "@/lib/auth/authContext";
 import { AccessGate } from "@/pages/AccessGate";
@@ -47,7 +48,9 @@ const appRoute = createRoute({
   },
   component: () => (
     <AccessGate>
-      <Outlet />
+      <AppShell>
+        <Outlet />
+      </AppShell>
     </AccessGate>
   ),
 });
