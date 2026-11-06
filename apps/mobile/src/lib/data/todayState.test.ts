@@ -17,30 +17,30 @@ import {
 
 describe("todayState", () => {
   it("offline with data shows the list and the banner", () => {
-    const state = todayState({ online: false, hasData: true, error: null });
+    const state = todayState({ online: false, hasData: true, error: null, appointmentsError: null });
     expect(state.view).toBe("list");
     expect(state.showOfflineBanner).toBe(true);
   });
 
   it("offline without data is offlineEmpty", () => {
-    expect(todayState({ online: false, hasData: false, error: null }).view).toBe("offlineEmpty");
+    expect(todayState({ online: false, hasData: false, error: null, appointmentsError: null }).view).toBe("offlineEmpty");
   });
 
   it("online and pending is loading", () => {
-    const state = todayState({ online: true, hasData: false, error: null });
+    const state = todayState({ online: true, hasData: false, error: null, appointmentsError: null });
     expect(state.view).toBe("loading");
     expect(state.showOfflineBanner).toBe(false);
   });
 
   it("online error without data is the error view with a retry button", () => {
-    const state = todayState({ online: true, hasData: false, error: new ApiError("server") });
+    const state = todayState({ online: true, hasData: false, error: new ApiError("server"), appointmentsError: new ApiError("server") });
     expect(state.view).toBe("error");
     expect(state.errorText).toBe(LOAD_ERROR_TEXT);
     expect(state.canRetry).toBe(true);
   });
 
   it("online error with data keeps the list and warns that the refresh failed", () => {
-    const state = todayState({ online: true, hasData: true, error: new ApiError("network") });
+    const state = todayState({ online: true, hasData: true, error: new ApiError("network"), appointmentsError: new ApiError("network") });
     expect(state.view).toBe("list");
     expect(state.showOfflineBanner).toBe(false);
     expect(state.refreshFailed).toBe(true);
@@ -48,30 +48,46 @@ describe("todayState", () => {
   });
 
   it("forbidden with data keeps the list without a warning", () => {
-    const state = todayState({ online: true, hasData: true, error: new ApiError("forbidden") });
+    const state = todayState({ online: true, hasData: true, error: new ApiError("forbidden"), appointmentsError: new ApiError("forbidden") });
     expect(state.view).toBe("list");
     expect(state.refreshFailed).toBe(false);
     expect(state.errorText).toBeNull();
   });
 
   it("offline with data and an error shows only the offline banner", () => {
-    const state = todayState({ online: false, hasData: true, error: new ApiError("network") });
+    const state = todayState({ online: false, hasData: true, error: new ApiError("network"), appointmentsError: new ApiError("network") });
     expect(state.showOfflineBanner).toBe(true);
     expect(state.refreshFailed).toBe(false);
   });
 
   it("offline without data and with an error is offlineEmpty", () => {
-    const state = todayState({ online: false, hasData: false, error: new ApiError("network") });
+    const state = todayState({ online: false, hasData: false, error: new ApiError("network"), appointmentsError: new ApiError("network") });
     expect(state.view).toBe("offlineEmpty");
     expect(state.refreshFailed).toBe(false);
   });
 
+  it("a settings-only error with data shows no refresh warning", () => {
+    const state = todayState({
+      online: true,
+      hasData: true,
+      error: new ApiError("server"),
+      appointmentsError: null,
+    });
+    expect(state.view).toBe("list");
+    expect(state.refreshFailed).toBe(false);
+  });
+
+  it("an appointments error with data online warns about the refresh", () => {
+    const error = new ApiError("server");
+    expect(todayState({ online: true, hasData: true, error, appointmentsError: error }).refreshFailed).toBe(true);
+  });
+
   it("online with data and no error has no warning", () => {
-    expect(todayState({ online: true, hasData: true, error: null }).refreshFailed).toBe(false);
+    expect(todayState({ online: true, hasData: true, error: null, appointmentsError: null }).refreshFailed).toBe(false);
   });
 
   it("forbidden without data still gives the forbidden text and no retry", () => {
-    const state = todayState({ online: true, hasData: false, error: new ApiError("forbidden") });
+    const state = todayState({ online: true, hasData: false, error: new ApiError("forbidden"), appointmentsError: new ApiError("forbidden") });
     expect(state.errorText).toBe(FORBIDDEN_TEXT);
     expect(state.canRetry).toBe(false);
     expect(state.refreshFailed).toBe(false);
@@ -82,7 +98,7 @@ describe("todayState", () => {
   });
 
   it("forbidden shows its own text and no retry", () => {
-    const state = todayState({ online: true, hasData: false, error: new ApiError("forbidden") });
+    const state = todayState({ online: true, hasData: false, error: new ApiError("forbidden"), appointmentsError: new ApiError("forbidden") });
     expect(state.view).toBe("error");
     expect(state.errorText).toBe(FORBIDDEN_TEXT);
     expect(state.canRetry).toBe(false);

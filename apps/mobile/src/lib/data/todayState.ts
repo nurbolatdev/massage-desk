@@ -65,6 +65,8 @@ export interface TodayStateInput {
   online: boolean;
   hasData: boolean;
   error: Error | null;
+  /** Error of the appointments request only; a settings-only error does not warn about refresh. */
+  appointmentsError: Error | null;
 }
 
 export interface TodayState {
@@ -82,14 +84,14 @@ function isForbidden(error: Error | null): boolean {
   return error instanceof ApiError && error.kind === "forbidden";
 }
 
-export function todayState({ online, hasData, error }: TodayStateInput): TodayState {
+export function todayState({ online, hasData, error, appointmentsError }: TodayStateInput): TodayState {
   if (hasData) {
     return {
       view: "list",
       showOfflineBanner: !online,
       errorText: null,
       canRetry: false,
-      refreshFailed: online && error !== null && !isForbidden(error),
+      refreshFailed: online && appointmentsError !== null && !isForbidden(appointmentsError),
     };
   }
   if (!online) {

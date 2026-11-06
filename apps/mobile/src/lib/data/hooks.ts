@@ -43,6 +43,7 @@ export function useTodayAppointments(now: Date) {
     appointments: appointments.data,
     dataUpdatedAt: appointments.dataUpdatedAt,
     error: settings.error ?? appointments.error,
+    appointmentsError: appointments.error,
     refetch,
   };
 }
