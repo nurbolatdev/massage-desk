@@ -39,6 +39,7 @@ export function useTodayAppointments(now: Date) {
 
   return {
     timeZone,
+    botEnabled: settings.data?.botEnabled,
     appointments: appointments.data,
     dataUpdatedAt: appointments.dataUpdatedAt,
     error: settings.error ?? appointments.error,

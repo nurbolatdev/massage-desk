@@ -1,26 +1,28 @@
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AppointmentRow } from "@/components/AppointmentRow";
-import { BigButton } from "@/components/BigButton";
 import { Button } from "@/components/Button";
 import { ErrorBanner } from "@/components/ErrorBanner";
+import { FreeTimeRow } from "@/components/FreeTimeRow";
+import { NextClientCard } from "@/components/NextClientCard";
 import { OfflineBanner } from "@/components/OfflineBanner";
+import { TodayHeader } from "@/components/TodayHeader";
 import { TodaySkeleton } from "@/components/TodaySkeleton";
 import { useTodayAppointments } from "@/lib/data/hooks";
-import { todayState } from "@/lib/data/todayState";
+import { todaySchedule } from "@/lib/data/todaySchedule";
+import { EMPTY_TITLE, FINISHED_TITLE, moreClientsTitle, todayState } from "@/lib/data/todayState";
 import { useOnline } from "@/lib/query/online";
-import { callPhone, openWhatsApp } from "@/lib/contact";
-import { formatDayTitle, formatTime } from "@/lib/format";
-import { colors, fontSize, radius, spacing } from "@/theme";
+import { formatTime } from "@/lib/format";
+import { useNow } from "@/lib/time/useNow";
+import { colors, space, typography } from "@/theme";
 
 export default function TodayScreen() {
-  const now = new Date();
+  const now = useNow();
   const online = useOnline();
   const today = useTodayAppointments(now);
   const hasData = today.appointments !== undefined;
   const state = todayState({ online, hasData, error: today.error });
-  const appointments = today.appointments ?? [];
-  const next = appointments.find((a) => a.status === "confirmed" && a.end > now);
+  const schedule = todaySchedule(today.appointments ?? [], now);
   const timeZone = today.timeZone;
   const savedAt =
     timeZone !== undefined && today.dataUpdatedAt > 0
@@ -29,9 +31,8 @@ export default function TodayScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
+      <TodayHeader now={now} timeZone={timeZone} botEnabled={today.botEnabled} />
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.date}>{formatDayTitle(now, timeZone)}</Text>
-
         {state.view === "loading" && <TodaySkeleton />}
 
         {state.view === "offlineEmpty" && <OfflineBanner savedAt={null} />}
@@ -45,34 +46,30 @@ export default function TodayScreen() {
 
         {state.view === "list" && (
           <>
-            {state.showOfflineBanner && (
-              <View style={styles.banner}>
-                <OfflineBanner savedAt={savedAt} />
-              </View>
+            {state.showOfflineBanner && <OfflineBanner savedAt={savedAt} />}
+
+            {schedule.kind === "schedule" && schedule.next !== null && (
+              <>
+                <NextClientCard appointment={schedule.next} now={now} timeZone={timeZone} online={online} />
+                {schedule.rows.length > 0 && (
+                  <>
+                    <Text style={styles.heading}>{moreClientsTitle(schedule.laterCount)}</Text>
+                    <View style={styles.rows}>
+                      {schedule.rows.map((row) =>
+                        row.kind === "appointment" ? (
+                          <AppointmentRow key={row.appointment.id} appointment={row.appointment} timeZone={timeZone} />
+                        ) : (
+                          <FreeTimeRow key={`free-${row.start.getTime()}`} start={row.start} end={row.end} timeZone={timeZone} />
+                        ),
+                      )}
+                    </View>
+                  </>
+                )}
+              </>
             )}
 
-            {next ? (
-              <View style={styles.nextCard}>
-                <Text style={styles.nextLabel}>Следующий клиент</Text>
-                <Text style={styles.nextTime}>{formatTime(next.start, timeZone)}</Text>
-                <Text style={styles.nextName}>{next.clientName}</Text>
-                <Text style={styles.nextService}>{next.serviceName}</Text>
-                <View style={styles.actions}>
-                  <BigButton label="Позвонить" onPress={() => void callPhone(next.clientPhone)} />
-                  <BigButton label="Написать" variant="secondary" disabled={!online} onPress={() => void openWhatsApp(next.clientPhone)} />
-                </View>
-              </View>
-            ) : (
-              <View style={styles.nextCard}>
-                <Text style={styles.nextName}>На сегодня больше записей нет</Text>
-              </View>
-            )}
-
-            <Text style={styles.sectionTitle}>Все записи на сегодня</Text>
-            {appointments.length === 0 ? (
-              <Text style={styles.empty}>Сегодня записей нет</Text>
-            ) : (
-              appointments.map((a) => <AppointmentRow key={a.id} appointment={a} timeZone={timeZone} />)
+            {schedule.kind !== "schedule" && (
+              <Text style={styles.emptyTitle}>{schedule.kind === "empty" ? EMPTY_TITLE : FINISHED_TITLE}</Text>
             )}
           </>
         )}
@@ -82,24 +79,10 @@ export default function TodayScreen() {
 }
 
 const styles = StyleSheet.create({
-  banner: { marginBottom: spacing.md },
-  errorBox: { gap: spacing.md },
-  safe: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.md, paddingBottom: spacing.xl },
-  date: { fontSize: fontSize.title, fontWeight: "700", color: colors.text, marginBottom: spacing.md },
-  nextCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius,
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: spacing.lg,
-  },
-  nextLabel: { fontSize: fontSize.body, color: colors.textMuted },
-  nextTime: { fontSize: fontSize.hero, fontWeight: "800", color: colors.primary, marginTop: spacing.xs },
-  nextName: { fontSize: fontSize.title, fontWeight: "700", color: colors.text },
-  nextService: { fontSize: fontSize.bodyLarge, color: colors.textMuted, marginBottom: spacing.md },
-  actions: { flexDirection: "row", gap: spacing.sm },
-  sectionTitle: { fontSize: fontSize.bodyLarge, fontWeight: "700", color: colors.text, marginBottom: spacing.sm },
-  empty: { fontSize: fontSize.body, color: colors.textMuted },
+  safe: { flex: 1, backgroundColor: colors.bg },
+  content: { paddingTop: space[4], paddingHorizontal: space[16], paddingBottom: space[24], gap: space[14] },
+  errorBox: { gap: space[12] },
+  heading: { ...typography.subtitle, color: colors.ink, marginTop: space[4], marginHorizontal: space[4] },
+  rows: { gap: space[8] },
+  emptyTitle: { ...typography.titleS, color: colors.ink, textAlign: "center" },
 });
