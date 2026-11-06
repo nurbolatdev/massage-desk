@@ -1,10 +1,20 @@
-import { BrandLogo } from "@/components/BrandLogo";
+import { RouterProvider } from "@tanstack/react-router";
+import { useEffect } from "react";
+
+import { PageSkeleton } from "@/components/PageSkeleton";
+import { useAuth } from "@/lib/auth/authContext";
+import { queryClient, router } from "@/router";
 
 export function App() {
-  return (
-    <main className="flex min-h-screen flex-col justify-between gap-40 bg-stone-dark p-48">
-      <BrandLogo mark={44} text="title-s" />
-      <h1 className="text-hero text-surface">Админка</h1>
-    </main>
-  );
+  const auth = useAuth();
+
+  // Guards run again whenever the session changes.
+  useEffect(() => {
+    void router.invalidate();
+  }, [auth.status]);
+
+  if (auth.status === "loading") {
+    return <PageSkeleton fullPage />;
+  }
+  return <RouterProvider router={router} context={{ auth, queryClient }} />;
 }

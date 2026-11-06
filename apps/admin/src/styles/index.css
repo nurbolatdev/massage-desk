@@ -111,6 +111,10 @@
   --spacing-skeleton-line: 156px;
   --spacing-skeleton-line-s: 92px;
   --spacing-state-text: 320px;
+  /* Sign-in layout from the login mockup: aside and form column flex bases, aside text width. */
+  --spacing-aside-basis: 380px;
+  --spacing-main-basis: 480px;
+  --spacing-aside-text: 420px;
 
   /* DESIGN.md section 5: radius scale. */
   --radius-*: initial;
