@@ -9,7 +9,7 @@ const MARK_STACKED = 132;
 
 type Props = { variant: "inline" | "stacked" };
 
-function Mark({ size }: { size: number }) {
+export function BrandMark({ size }: { size: number }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 1024 1024" accessible={false}>
       <Ellipse cx={512} cy={732} rx={292} ry={104} fill={colors.primaryMid} />
@@ -24,7 +24,7 @@ export function BrandLogo({ variant }: Props) {
   const stacked = variant === "stacked";
   return (
     <View style={stacked ? styles.stacked : styles.inline}>
-      <Mark size={stacked ? MARK_STACKED : MARK_INLINE} />
+      <BrandMark size={stacked ? MARK_STACKED : MARK_INLINE} />
       <Text style={stacked ? styles.wordStacked : styles.wordInline}>
         massage<Text style={styles.desk}> desk</Text>
       </Text>

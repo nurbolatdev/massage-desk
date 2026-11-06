@@ -1,15 +1,18 @@
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
 import { AppointmentRow } from "@/components/AppointmentRow";
+import { BotOffBanner } from "@/components/BotOffBanner";
 import { Button } from "@/components/Button";
+import { EmptyToday } from "@/components/EmptyToday";
 import { ErrorBanner } from "@/components/ErrorBanner";
 import { FreeTimeRow } from "@/components/FreeTimeRow";
 import { NextClientCard } from "@/components/NextClientCard";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { TodayHeader } from "@/components/TodayHeader";
 import { TodaySkeleton } from "@/components/TodaySkeleton";
-import { useTodayAppointments } from "@/lib/data/hooks";
-import { todaySchedule } from "@/lib/data/todaySchedule";
+import { useTodayAppointments, useTomorrowAppointments } from "@/lib/data/hooks";
+import { todaySchedule, tomorrowSummary } from "@/lib/data/todaySchedule";
 import { EMPTY_TITLE, FINISHED_TITLE, moreClientsTitle, todayState } from "@/lib/data/todayState";
 import { useOnline } from "@/lib/query/online";
 import { formatTime } from "@/lib/format";
@@ -17,6 +20,7 @@ import { useNow } from "@/lib/time/useNow";
 import { colors, space, typography } from "@/theme";
 
 export default function TodayScreen() {
+  const router = useRouter();
   const now = useNow();
   const online = useOnline();
   const today = useTodayAppointments(now);
@@ -24,6 +28,7 @@ export default function TodayScreen() {
   const state = todayState({ online, hasData, error: today.error });
   const schedule = todaySchedule(today.appointments ?? [], now);
   const timeZone = today.timeZone;
+  const tomorrow = useTomorrowAppointments(now, schedule.kind !== "schedule" && state.view === "list");
   const savedAt =
     timeZone !== undefined && today.dataUpdatedAt > 0
       ? formatTime(new Date(today.dataUpdatedAt), timeZone)
@@ -47,6 +52,7 @@ export default function TodayScreen() {
         {state.view === "list" && (
           <>
             {state.showOfflineBanner && <OfflineBanner savedAt={savedAt} />}
+            {today.botEnabled === false && <BotOffBanner online={online} />}
 
             {schedule.kind === "schedule" && schedule.next !== null && (
               <>
@@ -69,7 +75,13 @@ export default function TodayScreen() {
             )}
 
             {schedule.kind !== "schedule" && (
-              <Text style={styles.emptyTitle}>{schedule.kind === "empty" ? EMPTY_TITLE : FINISHED_TITLE}</Text>
+              <EmptyToday
+                title={schedule.kind === "empty" ? EMPTY_TITLE : FINISHED_TITLE}
+                showBotText={today.botEnabled !== false}
+                tomorrow={tomorrowSummary(tomorrow.appointments ?? [])}
+                timeZone={timeZone}
+                onTomorrowPress={() => router.push("/calendar")}
+              />
             )}
           </>
         )}
@@ -80,9 +92,8 @@ export default function TodayScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  content: { paddingTop: space[4], paddingHorizontal: space[16], paddingBottom: space[24], gap: space[14] },
+  content: { flexGrow: 1, paddingTop: space[4], paddingHorizontal: space[16], paddingBottom: space[24], gap: space[14] },
   errorBox: { gap: space[12] },
   heading: { ...typography.subtitle, color: colors.ink, marginTop: space[4], marginHorizontal: space[4] },
   rows: { gap: space[8] },
-  emptyTitle: { ...typography.titleS, color: colors.ink, textAlign: "center" },
 });

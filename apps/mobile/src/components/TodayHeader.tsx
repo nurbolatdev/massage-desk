@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
-import { BOT_ON_TEXT } from "@/lib/data/todayState";
+import { BOT_OFF_TEXT, BOT_ON_TEXT } from "@/lib/data/todayState";
 import { formatDayMonth, formatWeekday } from "@/lib/format";
 import { colors, radii, size, space, typography } from "@/theme";
 
@@ -21,14 +21,16 @@ export function TodayHeader({ now, timeZone, botEnabled }: Props) {
         <Text style={styles.weekday}>{formatWeekday(now, timeZone)}</Text>
         <Text style={styles.date}>{formatDayMonth(now, timeZone)}</Text>
       </View>
-      {botEnabled === true && (
+      {botEnabled !== undefined && (
         <Pressable
           accessibilityRole="button"
           onPress={() => router.push("/settings")}
-          style={styles.pill}
+          style={[styles.pill, !botEnabled && styles.pillOff]}
         >
-          <View style={styles.dot} />
-          <Text style={styles.pillText}>{BOT_ON_TEXT}</Text>
+          <View style={[styles.dot, !botEnabled && styles.dotOff]} />
+          <Text style={[styles.pillText, !botEnabled && styles.pillTextOff]}>
+            {botEnabled ? BOT_ON_TEXT : BOT_OFF_TEXT}
+          </Text>
         </Pressable>
       )}
     </View>
@@ -59,5 +61,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primarySoft,
   },
   dot: { width: DOT_SIZE, height: DOT_SIZE, borderRadius: radii.full, backgroundColor: colors.primaryMid },
+  pillOff: { backgroundColor: colors.neutralSoft },
+  dotOff: { backgroundColor: colors.neutralFg },
+  pillTextOff: { color: colors.neutralStrong },
   pillText: { ...typography.secondary, fontWeight: "600", color: colors.primaryStrong },
 });
