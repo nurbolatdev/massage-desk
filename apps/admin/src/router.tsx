@@ -11,6 +11,7 @@ import { Clock } from "lucide-react";
 import { StateCard } from "@/components/StateCard";
 import { safeRedirect } from "@/lib/auth/redirect";
 import type { AuthState } from "@/lib/auth/authContext";
+import { AccessGate } from "@/pages/AccessGate";
 import { SignInPage } from "@/pages/SignInPage";
 
 export const queryClient = new QueryClient();
@@ -40,7 +41,11 @@ const appRoute = createRoute({
       throw redirect({ to: "/sign-in", search: { redirect: location.href } });
     }
   },
-  component: Outlet,
+  component: () => (
+    <AccessGate>
+      <Outlet />
+    </AccessGate>
+  ),
 });
 
 // Temporary card until the section routes arrive.
