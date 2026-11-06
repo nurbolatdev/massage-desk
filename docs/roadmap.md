@@ -284,6 +284,9 @@ The master runs the schedule in the app; admin panel basics; event log; deploy a
   1. `feat(admin): navigation for all sections`
   1. `ci: admin checks in the gate`
   1. `docs(admin): skeleton status and setup`
+  1. `fix(admin): align states, buttons and phone menu with the mockups`
+  1. `fix(admin): stricter design guard and session cleanup`
+  1. `fix(admin): phone padding on the not-found page`
 
 ### M1-17 · Admin: schedule
 
