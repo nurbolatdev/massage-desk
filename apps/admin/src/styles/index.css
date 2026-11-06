@@ -104,6 +104,13 @@
   --spacing-content: 560px;
   --spacing-form: 400px;
   --spacing-check: 18px;
+  /* Dialog width (DESIGN.md section 4: 440-520) and skeleton shapes from the states mockup. */
+  --spacing-dialog: 440px;
+  --spacing-skeleton-avatar: 34px;
+  --spacing-skeleton-bar: 70px;
+  --spacing-skeleton-line: 156px;
+  --spacing-skeleton-line-s: 92px;
+  --spacing-state-text: 320px;
 
   /* DESIGN.md section 5: radius scale. */
   --radius-*: initial;
