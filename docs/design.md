@@ -111,7 +111,7 @@ Minimum: 14 sp on mobile, 12 px in admin. Mobile layouts must work at 130 % syst
 - **Base unit:** 2 px; spacing scale **2, 4, 6, 8, 10, 12, 14, 16, 20, 24, 28, 32, 40, 48, 56, 64**.
 - **Mobile:** 390 dp reference width, 16 dp side padding, single column, bottom tab bar 78 dp, primary action pinned above the tab bar.
 - **Admin:** sidebar 240 px + fluid content (`flex: 999 1 560px`), page padding 28 × 32, cards in `repeat(auto-fit, minmax(380px, 1fr))` grids, 16 px gutters.
-- **Radius scale:** 4, 6, 8, 10, 12, 14, 16, 18, 22, 28, 999 (see Section 4 for use).
+- **Radius scale:** 4, 6, 8, 10, 12, 14, 16, 18, 22, 28, 999.
 - **Touch targets:** ≥ 48 dp mobile, ≥ 44 px admin.
 
 ## 6. Depth
@@ -158,8 +158,8 @@ Minimum: 14 sp on mobile, 12 px in admin. Mobile layouts must work at 130 % syst
 | Dialogs | Bottom sheet (mobile app) | Centered dialog 440–520 px |
 | Mobile button rows | Wrap to one per row at large font | — |
 
-## 9. Agent Prompt Guide
-**When generating UI for this project, agents must:**
+## 9. Implementation Rules
+**When building UI for this project:**
 - Use tokens from Sections 2–6 only; never raw hex or off-scale pixel values.
 - Check the matching mockup and all of its states before building a screen.
 - Prefer components from Section 4; propose a new one only with a reason.
