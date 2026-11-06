@@ -9,7 +9,7 @@ Live progress: [milestones](https://github.com/nurbolatdev/massage-desk/mileston
 | Milestone | Result | Release | Tasks |
 |---|---|---|---|
 | [M0 · Foundation](#m0) | Repository, CI, database schema, API and app skeletons, docs | — | 7 |
-| [M1 · Schedule](#m1) | The master runs the schedule in the app; admin panel basics; event log; deploy and APK | v0.1 | 22 |
+| [M1 · Schedule](#m1) | The master runs the schedule in the app; admin panel basics; event log; deploy and APK | v0.1 | 23 |
 | [M2 · Button bot](#m2) | Clients book themselves in WhatsApp with buttons; chats in the app and the admin panel | v0.2 | 6 |
 | [M3 · AI assistant](#m3) | Free-text understanding, guardrails, evals, AI diagnostics | v0.3 | 6 |
 | [M4 · Notifications & reports](#m4) | Push, reminders, morning summary, dashboard and reports | v0.4 | 4 |
@@ -217,12 +217,17 @@ The master runs the schedule in the app; admin panel basics; event log; deploy a
   1. `docs: today task commits in the roadmap`
   1. `fix(mobile): align today screen with the mockups`
   1. `fix(mobile): review follow-ups for the today screen`
+  1. `docs: list the last today fix in the roadmap`
+  1. `fix(mobile): warn when the today schedule failed to refresh`
+  1. `fix(mobile): pressed state for the bot switch-on button`
+  1. `docs: today screen status and deferred items in the roadmap`
 
 ### M1-12 · Appointment card
 
 - **Branch:** `feature/mobile-appointment`
 - **Pull request:** `feat(mobile): appointment card`
 - **Depends on:** M1-7, M1-11
+- **Also (from M1-11):** opening the appointment card from the rows and the next-client card on Today.
 - **Commits:**
   1. `feat(mobile): appointment details and notes`
   1. `feat(mobile): cancel and no-show with confirmation`
@@ -232,7 +237,8 @@ The master runs the schedule in the app; admin panel basics; event log; deploy a
 
 - **Branch:** `feature/mobile-new-appointment`
 - **Pull request:** `feat(mobile): manual booking`
-- **Depends on:** M1-7, M1-10
+- **Depends on:** M1-7, M1-10, M1-11
+- **Also (from M1-11):** the «Записать клиента» button on Today and the «Запись создана» confirmation with «Отменить».
 - **Commits:**
   1. `feat(mobile): client picker with search`
   1. `feat(mobile): service, day and free time steps`
@@ -322,6 +328,18 @@ The master runs the schedule in the app; admin panel basics; event log; deploy a
 Owner step, no code.
 - **Depends on:** M1-21
 
+### M1-23 · Breaks on Today
+
+Today shows a break between working blocks as free time; read the working hours and show the break as a break.
+
+- **Branch:** `feature/mobile-today-breaks`
+- **Pull request:** `fix(mobile): show breaks on today`
+- **Depends on:** M1-11
+- **Commits:**
+  1. `feat(mobile): working hours of the master's day`
+  1. `fix(mobile): show a break instead of free time on today`
+  1. `test(mobile): a break is not shown as free time`
+
 ## M2 · Button bot <a id="m2"></a>
 
 Clients book themselves in WhatsApp with buttons; chats in the app and the admin panel. Ends with release **v0.2**.
@@ -367,7 +385,8 @@ Owner step, no code.
 
 - **Branch:** `feature/mobile-chats`
 - **Pull request:** `feat(mobile): chats and take-over`
-- **Depends on:** M2-3
+- **Depends on:** M2-3, M1-11
+- **Also (from M1-11):** the «… ждут вашего ответа» banner on Today and the badge on the Chats tab.
 - **Commits:**
   1. `feat(api): conversations api and human mode`
   1. `feat(mobile): chat list and conversation`
