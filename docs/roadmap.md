@@ -271,10 +271,19 @@ The master runs the schedule in the app; admin panel basics; event log; deploy a
 - **Pull request:** `feat(admin): admin panel skeleton`
 - **Depends on:** M1-5
 - **Commits:**
+  1. `chore(admin): vite react workspace with checks`
   1. `feat(admin): vite react app with brand theme`
-  1. `feat(admin): sign-in and admin-only routes`
+  1. `feat(admin): base controls in brand style`
+  1. `feat(admin): page states and confirm dialog`
+  1. `feat(admin): supabase session with remember-me storage`
+  1. `feat(admin): role check and sign-in messages`
+  1. `feat(admin): typed api client with bearer token`
+  1. `feat(admin): sign-in page and session`
+  1. `feat(admin): staff role check on every page`
+  1. `feat(admin): admin-only routes for all sections`
   1. `feat(admin): navigation for all sections`
   1. `ci: admin checks in the gate`
+  1. `docs(admin): skeleton status and setup`
 
 ### M1-17 · Admin: schedule
 
