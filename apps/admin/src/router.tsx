@@ -22,7 +22,6 @@ type RouterContext = { auth: AuthState; queryClient: QueryClient };
 
 const rootRoute = createRootRouteWithContext<RouterContext>()({
   component: Outlet,
-  notFoundComponent: NotFoundPage,
 });
 
 const signInRoute = createRoute({
@@ -63,7 +62,16 @@ const sectionRoutes = sections.map((section) =>
   }),
 );
 
-const routeTree = rootRoute.addChildren([signInRoute, appRoute.addChildren(sectionRoutes)]);
+const notFoundRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "$",
+  component: NotFoundPage,
+});
+
+const routeTree = rootRoute.addChildren([
+  signInRoute,
+  appRoute.addChildren([...sectionRoutes, notFoundRoute]),
+]);
 
 export const router = createRouter({
   routeTree,

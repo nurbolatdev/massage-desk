@@ -7,7 +7,7 @@ export const buttonVariants = cva(
       variant: {
         primary: "bg-primary text-surface active:bg-primary-strong",
         secondary:
-          "border border-border-strong bg-surface font-semibold text-ink active:bg-segment-bg",
+          "border border-border-strong bg-surface text-ink active:bg-segment-bg",
         "ghost-on-dark":
           "bg-transparent font-semibold text-on-primary-muted hover:bg-stone-mid disabled:bg-transparent",
       },

@@ -39,7 +39,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="px-8">
           <BrandLogo mark={34} text="title-s" />
         </div>
-        <SideNav sections={items} />
+        <SideNav sections={items} variant="sidebar" />
         <div className="mt-auto">
           <SignOutButton variant="ghost-on-dark" />
         </div>
@@ -67,7 +67,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         hidden={!menuOpen}
         className="flex flex-col gap-12 bg-stone-dark pt-4 pr-12 pb-14 pl-12 md:hidden"
       >
-        <SideNav sections={items} onNavigate={() => setMenuOpen(false)} />
+        <SideNav sections={items} variant="menu" onNavigate={() => setMenuOpen(false)} />
         <SignOutButton variant="ghost-on-dark" />
       </div>
 

@@ -1,9 +1,10 @@
-import { CircleAlert, Lock } from "lucide-react";
+import { CircleAlert, Lock, RefreshCw } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { PageSkeleton } from "@/components/PageSkeleton";
 import { SignOutButton } from "@/components/SignOutButton";
 import { StateCard } from "@/components/StateCard";
+import { icon } from "@/components/icon";
 import { Button } from "@/components/ui/button";
 import { RoleContext } from "@/lib/auth/roleContext";
 import { useRole } from "@/lib/auth/useRole";
@@ -27,6 +28,7 @@ export function AccessGate({ children }: { children: ReactNode }) {
           text="Сервер не ответил. Проверьте интернет и попробуйте ещё раз."
           action={
             <Button variant="secondary" onClick={() => void refetch()}>
+              <RefreshCw size={icon.button} strokeWidth={icon.stroke} aria-hidden="true" />
               Повторить
             </Button>
           }
