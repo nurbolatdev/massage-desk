@@ -3,6 +3,12 @@ export const queryKeys = {
   clients: {
     all: ["clients"] as const,
     one: (id: string) => ["clients", id] as const,
+    search: (q: string) => ["clients", "search", q] as const,
+  },
+  services: ["services"] as const,
+  slots: {
+    all: ["slots"] as const,
+    one: (serviceId: string, day: string) => ["slots", serviceId, day] as const,
   },
   appointments: {
     all: ["appointments"] as const,

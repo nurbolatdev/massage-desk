@@ -86,7 +86,7 @@ Minimum: 14 sp on mobile, 12 px in admin. Mobile layouts must work at 130 % syst
 ## 4. Components
 | Component | Purpose | Key variants / states | Status |
 |---|---|---|---|
-| Button (mobile) | Actions, 56–62 high, full width | primary, secondary, destructive, disabled, pressed, focus | planned |
+| Button (mobile) | Actions, 56–62 high, full width | primary, secondary, destructive, disabled primary (grey `disabled-bg` with `neutral-fg` text, not half-transparent: a faded button reads as broken; other variants keep the faded look for now), pressed, focus | planned |
 | Button (admin) | Actions, 44 / 36 high | primary, secondary, destructive, destructive-solid, ghost, small, focus | planned |
 | Text field | Phone, name, notes | default, focus, error with message, filled, disabled | planned |
 | Status chip | Unusual status only | manual, cancelled, no-show, needs help, done, bot, you, error | planned |

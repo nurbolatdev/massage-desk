@@ -260,9 +260,34 @@ The master runs the schedule in the app; admin panel basics; event log; deploy a
 - **Depends on:** M1-7, M1-10, M1-11
 - **Also (from M1-11):** the «Записать клиента» button on Today and the «Запись создана» confirmation with «Отменить».
 - **Commits:**
+  1. `feat(mobile): booking requests`
+  1. `feat(mobile): booking data hooks`
+  1. `feat(mobile): booking texts and day and time helpers`
+  1. `feat(mobile): booking form state`
+  1. `feat(mobile): client search helpers`
+  1. `feat(mobile): booked notice texts and store`
+  1. `feat(mobile): booking tokens, button icon and offline text`
   1. `feat(mobile): client picker with search`
+  1. `feat(mobile): service step`
   1. `feat(mobile): service, day and free time steps`
+  1. `feat(mobile): new appointment screen`
+  1. `feat(mobile): book a client from today`
   1. `test(mobile): busy time cannot be chosen`
+  1. `docs: manual booking in the roadmap and mobile guide`
+  1. `fix(mobile): client search never shows an unchecked state`
+  1. `fix(mobile): single submit and clean state after booking errors`
+  1. `docs: align the manual booking notes with the behaviour`
+  1. `refactor(mobile): name the booking skeleton height`
+  1. `fix(mobile): existing client wins over the new client choice`
+  1. `test(mobile): booking cache and debounce guards`
+  1. `refactor(mobile): derive the booking skeleton height`
+  1. `docs: manual booking commits in the roadmap`
+  1. `fix(mobile): booked notice shows the client the server booked`
+  1. `docs: grey disabled button in the design rules`
+  1. `docs: manual booking review commits in the roadmap`
+  1. `docs: limit the grey disabled rule to the primary button`
+  1. `test(mobile): picked client name in the booked notice`
+  1. `docs: manual booking review commits in the roadmap, part 2`
 
 ### M1-14 · Calendar
 

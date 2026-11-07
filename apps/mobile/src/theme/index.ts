@@ -42,6 +42,9 @@ export const colors = {
   accentSoft: "#FDE3D6",
   accentStrong: "#8A2E12",
   primaryFaint: "#EEF7F3",
+  infoSoft: "#EEF3F7",
+  infoStrong: "#1D3A52",
+  warningIcon: "#C2451F",
 } as const;
 
 export const fontSize = {

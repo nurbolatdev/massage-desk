@@ -13,11 +13,10 @@ Expo SDK 58, Expo Router (`apps/mobile/src/app`), installed as an APK via EAS Bu
 
 ## Today
 
-Done: next client in large type with call and WhatsApp buttons; the rest of the day with free time; empty, bot-off, loading, offline and error states; a warning with «Обновить» when a refresh fails.
+Done: next client in large type with call and WhatsApp buttons; the rest of the day with free time; empty, bot-off, loading, offline and error states; a warning with «Обновить» when a refresh fails; the «Записать клиента» button and the «Записано» notice with «Отменить» after a booking (M1-13).
 
 Later:
 
-- the «Записать клиента» button and the «Запись создана» confirmation ([M1-13](roadmap.md#m1))
 - the «ждут вашего ответа» banner and the badge on Chats ([M2-5](roadmap.md#m2))
 - breaks in the working hours are still shown as free time ([M1-23](roadmap.md#m1))
 
@@ -26,7 +25,16 @@ Later:
 Done in M1-12. The next-client card and every row on Today open it. It shows the time, service, client and who booked; call and WhatsApp buttons; the client's note with quick phrases (saved with `PATCH /clients/{id}`); and, for a confirmed appointment, «Отменить» and, once it has started, «Не пришёл». Both destructive actions ask for confirmation, and no request is sent before «Да». The status chip is shown only for unusual statuses (cancelled, no-show, done), not for a confirmed one. States: loading, offline, error, «Запись не найдена».
 
 - The card route is `/appointment/<id>?day=YYYY-MM-DD`. The API has no single-appointment endpoint, so the card finds the appointment in the list of that day (same cache as Today). Without `day` it shows «Запись не найдена» ([#59](https://github.com/nurbolatdev/massage-desk/issues/59)).
-- Not shown yet, because the API does not provide it: price, who cancelled and when, visit history, the no-show counter. «Перенести» comes with M1-13.
+- Not shown yet, because the API does not provide it: price, who cancelled and when, visit history, the no-show counter. «Перенести» comes later as a separate task.
+
+## New appointment
+
+Done in M1-13. Opened from «Записать клиента» on Today. Three steps: pick a client (with search), pick a service, then pick a day and a free time.
+
+- Only free times are offered. A time that is taken cannot be chosen.
+- If the time was taken meanwhile (409), the master sees an alert and the list of free times is refreshed.
+- Offline, a banner explains that booking needs the internet, and the button is disabled.
+- The client gets no message about the booking yet.
 
 ## Data
 

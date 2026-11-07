@@ -42,6 +42,9 @@ export function subscribeAppointmentChanges(
   };
 }
 
-export function invalidateAppointments(queryClient: QueryClient): Promise<void> {
-  return queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
+export async function invalidateAppointments(queryClient: QueryClient): Promise<void> {
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.slots.all }),
+  ]);
 }

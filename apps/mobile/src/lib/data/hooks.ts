@@ -7,10 +7,14 @@ import { postAppointmentAction, withStatus } from "./appointmentActions";
 import type { AppointmentListItem } from "./appointments";
 import { fetchAppointments, toAppointments } from "./appointments";
 import { cardLoad } from "./appointmentCard";
+import type { BookInput } from "./booking";
+import { bookAppointment, fetchServices, fetchSlots, searchClients } from "./booking";
 import { isDay, localDay, nextDay } from "./days";
 import { queryKeys } from "./queryKeys";
 
 const SETTINGS_STALE_TIME = 5 * 60 * 1000;
+// Slots and search results go stale fast, so they must not outlive the session cache.
+const SHORT_GC_TIME = 5 * 60 * 1000;
 
 export function useSettings() {
   return useQuery({
@@ -134,5 +138,47 @@ export function useUpdateClientNotes(clientId: string) {
     onSuccess: (client) => {
       queryClient.setQueryData(queryKeys.clients.one(clientId), client);
     },
+  });
+}
+
+export function useServices() {
+  return useQuery({
+    queryKey: queryKeys.services,
+    queryFn: () => fetchServices(api),
+    staleTime: SETTINGS_STALE_TIME,
+    select: (list) => list.filter((s) => s.active),
+  });
+}
+
+export function useSlots(serviceId: string | null, day: string | null) {
+  return useQuery({
+    queryKey: queryKeys.slots.one(serviceId ?? "", day ?? ""),
+    queryFn: () => fetchSlots(api, serviceId ?? "", day ?? ""),
+    enabled: serviceId !== null && day !== null,
+    staleTime: 0,
+    gcTime: SHORT_GC_TIME,
+  });
+}
+
+export function useClientSearch(q: string | null) {
+  return useQuery({
+    queryKey: queryKeys.clients.search(q ?? ""),
+    queryFn: () => searchClients(api, q ?? ""),
+    enabled: q !== null,
+    gcTime: SHORT_GC_TIME,
+  });
+}
+
+export function useBookAppointment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: BookInput) => bookAppointment(api, input),
+    networkMode: "always",
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.clients.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.slots.all }),
+      ]),
   });
 }

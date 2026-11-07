@@ -7,15 +7,17 @@ import { colors, radii, space, typography } from "@/theme";
 type Props = {
   /** Time of the saved schedule ("09:35"); null when nothing is saved. */
   savedAt: string | null;
+  /** Replaces the body text when given (screens that have no saved schedule). */
+  text?: string;
 };
 
-export function OfflineBanner({ savedAt }: Props) {
+export function OfflineBanner({ savedAt, text }: Props) {
   return (
     <View accessibilityLiveRegion="polite" style={styles.box}>
       <Feather name="wifi-off" size={24} color={colors.onPrimary} accessible={false} />
       <View style={styles.texts}>
         <Text style={styles.title}>{OFFLINE_TITLE}</Text>
-        <Text style={styles.text}>{savedAt === null ? OFFLINE_EMPTY_TEXT : offlineSavedText(savedAt)}</Text>
+        <Text style={styles.text}>{text ?? (savedAt === null ? OFFLINE_EMPTY_TEXT : offlineSavedText(savedAt))}</Text>
       </View>
     </View>
   );
