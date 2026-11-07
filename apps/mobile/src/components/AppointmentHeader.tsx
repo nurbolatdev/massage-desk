@@ -13,15 +13,15 @@ interface Props {
   onBack: () => void;
 }
 
-const CHIP: Record<AppointmentStatus, { bg: string; fg: string; paddingHorizontal: number }> = {
-  confirmed: { bg: colors.primarySoft, fg: colors.primaryStrong, paddingHorizontal: space[12] },
+// a confirmed appointment is the normal case: no chip (DESIGN.md section 7)
+const CHIP: Record<Exclude<AppointmentStatus, "confirmed">, { bg: string; fg: string; paddingHorizontal: number }> = {
   cancelled: { bg: colors.neutralSoft, fg: colors.neutralStrong, paddingHorizontal: space[10] },
   no_show: { bg: colors.accentSoft, fg: colors.accentStrong, paddingHorizontal: space[10] },
   done: { bg: colors.primaryFaint, fg: colors.textStrong, paddingHorizontal: space[10] },
 };
 
 export function AppointmentHeader({ status, onBack }: Props) {
-  const chip = status === undefined ? undefined : CHIP[status];
+  const chip = status === undefined || status === "confirmed" ? undefined : CHIP[status];
   return (
     <View style={styles.row}>
       <Pressable accessibilityRole="button" accessibilityLabel={BACK_LABEL} onPress={onBack} style={styles.back}>
@@ -30,7 +30,7 @@ export function AppointmentHeader({ status, onBack }: Props) {
       <Text accessibilityRole="header" style={styles.title}>
         {CARD_TITLE}
       </Text>
-      {chip !== undefined && status !== undefined && (
+      {chip !== undefined && status !== undefined && status !== "confirmed" && (
         <View style={[styles.chip, { backgroundColor: chip.bg, paddingHorizontal: chip.paddingHorizontal }]}>
           <Text style={[styles.chipLabel, { color: chip.fg }]}>{STATUS_LABEL[status]}</Text>
         </View>
