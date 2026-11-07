@@ -9,7 +9,7 @@ import { BookingConflictAlert } from "@/components/BookingConflictAlert";
 import { BookingSummaryCard } from "@/components/BookingSummaryCard";
 import { Button } from "@/components/Button";
 import { ClientPicker } from "@/components/ClientPicker";
-import { DayTimePicker } from "@/components/DayTimePicker";
+import { CHIP_GAP, DAY_CHIP_HEIGHT, DayTimePicker, TIME_CHIP_HEIGHT } from "@/components/DayTimePicker";
 import { ErrorBanner } from "@/components/ErrorBanner";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { ServicePicker } from "@/components/ServicePicker";
@@ -43,8 +43,8 @@ const SEARCH_DELAY_MS = 300;
 /** Close button, from the NewBooking mockup. */
 const CLOSE_BUTTON_SIZE = 52;
 const CLOSE_ICON_SIZE = 26;
-// Height of the loading placeholder for a day and time block, from the NewBooking mockup.
-const SKELETON_HEIGHT = 116;
+// Loading placeholder for the day and time block: one row of days and one row of times.
+const SKELETON_HEIGHT = DAY_CHIP_HEIGHT + CHIP_GAP + TIME_CHIP_HEIGHT;
 
 export default function NewAppointmentScreen() {
   const router = useRouter();

@@ -15,8 +15,10 @@ import {
 import { RETRY_LABEL } from "@/lib/data/todayState";
 import { colors, radii, space, typography } from "@/theme";
 
-const DAY_CHIP_HEIGHT = 52; // from the NewBooking mockup
-const TIME_CHIP_HEIGHT = 50; // from the NewBooking mockup
+export const DAY_CHIP_HEIGHT = 52; // from the NewBooking mockup
+export const TIME_CHIP_HEIGHT = 50; // from the NewBooking mockup
+/** Gap between chips and rows, shared with the loading placeholder of the screen. */
+export const CHIP_GAP = space[6];
 const SKELETON_CHIPS = 4;
 
 type Props = {
@@ -122,8 +124,8 @@ const styles = StyleSheet.create({
   section: { gap: space[8] },
   heading: { ...typography.body, fontWeight: "700", color: colors.ink },
   hint: { ...typography.secondary, color: colors.muted },
-  grid: { gap: space[6] },
-  gridRow: { flexDirection: "row", gap: space[6] },
+  grid: { gap: CHIP_GAP },
+  gridRow: { flexDirection: "row", gap: CHIP_GAP },
   pad: { flex: 1 },
   skeleton: { flex: 1, height: TIME_CHIP_HEIGHT, borderRadius: radii[14], backgroundColor: colors.segmentBg },
   dayChip: {
