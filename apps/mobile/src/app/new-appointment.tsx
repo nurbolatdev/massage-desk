@@ -43,6 +43,8 @@ const SEARCH_DELAY_MS = 300;
 /** Close button, from the NewBooking mockup. */
 const CLOSE_BUTTON_SIZE = 52;
 const CLOSE_ICON_SIZE = 26;
+// Height of the loading placeholder for a day and time block, from the NewBooking mockup.
+const SKELETON_HEIGHT = 116;
 
 export default function NewAppointmentScreen() {
   const router = useRouter();
@@ -218,6 +220,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   content: { paddingTop: space[4], paddingHorizontal: space[16], paddingBottom: space[24], gap: space[16] },
-  skeleton: { height: 116, borderRadius: radii[14], backgroundColor: colors.segmentBg },
+  skeleton: { height: SKELETON_HEIGHT, borderRadius: radii[14], backgroundColor: colors.segmentBg },
   footer: { paddingTop: space[12], paddingHorizontal: space[16], paddingBottom: space[20] },
 });
