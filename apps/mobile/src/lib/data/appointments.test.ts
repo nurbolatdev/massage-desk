@@ -24,6 +24,7 @@ describe("toAppointment", () => {
     expect(a.start.toISOString()).toBe("2026-11-03T05:00:00.000Z");
     expect(a.end.toISOString()).toBe("2026-11-03T06:00:00.000Z");
     expect(a.clientName).toBe("Анна");
+    expect(a.clientId).toBe("c1");
   });
 
   it("falls back to the phone when the client has no name", () => {

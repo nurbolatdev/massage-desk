@@ -17,6 +17,7 @@ export function fetchAppointments(
 export function toAppointment(item: AppointmentListItem): Appointment {
   return {
     id: item.id,
+    clientId: item.clientId,
     clientName: item.clientName ?? item.clientPhone,
     clientPhone: item.clientPhone,
     serviceName: item.serviceName,

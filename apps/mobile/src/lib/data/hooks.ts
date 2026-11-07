@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, unwrap } from "@/lib/api";
 
 import { fetchAppointments, toAppointments } from "./appointments";
-import { localDay, nextDay } from "./days";
+import { isDay, localDay, nextDay } from "./days";
 import { queryKeys } from "./queryKeys";
 
 const SETTINGS_STALE_TIME = 5 * 60 * 1000;
@@ -62,6 +62,49 @@ export function useEnableBot() {
     mutationFn: () => unwrap(api.PATCH("/settings", { body: { botEnabled: true } })),
     onSuccess: (settings) => {
       queryClient.setQueryData(queryKeys.settings, settings);
+    },
+  });
+}
+
+export function useAppointment(id: string, day: string | undefined) {
+  const settings = useSettings();
+  const valid = day !== undefined && isDay(day);
+  const appointments = useAppointments(valid ? day : "", valid ? day : "", valid);
+  const appointment = appointments.data?.find((a) => a.id === id);
+
+  const refetch = () => {
+    void settings.refetch();
+    void appointments.refetch();
+  };
+
+  return {
+    appointment,
+    notFound: !valid || (appointments.data !== undefined && appointment === undefined),
+    hasData: appointments.data !== undefined,
+    timeZone: settings.data?.timeZone,
+    error: settings.error ?? appointments.error,
+    appointmentsError: appointments.error,
+    dataUpdatedAt: appointments.dataUpdatedAt,
+    refetch,
+  };
+}
+
+export function useClient(clientId: string | undefined) {
+  const id = clientId ?? "";
+  return useQuery({
+    queryKey: queryKeys.clients.one(id),
+    queryFn: () => unwrap(api.GET("/clients/{id}", { params: { path: { id } } })),
+    enabled: clientId !== undefined,
+  });
+}
+
+export function useUpdateClientNotes(clientId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (notes: string) =>
+      unwrap(api.PATCH("/clients/{id}", { params: { path: { id: clientId } }, body: { notes } })),
+    onSuccess: (client) => {
+      queryClient.setQueryData(queryKeys.clients.one(clientId), client);
     },
   });
 }

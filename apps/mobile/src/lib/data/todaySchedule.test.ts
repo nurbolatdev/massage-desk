@@ -7,6 +7,7 @@ import { selectNextClient, todaySchedule, tomorrowSummary } from "./todaySchedul
 function appt(start: string, status: Appointment["status"] = "confirmed", end?: string): Appointment {
   return {
     id: start,
+    clientId: "c1",
     clientName: "Клиент",
     clientPhone: "+998900000000",
     serviceName: "Массаж",
