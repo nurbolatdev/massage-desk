@@ -2,10 +2,16 @@ import { describe, expect, it } from "@jest/globals";
 
 import type { Appointment } from "@/types";
 
+import { ApiError } from "../api/errors";
 import { NBSP } from "../format";
 import {
+  ACTION_CONFLICT,
+  ACTION_FAILED,
   TIME_FREED,
+  actionErrorText,
   appointmentRouteParams,
+  cancelConfirmText,
+  cardActions,
   cardDayTitle,
   detailRows,
   durationText,
@@ -113,5 +119,44 @@ describe("appointmentRouteParams", () => {
   it("uses the day in the master's zone", () => {
     const a = { ...appt, start: new Date("2026-11-01T20:00:00Z") };
     expect(appointmentRouteParams(a, TZ)).toEqual({ id: "a1", day: "2026-11-02" });
+  });
+});
+
+describe("cardActions", () => {
+  it("offers only cancel before the start", () => {
+    const now = new Date("2026-11-02T04:00:00Z");
+    expect(cardActions(appt, now)).toEqual({ cancel: true, noShow: false });
+  });
+
+  it("offers both at the start", () => {
+    expect(cardActions(appt, appt.start)).toEqual({ cancel: true, noShow: true });
+  });
+
+  it("offers both after the end", () => {
+    expect(cardActions(appt, new Date("2026-11-02T08:00:00Z"))).toEqual({ cancel: true, noShow: true });
+  });
+
+  it.each(["cancelled", "no_show", "done"] as const)("offers nothing for %s", (status) => {
+    const now = new Date("2026-11-02T08:00:00Z");
+    expect(cardActions({ ...appt, status }, now)).toEqual({ cancel: false, noShow: false });
+  });
+});
+
+describe("actionErrorText", () => {
+  it("explains a conflict", () => {
+    expect(actionErrorText(new ApiError("problem", { status: 409 }))).toBe(ACTION_CONFLICT);
+  });
+
+  it("falls back to the failed text", () => {
+    expect(actionErrorText(new ApiError("network"))).toBe(ACTION_FAILED);
+    expect(actionErrorText(new Error())).toBe(ACTION_FAILED);
+  });
+});
+
+describe("cancelConfirmText", () => {
+  it("says what will happen", () => {
+    expect(cancelConfirmText(new Date("2026-11-02T05:00:00Z"), TZ)).toBe(
+      "Запись на 2 ноября в 10:00 отменится, время станет свободным для бота. Клиенту сообщение не придёт — если нужно, напишите ему сами.",
+    );
   });
 });
