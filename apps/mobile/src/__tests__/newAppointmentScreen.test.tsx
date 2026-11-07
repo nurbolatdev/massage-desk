@@ -153,6 +153,7 @@ describe("new appointment screen", () => {
 
     await waitFor(() => expect(mockBack).toHaveBeenCalled());
     expect(getBookingNotice()?.appointmentId).toBe("a-new");
+    expect(getBookingNotice()?.clientName).toBe("Анна");
     expect(screen.queryByRole("button", { name: takenA11y("10:00") })).toBeNull();
   });
 
