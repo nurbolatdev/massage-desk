@@ -84,8 +84,12 @@ describe("invalidateAppointments", () => {
   it("invalidates appointment lists and leaves settings alone", async () => {
     const queryClient = new QueryClient();
     queryClient.setQueryData(queryKeys.appointments.range("2026-11-03", "2026-11-03"), []);
+    queryClient.setQueryData(queryKeys.slots.one("s1", "2026-11-03"), {});
     queryClient.setQueryData(queryKeys.settings, {});
     await invalidateAppointments(queryClient);
+    expect(queryClient.getQueryState(queryKeys.slots.one("s1", "2026-11-03"))?.isInvalidated).toBe(
+      true,
+    );
     expect(
       queryClient.getQueryState(queryKeys.appointments.range("2026-11-03", "2026-11-03"))
         ?.isInvalidated,
