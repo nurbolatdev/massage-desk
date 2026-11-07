@@ -65,7 +65,9 @@ cd apps/api && ./mvnw spring-boot:run   # API on http://localhost:8080 — Postg
 npm run dev:mobile                      # Expo dev server — open in Expo Go on Android
 ```
 
-Configuration: `apps/api/.env.example`. Secrets never go to git.
+Configuration: `apps/api/.env.example` for the API, `apps/mobile/.env.example` for the app (copy it to `apps/mobile/.env`). Secrets never go to git.
+
+Running the app on an iOS simulator: `cd apps/mobile && npx expo start --ios`. With Xcode 27 the simulator opens in Device Hub (Simulator.app no longer exists). Start the API first (see above).
 
 ## Roadmap
 
