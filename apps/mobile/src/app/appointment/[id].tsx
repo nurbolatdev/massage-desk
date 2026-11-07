@@ -128,7 +128,7 @@ export default function AppointmentScreen() {
           </>
         )}
       </ScrollView>
-      {actions.cancel && state.view === "list" && (
+      {actions.cancel && state.view === "list" && timeZone !== undefined && (
         <AppointmentActionBar
           showNoShow={actions.noShow}
           disabled={!online}
@@ -143,6 +143,7 @@ export default function AppointmentScreen() {
           text={asking === "noShow" ? NO_SHOW_CONFIRM_TEXT : cancelConfirmText(appointment.start, timeZone)}
           confirmLabel={asking === "noShow" ? NO_SHOW_CONFIRM_YES : CANCEL_CONFIRM_YES}
           confirmVariant={asking === "noShow" ? "primary" : "danger"}
+          confirmDisabled={!online}
           onConfirm={() => void flow.confirm()}
           onCancel={flow.dismiss}
           busy={flow.state.busy}
@@ -155,6 +156,7 @@ export default function AppointmentScreen() {
           clientName={appointment.clientName}
           initial={note ?? ""}
           busy={saveNote.isPending}
+          saveDisabled={!online}
           error={saveNote.isError ? NOTE_SAVE_FAILED : undefined}
           onSave={(text) => saveNote.mutate(text.trim(), { onSuccess: closeNote })}
           onClose={closeNote}

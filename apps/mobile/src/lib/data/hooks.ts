@@ -6,6 +6,7 @@ import type { AppointmentAction } from "./appointmentActions";
 import { postAppointmentAction, withStatus } from "./appointmentActions";
 import type { AppointmentListItem } from "./appointments";
 import { fetchAppointments, toAppointments } from "./appointments";
+import { cardLoad } from "./appointmentCard";
 import { isDay, localDay, nextDay } from "./days";
 import { queryKeys } from "./queryKeys";
 
@@ -74,6 +75,8 @@ export function useAppointmentAction() {
   return useMutation({
     mutationFn: ({ id, action }: { id: string; action: AppointmentAction }) =>
       postAppointmentAction(api, id, action),
+    // Fail fast when offline instead of pausing the request with the sheet stuck on "busy".
+    networkMode: "always",
     onSuccess: (result) => {
       queryClient.setQueriesData<AppointmentListItem[]>(
         { queryKey: queryKeys.appointments.all },
@@ -95,13 +98,20 @@ export function useAppointment(id: string, day: string | undefined) {
     void appointments.refetch();
   };
 
+  const load = cardLoad({
+    appointmentsLoaded: appointments.data !== undefined,
+    settingsLoaded: settings.data !== undefined,
+    settingsError: settings.error,
+    appointmentsError: appointments.error,
+  });
+
   return {
     appointment,
     notFound: !valid || (appointments.data !== undefined && appointment === undefined),
-    hasData: appointments.data !== undefined,
+    hasData: load.hasData,
     timeZone: settings.data?.timeZone,
-    error: settings.error ?? appointments.error,
-    appointmentsError: appointments.error,
+    error: load.error,
+    appointmentsError: load.refreshError,
     dataUpdatedAt: appointments.dataUpdatedAt,
     refetch,
   };
@@ -121,6 +131,7 @@ export function useUpdateClientNotes(clientId: string) {
   return useMutation({
     mutationFn: (notes: string) =>
       unwrap(api.PATCH("/clients/{id}", { params: { path: { id: clientId } }, body: { notes } })),
+    networkMode: "always",
     onSuccess: (client) => {
       queryClient.setQueryData(queryKeys.clients.one(clientId), client);
     },

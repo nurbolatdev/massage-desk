@@ -34,6 +34,7 @@ type Props = {
   onSave: (text: string) => void;
   onClose: () => void;
   busy: boolean;
+  saveDisabled?: boolean;
   error?: string;
 };
 
@@ -69,6 +70,7 @@ function NoteForm({
   onSave,
   onClose,
   busy,
+  saveDisabled = false,
   error,
 }: Props) {
   const insets = useSafeAreaInsets();
@@ -99,12 +101,10 @@ function NoteForm({
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={styles.content}
         >
-          <View>
-            <Text accessibilityRole="header" style={styles.title}>
-              {NOTE_TITLE}
-            </Text>
-            <Text style={styles.subtitle}>{noteSheetSubtitle(clientName)}</Text>
-          </View>
+          <Text accessibilityRole="header" style={styles.title}>
+            {NOTE_TITLE}
+          </Text>
+          <Text style={styles.subtitle}>{noteSheetSubtitle(clientName)}</Text>
           <TextInput
             accessibilityLabel={NOTE_FIELD_LABEL}
             multiline
@@ -139,7 +139,7 @@ function NoteForm({
           <Button
             label={NOTE_SAVE_LABEL}
             onPress={() => onSave(text)}
-            disabled={busy}
+            disabled={busy || saveDisabled}
           />
           <Button
             label={NOTE_CLOSE_LABEL}

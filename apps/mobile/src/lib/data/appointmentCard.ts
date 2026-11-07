@@ -116,3 +116,20 @@ export function cardActions(a: Appointment, now: Date): { cancel: boolean; noSho
 export function actionErrorText(error: unknown): string {
   return error instanceof ApiError && error.status === 409 ? ACTION_CONFLICT : ACTION_FAILED;
 }
+
+export interface CardLoadInput {
+  appointmentsLoaded: boolean;
+  settingsLoaded: boolean;
+  settingsError: Error | null;
+  appointmentsError: Error | null;
+}
+
+/** The card needs the day's list and the settings (time zone): it shows data only when both are present. */
+export function cardLoad({ appointmentsLoaded, settingsLoaded, settingsError, appointmentsError }: CardLoadInput) {
+  return {
+    hasData: appointmentsLoaded && settingsLoaded,
+    error: settingsError ?? appointmentsError,
+    /** A failed settings or list refresh both count as «refresh failed» when data is shown. */
+    refreshError: settingsError ?? appointmentsError,
+  };
+}

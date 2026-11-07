@@ -11,6 +11,7 @@ import {
   actionErrorText,
   appointmentRouteParams,
   cancelConfirmText,
+  cardLoad,
   cardActions,
   cardDayTitle,
   detailRows,
@@ -158,5 +159,26 @@ describe("cancelConfirmText", () => {
     expect(cancelConfirmText(new Date("2026-11-02T05:00:00Z"), TZ)).toBe(
       "Запись на 2 ноября в 10:00 отменится, время станет свободным для бота. Клиенту сообщение не придёт — если нужно, напишите ему сами.",
     );
+  });
+});
+
+describe("cardLoad", () => {
+  const failure = new Error("x");
+  const base = { appointmentsLoaded: true, settingsLoaded: true, settingsError: null, appointmentsError: null };
+
+  it("has data only when the list and the settings are both present", () => {
+    expect(cardLoad(base).hasData).toBe(true);
+    expect(cardLoad({ ...base, settingsLoaded: false }).hasData).toBe(false);
+    expect(cardLoad({ ...base, appointmentsLoaded: false }).hasData).toBe(false);
+  });
+
+  it("reports a settings error as an error and as a failed refresh", () => {
+    const load = cardLoad({ ...base, settingsLoaded: false, settingsError: failure });
+    expect(load.error).toBe(failure);
+    expect(cardLoad({ ...base, settingsError: failure }).refreshError).toBe(failure);
+  });
+
+  it("has no error when nothing failed", () => {
+    expect(cardLoad(base)).toEqual({ hasData: true, error: null, refreshError: null });
   });
 });
