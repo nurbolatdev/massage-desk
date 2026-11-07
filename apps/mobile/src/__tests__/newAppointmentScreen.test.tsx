@@ -8,7 +8,7 @@ import NewAppointmentScreen from "@/app/new-appointment";
 import { clearBookingNotice, getBookingNotice } from "@/lib/data/bookingNotice";
 import { localDay } from "@/lib/data/days";
 import { CHOOSE_TIME, conflictTitle, takenA11y } from "@/lib/data/newBooking";
-import { NEW_CLIENT_INFO_BOLD, PHONE_STEP } from "@/lib/data/clientPicker";
+import { NAME_LABEL, NEW_CLIENT_INFO_BOLD, PHONE_STEP } from "@/lib/data/clientPicker";
 import { queryKeys } from "@/lib/data/queryKeys";
 
 type Call = (path: string, init?: unknown) => Promise<unknown>;
@@ -276,5 +276,51 @@ describe("new appointment screen", () => {
     });
     expect(await screen.findByText("Анна")).toBeOnTheScreen();
     expect(newClientBox()).toBeNull();
+  });
+
+  it("names the client the server booked when the phone was taken in the meantime", async () => {
+    const phone = "+998901234567";
+    const gulnara: Schemas["ClientResponse"] = { ...client, id: "c2", name: "Гульнара" };
+    let created = false;
+    mockGet.mockImplementation(async (path, init) => {
+      if (path === "/clients") return ok(created ? [gulnara] : []);
+      if (path === "/services") return ok([service]);
+      if (path === "/slots") {
+        const requested = (init as { params: { query: { day: string } } }).params.query.day;
+        return ok({ day: requested, timeZone: TIME_ZONE, durationMin: 60, starts: [`${requested}T11:30:00+05:00`] });
+      }
+      throw new Error(`unexpected GET ${path}`);
+    });
+    mockPost.mockReset();
+    mockPost.mockImplementation(async (path) => {
+      if (path === "/clients") {
+        created = true;
+        return {
+          error: { code: "PHONE_TAKEN", status: 409, title: "Conflict", detail: "", instance: "/clients" },
+          response: new Response(null, { status: 409 }),
+        };
+      }
+      return ok({ ...booked, clientId: "c2" }, 201);
+    });
+    await render(
+      <SafeAreaProvider
+        initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}
+      >
+        <QueryClientProvider client={queryClient}>
+          <NewAppointmentScreen />
+        </QueryClientProvider>
+      </SafeAreaProvider>,
+    );
+    const user = userEvent.setup();
+
+    await user.type(screen.getByLabelText(PHONE_STEP), phone);
+    await screen.findByText(NEW_CLIENT_INFO_BOLD);
+    await user.type(screen.getByLabelText(NAME_LABEL), "Айгуль");
+    await user.press(await screen.findByText("11:30"));
+    await user.press(screen.getByRole("button", { name: /^Записать ·/ }));
+
+    await waitFor(() => expect(mockBack).toHaveBeenCalled());
+    expect(mockPost).toHaveBeenCalledWith("/appointments", { body: { clientId: "c2", serviceId: "s1", start: free } });
+    expect(getBookingNotice()?.clientName).toBe("Гульнара");
   });
 });

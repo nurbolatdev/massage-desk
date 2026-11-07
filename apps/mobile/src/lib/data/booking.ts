@@ -14,8 +14,8 @@ export type ClientResponse = components["schemas"]["ClientResponse"];
 
 export const CLIENT_SEARCH_LIMIT = 5;
 
-/** `phone` is already E.164. */
-export type ClientChoice = { kind: "existing"; id: string } | { kind: "new"; phone: string; name: string };
+/** `phone` is already E.164; `name` of an existing client is the label shown in the picker. */
+export type ClientChoice = { kind: "existing"; id: string; name: string } | { kind: "new"; phone: string; name: string };
 
 export function fetchServices(api: Api): Promise<ServiceResponse[]> {
   return unwrap(api.GET("/services"));
@@ -29,16 +29,20 @@ export function searchClients(api: Api, q: string): Promise<ClientResponse[]> {
   return unwrap(api.GET("/clients", { params: { query: { q, limit: CLIENT_SEARCH_LIMIT } } }));
 }
 
-/** Returns the client id; a new client is created first, or found if the phone is taken. */
-export async function resolveClientId(api: Api, choice: ClientChoice): Promise<string> {
-  if (choice.kind === "existing") return choice.id;
+function clientName(client: ClientResponse): string {
+  return client.name ?? client.phone;
+}
+
+/** Returns the client to book: a new one is created first, or found if the phone is taken. */
+export async function resolveClient(api: Api, choice: ClientChoice): Promise<{ id: string; name: string }> {
+  if (choice.kind === "existing") return { id: choice.id, name: choice.name };
   try {
     const created = await unwrap(api.POST("/clients", { body: { phone: choice.phone, name: choice.name } }));
-    return created.id;
+    return { id: created.id, name: clientName(created) };
   } catch (e) {
     if (e instanceof ApiError && e.code === "PHONE_TAKEN") {
       const found = (await searchClients(api, choice.phone)).find((c) => c.phone === choice.phone);
-      if (found) return found.id;
+      if (found) return { id: found.id, name: clientName(found) };
     }
     throw e;
   }
@@ -53,8 +57,8 @@ export interface BookInput {
 export async function bookAppointment(
   api: Api,
   { client, serviceId, start }: BookInput,
-): Promise<{ appointment: AppointmentResponse; clientId: string }> {
-  const clientId = await resolveClientId(api, client);
-  const appointment = await unwrap(api.POST("/appointments", { body: { clientId, serviceId, start } }));
-  return { appointment, clientId };
+): Promise<{ appointment: AppointmentResponse; clientId: string; clientName: string }> {
+  const resolved = await resolveClient(api, client);
+  const appointment = await unwrap(api.POST("/appointments", { body: { clientId: resolved.id, serviceId, start } }));
+  return { appointment, clientId: resolved.id, clientName: resolved.name };
 }

@@ -98,7 +98,7 @@ export default function NewAppointmentScreen() {
     if (inFlight.current || serviceId === null || form.start === null || tz === undefined) return;
     inFlight.current = true;
     const client = form.clientId
-      ? { kind: "existing" as const, id: form.clientId }
+      ? { kind: "existing" as const, id: form.clientId, name: form.clientLabel ?? form.phoneText.trim() }
       : { kind: "new" as const, phone: phone ?? "", name: form.name.trim() };
     book.mutate(
       { client, serviceId, start: form.start },
@@ -106,7 +106,7 @@ export default function NewAppointmentScreen() {
         onSuccess: (result) => {
           showBookingNotice({
             appointmentId: result.appointment.id,
-            clientName: form.clientLabel ?? form.name.trim(),
+            clientName: result.clientName,
             start: new Date(result.appointment.start),
           });
           close();

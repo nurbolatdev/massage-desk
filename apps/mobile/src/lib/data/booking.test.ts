@@ -64,13 +64,13 @@ describe("bookAppointment", () => {
   it("sends one POST /appointments for an existing client", async () => {
     const { api, sent, bodyOf } = setup({ "POST /appointments": { status: 201, body: appointment } });
     const result = await bookAppointment(api, {
-      client: { kind: "existing", id: "c1" },
+      client: { kind: "existing", id: "c1", name: "Айгуль" },
       serviceId: "s1",
       start: START,
     });
     expect(sent()).toEqual(["POST https://api.test/appointments"]);
     expect(await bodyOf(0)).toEqual({ clientId: "c1", serviceId: "s1", start: START });
-    expect(result).toEqual({ appointment, clientId: "c1" });
+    expect(result).toEqual({ appointment, clientId: "c1", clientName: "Айгуль" });
   });
 
   it("creates a new client first and books with the new id", async () => {
@@ -107,6 +107,47 @@ describe("bookAppointment", () => {
     expect(await bodyOf(2)).toEqual({ clientId: "c1", serviceId: "s1", start: START });
   });
 
+  it("returns the name of the client found by phone, not the typed one", async () => {
+    const { api } = setup({
+      "POST /clients": { status: 409, body: { code: "PHONE_TAKEN" } },
+      "GET /clients": { status: 200, body: [{ ...client, name: "Гульнара" }] },
+      "POST /appointments": { status: 201, body: appointment },
+    });
+    const result = await bookAppointment(api, {
+      client: { kind: "new", phone: PHONE, name: "Айгуль" },
+      serviceId: "s1",
+      start: START,
+    });
+    expect(result.clientName).toBe("Гульнара");
+  });
+
+  it("returns the name of a created client", async () => {
+    const { api } = setup({
+      "POST /clients": { status: 201, body: { ...client, name: "Айгуль Сапарова" } },
+      "POST /appointments": { status: 201, body: appointment },
+    });
+    const result = await bookAppointment(api, {
+      client: { kind: "new", phone: PHONE, name: "Айгуль" },
+      serviceId: "s1",
+      start: START,
+    });
+    expect(result.clientName).toBe("Айгуль Сапарова");
+  });
+
+  it("falls back to the phone when the client has no name", async () => {
+    const { api } = setup({
+      "POST /clients": { status: 409, body: { code: "PHONE_TAKEN" } },
+      "GET /clients": { status: 200, body: [{ ...client, name: null }] },
+      "POST /appointments": { status: 201, body: appointment },
+    });
+    const result = await bookAppointment(api, {
+      client: { kind: "new", phone: PHONE, name: "Айгуль" },
+      serviceId: "s1",
+      start: START,
+    });
+    expect(result.clientName).toBe(PHONE);
+  });
+
   it("rejects with PHONE_TAKEN when no client matches the phone exactly", async () => {
     const { api } = setup({
       "POST /clients": { status: 409, body: { code: "PHONE_TAKEN" } },
@@ -124,7 +165,7 @@ describe("bookAppointment", () => {
   it("rejects with TIME_TAKEN when the time is taken", async () => {
     const { api } = setup({ "POST /appointments": { status: 409, body: { code: "TIME_TAKEN" } } });
     const error = await bookAppointment(api, {
-      client: { kind: "existing", id: "c1" },
+      client: { kind: "existing", id: "c1", name: "Айгуль" },
       serviceId: "s1",
       start: START,
     }).catch((e: unknown) => e);
