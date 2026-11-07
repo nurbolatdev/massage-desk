@@ -28,6 +28,7 @@ import {
   detailRows,
 } from "@/lib/data/appointmentCard";
 import { NOTE_INLINE_PREFIX, NOTE_SAVE_FAILED } from "@/lib/data/clientNote";
+import type { AppointmentAction } from "@/lib/data/appointmentActions";
 import { useAppointment, useAppointmentAction, useClient, useUpdateClientNotes } from "@/lib/data/hooks";
 import { useDestructiveFlow } from "@/lib/data/useDestructiveFlow";
 import { RETRY_LABEL, todayState } from "@/lib/data/todayState";
@@ -66,8 +67,8 @@ export default function AppointmentScreen() {
   const flow = useDestructiveFlow((kind) => mutation.mutateAsync({ id, action: kind }));
   const actions = appointment !== undefined ? cardActions(appointment, now) : { cancel: false, noShow: false };
   const asking = flow.state.asking;
-  const [lastAsked, setLastAsked] = useState<"cancel" | "noShow">("cancel");
-  const ask = (kind: "cancel" | "noShow") => {
+  const [lastAsked, setLastAsked] = useState<AppointmentAction>("cancel");
+  const ask = (kind: AppointmentAction) => {
     setLastAsked(kind);
     flow.ask(kind);
   };
