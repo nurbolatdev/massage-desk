@@ -273,6 +273,15 @@ The master runs the schedule in the app; admin panel basics; event log; deploy a
   1. `feat(mobile): new appointment screen`
   1. `feat(mobile): book a client from today`
   1. `test(mobile): busy time cannot be chosen`
+  1. `docs: manual booking in the roadmap and mobile guide`
+  1. `fix(mobile): client search never shows an unchecked state`
+  1. `fix(mobile): single submit and clean state after booking errors`
+  1. `docs: align the manual booking notes with the behaviour`
+  1. `refactor(mobile): name the booking skeleton height`
+  1. `fix(mobile): existing client wins over the new client choice`
+  1. `test(mobile): booking cache and debounce guards`
+  1. `refactor(mobile): derive the booking skeleton height`
+  1. `docs: manual booking commits in the roadmap`
 
 ### M1-14 · Calendar
 
