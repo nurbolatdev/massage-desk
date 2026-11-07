@@ -242,6 +242,16 @@ The master runs the schedule in the app; admin panel basics; event log; deploy a
   1. `feat(mobile): confirmation flow for destructive actions`
   1. `feat(mobile): cancel and no-show with confirmation`
   1. `test(mobile): destructive actions need confirmation`
+  1. `docs: appointment card commits in the roadmap`
+  1. `fix(mobile): fail fast offline, wait for settings, note sheet spacing`
+  1. `refactor(mobile): keep sheet texts on close, use theme sizes`
+  1. `fix(mobile): quick phrases match whole note parts only`
+  1. `refactor(mobile): one refresh error field`
+  1. `refactor(mobile): type lastAsked as AppointmentAction`
+  1. `fix(mobile): no status chip for a confirmed appointment`
+  1. `fix(mobile): note phrases handle line breaks and separators`
+  1. `refactor(mobile): status chip helper with tests`
+  1. `fix(mobile): keep line breaks when removing a note phrase`
 
 ### M1-13 · Manual booking
 
