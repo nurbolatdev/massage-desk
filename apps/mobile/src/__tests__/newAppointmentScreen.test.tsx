@@ -59,6 +59,15 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false, gcTime: Infinity }, mutations: { retry: false, gcTime: Infinity } },
 });
 
+const notFound = {
+  error: { code: "NOT_FOUND", status: 404, title: "Not Found", detail: "", instance: "/appointments" },
+  response: new Response(null, { status: 404 }),
+};
+
+function clientRequests(): number {
+  return mockGet.mock.calls.filter(([path]) => path === "/clients").length;
+}
+
 function slotRequests(): number {
   return mockGet.mock.calls.filter(([path]) => path === "/slots").length;
 }
@@ -84,6 +93,7 @@ describe("new appointment screen", () => {
     mockBack.mockReset();
     mockGet.mockImplementation(async (path, init) => {
       if (path === "/clients") return ok([client]);
+      if (path === "/services") return ok([service]);
       if (path === "/slots") {
         const requested = (init as { params: { query: { day: string } } }).params.query.day;
         const starts = slotRequests() === 1 ? [`${requested}T10:00:00+05:00`, `${requested}T11:30:00+05:00`] : [`${requested}T11:30:00+05:00`];
@@ -196,5 +206,75 @@ describe("new appointment screen", () => {
     await waitFor(() => expect(slotRequests()).toBe(2));
     await new Promise((resolve) => setTimeout(resolve, 100));
     expect(slotRequests()).toBe(2);
+  });
+
+  it("searches clients again after a failed booking", async () => {
+    mockPost.mockReset();
+    mockPost.mockResolvedValue(notFound);
+    await render(
+      <SafeAreaProvider
+        initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}
+      >
+        <QueryClientProvider client={queryClient}>
+          <NewAppointmentScreen />
+        </QueryClientProvider>
+      </SafeAreaProvider>,
+    );
+    const user = userEvent.setup();
+
+    await user.type(screen.getByLabelText(PHONE_STEP), "901234567");
+    await user.press(await screen.findByText("Анна"));
+    await user.press(await screen.findByText("10:00"));
+    await waitFor(() => expect(clientRequests()).toBeGreaterThanOrEqual(1));
+    const before = clientRequests();
+
+    await user.press(screen.getByRole("button", { name: /^Записать ·/ }));
+    await waitFor(() => expect(mockPost).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(clientRequests()).toBeGreaterThan(before));
+  });
+
+  it("does not show the new-client box while the last digit is still being searched", async () => {
+    const full = "+998901234567";
+    let releaseFull: () => void = () => undefined;
+    mockGet.mockImplementation(async (path, init) => {
+      if (path === "/clients") {
+        const q = (init as { params: { query: { q: string } } }).params.query.q;
+        if (q === full) {
+          await new Promise<void>((resolve) => {
+            releaseFull = resolve;
+          });
+          return ok([client]);
+        }
+        return ok([]);
+      }
+      if (path === "/services") return ok([service]);
+      throw new Error(`unexpected GET ${path}`);
+    });
+    await render(
+      <SafeAreaProvider
+        initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}
+      >
+        <QueryClientProvider client={queryClient}>
+          <NewAppointmentScreen />
+        </QueryClientProvider>
+      </SafeAreaProvider>,
+    );
+    const user = userEvent.setup();
+    const input = screen.getByLabelText(PHONE_STEP);
+    const newClientBox = () => screen.queryByText(NEW_CLIENT_INFO_BOLD);
+
+    await user.type(input, "+99890123456");
+    await waitFor(() => expect(mockGet.mock.calls.some(([, init]) => (init as { params: { query: { q: string } } }).params.query.q === "+99890123456")).toBe(true));
+    await user.type(input, "7");
+    // The debounce is pending, then the full-number search is in flight: never the new-client box.
+    expect(newClientBox()).toBeNull();
+    await waitFor(() => expect(mockGet.mock.calls.some(([, init]) => (init as { params: { query: { q: string } } }).params.query.q === full)).toBe(true));
+    expect(newClientBox()).toBeNull();
+
+    await act(async () => {
+      releaseFull();
+    });
+    expect(await screen.findByText("Анна")).toBeOnTheScreen();
+    expect(newClientBox()).toBeNull();
   });
 });
