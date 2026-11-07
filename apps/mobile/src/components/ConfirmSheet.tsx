@@ -11,6 +11,7 @@ type Props = {
   text: string;
   confirmLabel: string;
   cancelLabel?: string;
+  confirmVariant?: "primary" | "danger";
   onConfirm: () => void;
   onCancel: () => void;
   busy?: boolean;
@@ -23,6 +24,7 @@ export function ConfirmSheet({
   text,
   confirmLabel,
   cancelLabel = "Нет, оставить",
+  confirmVariant = "primary",
   onConfirm,
   onCancel,
   busy = false,
@@ -50,7 +52,7 @@ export function ConfirmSheet({
             </Text>
             <Text style={styles.text}>{text}</Text>
             {error ? <ErrorBanner message={error} /> : null}
-            <Button label={confirmLabel} onPress={onConfirm} disabled={busy} />
+            <Button label={confirmLabel} onPress={onConfirm} variant={confirmVariant} disabled={busy} />
             <Button label={cancelLabel} onPress={cancel} variant="soft" disabled={busy} />
           </ScrollView>
         </View>

@@ -55,7 +55,7 @@ function labelColor(primary: boolean, onPrimaryCard: boolean, disabled: boolean)
     return primary ? colors.ink : colors.onPrimary;
   }
   if (disabled) return colors.muted;
-  return primary ? colors.onPrimary : colors.primary;
+  return primary ? colors.onPrimary : colors.primaryStrong;
 }
 
 const styles = StyleSheet.create({
