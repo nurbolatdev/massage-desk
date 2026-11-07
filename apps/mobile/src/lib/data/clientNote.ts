@@ -25,22 +25,35 @@ export function noteSheetSubtitle(name: string): string {
   return `${name} · видите только вы`;
 }
 
-export function hasPhrase(text: string, phrase: string): boolean {
-  return text.toLowerCase().includes(phrase.toLowerCase());
+function splitParts(text: string): { content: string; separator: string }[] {
+  const pieces = text.split(/([.,;\n])/);
+  const parts: { content: string; separator: string }[] = [];
+  for (let i = 0; i < pieces.length; i += 2) {
+    parts.push({ content: pieces[i] ?? "", separator: pieces[i + 1] ?? "" });
+  }
+  return parts;
 }
 
-const SEPARATORS = [". ", ", ", "."];
+function sameText(part: string, phrase: string): boolean {
+  return part.trim().toLowerCase() === phrase.trim().toLowerCase();
+}
+
+export function hasPhrase(text: string, phrase: string): boolean {
+  return splitParts(text).some((part) => sameText(part.content, phrase));
+}
 
 export function toggleNotePhrase(text: string, phrase: string): string {
-  const index = text.toLowerCase().indexOf(phrase.toLowerCase());
+  const parts = splitParts(text);
+  const index = parts.findIndex((part) => sameText(part.content, phrase));
   if (index === -1) {
     const base = text.trimEnd();
     if (base === "") return phrase;
     const separator = /[.!?]$/.test(base) ? " " : ". ";
     return `${base}${separator}${phrase}`;
   }
-  const before = text.slice(0, index);
-  const afterPhrase = text.slice(index + phrase.length);
-  const separator = SEPARATORS.find((s) => afterPhrase.startsWith(s)) ?? "";
-  return `${before}${afterPhrase.slice(separator.length)}`.trim();
+  const rest = parts
+    .filter((_, i) => i !== index)
+    .map((part) => `${part.content}${part.separator}`)
+    .join("");
+  return rest.trim().replace(/[,;]+$/, "");
 }

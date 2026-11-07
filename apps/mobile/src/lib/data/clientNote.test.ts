@@ -36,6 +36,33 @@ describe("toggleNotePhrase", () => {
   });
 });
 
+describe("whole-part matching", () => {
+  it("does not select a phrase that is only a fragment of a part", () => {
+    expect(hasPhrase("Не болит шея уже", "Болит шея")).toBe(false);
+    expect(toggleNotePhrase("Не болит шея уже", "Болит шея")).toBe("Не болит шея уже. Болит шея");
+  });
+
+  it("does not corrupt text that contains the phrase as a prefix of a word", () => {
+    expect(toggleNotePhrase("Болит шеяи плечо", "Болит шея")).toBe("Болит шеяи плечо. Болит шея");
+  });
+
+  it("selects a part that equals the phrase, ignoring case and spaces", () => {
+    expect(hasPhrase("Любит тишину,  болит ШЕЯ.", "Болит шея")).toBe(true);
+  });
+
+  it("removes the last phrase without a dangling separator", () => {
+    expect(toggleNotePhrase("Любит тишину, Болит шея.", "Болит шея")).toBe("Любит тишину");
+  });
+
+  it("removes a phrase in the middle", () => {
+    expect(toggleNotePhrase("А. Болит шея. Б", "Болит шея")).toBe("А. Б");
+  });
+
+  it("returns an empty text when the phrase is the only content", () => {
+    expect(toggleNotePhrase("Болит шея", "Болит шея")).toBe("");
+  });
+});
+
 describe("noteSheetSubtitle", () => {
   it("adds the privacy hint", () => {
     expect(noteSheetSubtitle("Айгуль Сапарова")).toBe("Айгуль Сапарова · видите только вы");
