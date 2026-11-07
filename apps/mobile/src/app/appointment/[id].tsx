@@ -2,19 +2,34 @@ import { useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { AppointmentActionBar } from "@/components/AppointmentActionBar";
 import { AppointmentDetails } from "@/components/AppointmentDetails";
 import { AppointmentHeader } from "@/components/AppointmentHeader";
 import { AppointmentSkeleton } from "@/components/AppointmentSkeleton";
 import { AppointmentSummary } from "@/components/AppointmentSummary";
 import { Button } from "@/components/Button";
 import { ClientNoteCard, type NoteState } from "@/components/ClientNoteCard";
+import { ConfirmSheet } from "@/components/ConfirmSheet";
 import { ErrorBanner } from "@/components/ErrorBanner";
 import { NoteSheet } from "@/components/NoteSheet";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { RefreshFailedBanner } from "@/components/RefreshFailedBanner";
-import { BACK_LABEL, NOT_FOUND_TEXT, NOT_FOUND_TITLE, detailRows } from "@/lib/data/appointmentCard";
+import {
+  BACK_LABEL,
+  CANCEL_CONFIRM_TITLE,
+  CANCEL_CONFIRM_YES,
+  NOT_FOUND_TEXT,
+  NOT_FOUND_TITLE,
+  NO_SHOW_CONFIRM_TEXT,
+  NO_SHOW_CONFIRM_TITLE,
+  NO_SHOW_CONFIRM_YES,
+  cancelConfirmText,
+  cardActions,
+  detailRows,
+} from "@/lib/data/appointmentCard";
 import { NOTE_INLINE_PREFIX, NOTE_SAVE_FAILED } from "@/lib/data/clientNote";
-import { useAppointment, useClient, useUpdateClientNotes } from "@/lib/data/hooks";
+import { useAppointment, useAppointmentAction, useClient, useUpdateClientNotes } from "@/lib/data/hooks";
+import { useDestructiveFlow } from "@/lib/data/useDestructiveFlow";
 import { RETRY_LABEL, todayState } from "@/lib/data/todayState";
 import { formatTime } from "@/lib/format";
 import { useOnline } from "@/lib/query/online";
@@ -46,6 +61,10 @@ export default function AppointmentScreen() {
   const note = client.data?.notes ?? null;
   const noteState: NoteState =
     client.data !== undefined ? "ready" : client.isError ? "error" : !online ? "offline" : "loading";
+  const mutation = useAppointmentAction();
+  const flow = useDestructiveFlow((kind) => mutation.mutateAsync({ id, action: kind }));
+  const actions = appointment !== undefined ? cardActions(appointment, now) : { cancel: false, noShow: false };
+  const asking = flow.state.asking;
   const closeNote = () => {
     setEditingNote(false);
     saveNote.reset();
@@ -109,6 +128,27 @@ export default function AppointmentScreen() {
           </>
         )}
       </ScrollView>
+      {actions.cancel && state.view === "list" && (
+        <AppointmentActionBar
+          showNoShow={actions.noShow}
+          disabled={!online}
+          onNoShow={() => flow.ask("noShow")}
+          onCancel={() => flow.ask("cancel")}
+        />
+      )}
+      {appointment !== undefined && timeZone !== undefined && (
+        <ConfirmSheet
+          visible={asking !== null}
+          title={asking === "noShow" ? NO_SHOW_CONFIRM_TITLE : CANCEL_CONFIRM_TITLE}
+          text={asking === "noShow" ? NO_SHOW_CONFIRM_TEXT : cancelConfirmText(appointment.start, timeZone)}
+          confirmLabel={asking === "noShow" ? NO_SHOW_CONFIRM_YES : CANCEL_CONFIRM_YES}
+          confirmVariant={asking === "noShow" ? "primary" : "danger"}
+          onConfirm={() => void flow.confirm()}
+          onCancel={flow.dismiss}
+          busy={flow.state.busy}
+          error={flow.state.error ?? undefined}
+        />
+      )}
       {appointment !== undefined && (
         <NoteSheet
           visible={editingNote}
