@@ -17,6 +17,7 @@ import {
   detailRows,
   durationText,
   initials,
+  statusChip,
   timeRange,
 } from "./appointmentCard";
 
@@ -172,13 +173,28 @@ describe("cardLoad", () => {
     expect(cardLoad({ ...base, appointmentsLoaded: false }).hasData).toBe(false);
   });
 
-  it("reports a settings error as an error and as a failed refresh", () => {
-    const load = cardLoad({ ...base, settingsLoaded: false, settingsError: failure });
-    expect(load.error).toBe(failure);
-    expect(cardLoad({ ...base, settingsError: failure }).error).toBe(failure);
+  it("reports a settings error as the error", () => {
+    expect(cardLoad({ ...base, settingsLoaded: false, settingsError: failure }).error).toBe(failure);
+  });
+
+  it("reports a list error as the error", () => {
+    expect(cardLoad({ ...base, appointmentsError: failure }).error).toBe(failure);
   });
 
   it("has no error when nothing failed", () => {
     expect(cardLoad(base)).toEqual({ hasData: true, error: null });
+  });
+});
+
+describe("statusChip", () => {
+  it("has no chip without a status or for a confirmed appointment", () => {
+    expect(statusChip(undefined)).toBeUndefined();
+    expect(statusChip("confirmed")).toBeUndefined();
+  });
+
+  it("has a chip for cancelled, no_show and done", () => {
+    expect(statusChip("cancelled")).toBe("cancelled");
+    expect(statusChip("no_show")).toBe("no_show");
+    expect(statusChip("done")).toBe("done");
   });
 });

@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import type { AppointmentStatus } from "@massage-desk/shared";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { BACK_LABEL, CARD_TITLE, STATUS_LABEL } from "@/lib/data/appointmentCard";
+import { BACK_LABEL, CARD_TITLE, STATUS_LABEL, statusChip, type ChipStatus } from "@/lib/data/appointmentCard";
 import { colors, radii, space, typography } from "@/theme";
 
 // from the Appointment mockup
@@ -13,15 +13,14 @@ interface Props {
   onBack: () => void;
 }
 
-// a confirmed appointment is the normal case: no chip (DESIGN.md section 7)
-const CHIP: Record<Exclude<AppointmentStatus, "confirmed">, { bg: string; fg: string; paddingHorizontal: number }> = {
+const CHIP: Record<ChipStatus, { bg: string; fg: string; paddingHorizontal: number }> = {
   cancelled: { bg: colors.neutralSoft, fg: colors.neutralStrong, paddingHorizontal: space[10] },
   no_show: { bg: colors.accentSoft, fg: colors.accentStrong, paddingHorizontal: space[10] },
   done: { bg: colors.primaryFaint, fg: colors.textStrong, paddingHorizontal: space[10] },
 };
 
 export function AppointmentHeader({ status, onBack }: Props) {
-  const chip = status === undefined || status === "confirmed" ? undefined : CHIP[status];
+  const chipStatus = statusChip(status);
   return (
     <View style={styles.row}>
       <Pressable accessibilityRole="button" accessibilityLabel={BACK_LABEL} onPress={onBack} style={styles.back}>
@@ -30,9 +29,14 @@ export function AppointmentHeader({ status, onBack }: Props) {
       <Text accessibilityRole="header" style={styles.title}>
         {CARD_TITLE}
       </Text>
-      {chip !== undefined && status !== undefined && status !== "confirmed" && (
-        <View style={[styles.chip, { backgroundColor: chip.bg, paddingHorizontal: chip.paddingHorizontal }]}>
-          <Text style={[styles.chipLabel, { color: chip.fg }]}>{STATUS_LABEL[status]}</Text>
+      {chipStatus !== undefined && (
+        <View
+          style={[
+            styles.chip,
+            { backgroundColor: CHIP[chipStatus].bg, paddingHorizontal: CHIP[chipStatus].paddingHorizontal },
+          ]}
+        >
+          <Text style={[styles.chipLabel, { color: CHIP[chipStatus].fg }]}>{STATUS_LABEL[chipStatus]}</Text>
         </View>
       )}
     </View>

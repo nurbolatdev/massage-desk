@@ -17,6 +17,13 @@ export const STATUS_LABEL: Record<AppointmentStatus, string> = {
   done: "Прошла",
 };
 
+export type ChipStatus = Exclude<AppointmentStatus, "confirmed">;
+
+/** The status that gets a header chip; a confirmed appointment is the normal case and has none (DESIGN.md section 7). */
+export function statusChip(status: AppointmentStatus | undefined): ChipStatus | undefined {
+  return status === undefined || status === "confirmed" ? undefined : status;
+}
+
 export const SERVICE_LABEL = "Услуга";
 export const DURATION_LABEL = "Длительность";
 export const BOOKED_BY_LABEL = "Кто записал";
