@@ -285,6 +285,9 @@ The master runs the schedule in the app; admin panel basics; event log; deploy a
   1. `fix(mobile): booked notice shows the client the server booked`
   1. `docs: grey disabled button in the design rules`
   1. `docs: manual booking review commits in the roadmap`
+  1. `docs: limit the grey disabled rule to the primary button`
+  1. `test(mobile): picked client name in the booked notice`
+  1. `docs: manual booking review commits in the roadmap, part 2`
 
 ### M1-14 · Calendar
 
