@@ -230,7 +230,16 @@ The master runs the schedule in the app; admin panel basics; event log; deploy a
 - **Depends on:** M1-7, M1-11
 - **Also (from M1-11):** opening the appointment card from the rows and the next-client card on Today.
 - **Commits:**
+  1. `feat(mobile): design tokens and danger confirm for the appointment card`
+  1. `feat(mobile): appointment and client data for the card`
+  1. `feat(mobile): cancel and no-show requests`
+  1. `feat(mobile): appointment card texts and helpers`
+  1. `feat(mobile): appointment card building blocks`
+  1. `feat(mobile): appointment card screen`
+  1. `feat(mobile): open the appointment card from today`
+  1. `feat(mobile): client note texts and quick phrases`
   1. `feat(mobile): appointment details and notes`
+  1. `feat(mobile): confirmation flow for destructive actions`
   1. `feat(mobile): cancel and no-show with confirmation`
   1. `test(mobile): destructive actions need confirmation`
 
