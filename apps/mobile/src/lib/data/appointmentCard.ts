@@ -30,6 +30,7 @@ export const SOURCE_TEXT: Record<AppointmentSource, string> = {
 export const NOT_FOUND_TITLE = "Запись не найдена";
 export const NOT_FOUND_TEXT = "Возможно, её перенесли на другой день.";
 export const OPEN_APPOINTMENT_HINT = "Открыть запись";
+export const LOADING_LABEL = "Загрузка";
 
 export interface DetailRow {
   label: string;
