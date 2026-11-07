@@ -174,9 +174,9 @@ export function useBookAppointment() {
   return useMutation({
     mutationFn: (input: BookInput) => bookAppointment(api, input),
     networkMode: "always",
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.clients.all }),
     onSettled: () =>
       Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.clients.all }),
         queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all }),
         queryClient.invalidateQueries({ queryKey: queryKeys.slots.all }),
       ]),

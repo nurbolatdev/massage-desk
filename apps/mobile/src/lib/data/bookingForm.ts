@@ -108,6 +108,9 @@ export function bookingFormReducer(state: BookingForm, action: BookingAction): B
       if (action.kind === "outside") {
         return { ...state, taken: state.start, start: null, error: action.kind };
       }
+      if (action.kind === "notFound") {
+        return { ...state, clientId: null, clientLabel: null, error: action.kind };
+      }
       return { ...state, error: action.kind };
     case "expanded":
       return state.collapsed ? { ...state, collapsed: false } : state;

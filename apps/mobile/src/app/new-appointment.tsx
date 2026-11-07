@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { normalizePhone } from "@massage-desk/shared";
 import { useRouter } from "expo-router";
-import { useReducer } from "react";
+import { useReducer, useRef } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -52,6 +52,7 @@ export default function NewAppointmentScreen() {
   const services = useServices();
   const [form, dispatch] = useReducer(bookingFormReducer, null, () => initialForm(null));
   const book = useBookAppointment();
+  const inFlight = useRef(false);
 
   const tz = settings.data?.timeZone;
   const today = tz === undefined ? undefined : localDay(now, tz);
@@ -92,7 +93,8 @@ export default function NewAppointmentScreen() {
     else router.replace("/");
   };
   const onSubmit = () => {
-    if (serviceId === null || form.start === null || tz === undefined) return;
+    if (inFlight.current || serviceId === null || form.start === null || tz === undefined) return;
+    inFlight.current = true;
     const client = form.clientId
       ? { kind: "existing" as const, id: form.clientId }
       : { kind: "new" as const, phone: phone ?? "", name: form.name.trim() };
@@ -107,14 +109,13 @@ export default function NewAppointmentScreen() {
           });
           close();
         },
+        onSettled: () => {
+          inFlight.current = false;
+        },
         onError: (error) => {
           const kind = bookingErrorKind(error);
           dispatch({ type: "bookFailed", kind });
-          if (kind === "taken" || kind === "outside") void slots.refetch();
-          if (kind === "notFound") {
-            void slots.refetch();
-            void services.refetch();
-          }
+          if (kind === "notFound") void services.refetch();
         },
       },
     );

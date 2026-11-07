@@ -55,6 +55,15 @@ describe("bookingFormReducer", () => {
     expect(next.error).toBe("failed");
   });
 
+  it("unselects the picked client when the client no longer exists", () => {
+    const client: ClientResponse = { id: "c1", phone: "+998901234567", name: "Айгуль" } as ClientResponse;
+    const picked = bookingFormReducer(withTime(), { type: "clientPicked", client });
+    const next = bookingFormReducer(picked, { type: "bookFailed", kind: "notFound" });
+    expect(next.clientId).toBeNull();
+    expect(next.clientLabel).toBeNull();
+    expect(next.error).toBe("notFound");
+  });
+
   it("drops the picked client when the phone changes", () => {
     const client: ClientResponse = { id: "c1", phone: "+998901234567", name: "Айгуль" } as ClientResponse;
     const picked = bookingFormReducer(initialForm(null), { type: "clientPicked", client });

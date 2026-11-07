@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import type { components } from "@massage-desk/api-types";
 import { onlineManager, QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen, userEvent, waitFor } from "@testing-library/react-native";
+import { act, cleanup, fireEvent, render, screen, userEvent, waitFor } from "@testing-library/react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import NewAppointmentScreen from "@/app/new-appointment";
@@ -163,5 +163,38 @@ describe("new appointment screen", () => {
     expect(newClientBox()).toBeNull();
     expect(await screen.findByText("Анна")).toBeOnTheScreen();
     expect(newClientBox()).toBeNull();
+  });
+
+  it("sends one request for two quick taps and loads times once more after a conflict", async () => {
+    mockPost.mockReset();
+    mockPost.mockImplementation(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      return timeTaken;
+    });
+    await render(
+      <SafeAreaProvider
+        initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}
+      >
+        <QueryClientProvider client={queryClient}>
+          <NewAppointmentScreen />
+        </QueryClientProvider>
+      </SafeAreaProvider>,
+    );
+    const user = userEvent.setup();
+
+    await user.type(screen.getByLabelText(PHONE_STEP), "901234567");
+    await user.press(await screen.findByText("Анна"));
+    await user.press(await screen.findByText("10:00"));
+
+    const button = screen.getByRole("button", { name: /^Записать ·/ });
+    await act(async () => {
+      fireEvent.press(button);
+      fireEvent.press(button);
+    });
+    expect(await screen.findByText(conflictTitle("10:00"))).toBeOnTheScreen();
+    expect(mockPost).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(slotRequests()).toBe(2));
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(slotRequests()).toBe(2);
   });
 });
