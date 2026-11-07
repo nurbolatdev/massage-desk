@@ -1,8 +1,13 @@
+import { Feather } from "@expo/vector-icons";
+import type { ComponentProps } from "react";
 import { Pressable, StyleSheet, Text } from "react-native";
 
 import { colors, radii, size, space, typography } from "@/theme";
 
 type Variant = "primary" | "outline" | "soft" | "danger";
+
+/** Icon size, from the TodaySuccess mockup. */
+const ICON_SIZE = 22;
 
 type Props = {
   label: string;
@@ -10,9 +15,12 @@ type Props = {
   variant?: Variant;
   disabled?: boolean;
   accessibilityLabel?: string;
+  icon?: ComponentProps<typeof Feather>["name"];
 };
 
-export function Button({ label, onPress, variant = "primary", disabled = false, accessibilityLabel }: Props) {
+export function Button({ label, onPress, variant = "primary", disabled = false, accessibilityLabel, icon }: Props) {
+  const greyPrimary = disabled && variant === "primary";
+  const labelColor = greyPrimary ? colors.neutralFg : labelStyles[variant].color;
   return (
     <Pressable
       accessibilityRole="button"
@@ -23,11 +31,13 @@ export function Button({ label, onPress, variant = "primary", disabled = false, 
       style={({ pressed }) => [
         styles.base,
         containerStyles[variant],
-        disabled && styles.disabled,
+        disabled && !greyPrimary && styles.disabled,
+        greyPrimary && styles.greyPrimary,
         pressed && !disabled && styles.pressed,
       ]}
     >
-      <Text style={[styles.label, labelStyles[variant]]}>{label}</Text>
+      {icon ? <Feather name={icon} size={ICON_SIZE} color={labelColor} accessible={false} /> : null}
+      <Text style={[styles.label, labelStyles[variant], greyPrimary && styles.greyLabel]}>{label}</Text>
     </Pressable>
   );
 }
@@ -35,13 +45,17 @@ export function Button({ label, onPress, variant = "primary", disabled = false, 
 const styles = StyleSheet.create({
   base: {
     alignSelf: "stretch",
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    gap: space[10],
     paddingHorizontal: space[16],
   },
-  label: { ...typography.body, textAlign: "center" },
+  label: { ...typography.body, textAlign: "center", flexShrink: 1 },
   pressed: { opacity: 0.8 },
   disabled: { opacity: 0.6 },
+  greyPrimary: { backgroundColor: colors.disabledBg },
+  greyLabel: { color: colors.neutralFg },
 });
 
 const containerStyles = StyleSheet.create({
