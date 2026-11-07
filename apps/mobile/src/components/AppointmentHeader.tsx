@@ -21,6 +21,7 @@ const CHIP: Record<ChipStatus, { bg: string; fg: string; paddingHorizontal: numb
 
 export function AppointmentHeader({ status, onBack }: Props) {
   const chipStatus = statusChip(status);
+  const chip = chipStatus === undefined ? undefined : CHIP[chipStatus];
   return (
     <View style={styles.row}>
       <Pressable accessibilityRole="button" accessibilityLabel={BACK_LABEL} onPress={onBack} style={styles.back}>
@@ -29,14 +30,14 @@ export function AppointmentHeader({ status, onBack }: Props) {
       <Text accessibilityRole="header" style={styles.title}>
         {CARD_TITLE}
       </Text>
-      {chipStatus !== undefined && (
+      {chipStatus !== undefined && chip !== undefined && (
         <View
           style={[
             styles.chip,
-            { backgroundColor: CHIP[chipStatus].bg, paddingHorizontal: CHIP[chipStatus].paddingHorizontal },
+            { backgroundColor: chip.bg, paddingHorizontal: chip.paddingHorizontal },
           ]}
         >
-          <Text style={[styles.chipLabel, { color: CHIP[chipStatus].fg }]}>{STATUS_LABEL[chipStatus]}</Text>
+          <Text style={[styles.chipLabel, { color: chip.fg }]}>{STATUS_LABEL[chipStatus]}</Text>
         </View>
       )}
     </View>

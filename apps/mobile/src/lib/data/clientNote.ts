@@ -25,7 +25,7 @@ export function noteSheetSubtitle(name: string): string {
   return `${name} · видите только вы`;
 }
 
-const SEPARATORS = /([.,;!?]?[ \t]*\n|[.,;!?])/;
+const SEPARATORS = /([.,;!?]*[ \t]*\r?\n|[.,;!?]+)/;
 
 function splitParts(text: string): { content: string; separator: string }[] {
   const pieces = text.split(SEPARATORS);
@@ -52,9 +52,23 @@ export function toggleNotePhrase(text: string, phrase: string): string {
     const separator = /[.!?]$/.test(base) ? " " : ". ";
     return `${base}${separator}${phrase}`;
   }
-  const rest = parts
-    .filter((part) => !sameText(part.content, phrase))
-    .map((part) => `${part.content}${part.separator}`)
+  const kept: { content: string; separator: string }[] = [];
+  for (const part of parts) {
+    if (!sameText(part.content, phrase)) {
+      kept.push({ ...part });
+      continue;
+    }
+    const previous = kept[kept.length - 1];
+    if (previous !== undefined && part.separator.includes("\n") && !previous.separator.includes("\n")) {
+      previous.separator = `${previous.separator.trimEnd()}\n`;
+    }
+  }
+  const rest = kept
+    .map((part, index) => {
+      const afterBreak = index > 0 && /\n$/.test(kept[index - 1]?.separator ?? "");
+      const content = afterBreak ? part.content.replace(/^[ \t]+/, "") : part.content;
+      return `${content}${part.separator}`;
+    })
     .join("");
   return rest.trim().replace(/[,;]+$/, "");
 }

@@ -95,6 +95,29 @@ describe("separators and line breaks", () => {
   });
 });
 
+describe("line breaks are kept when removing", () => {
+  it("does not glue neighbours when the dropped separator has a line break", () => {
+    expect(toggleNotePhrase("Любит тишину. Болит шея\nЗвонить накануне", "Болит шея")).toBe(
+      "Любит тишину.\nЗвонить накануне",
+    );
+    expect(toggleNotePhrase("А, Болит шея.\nБ", "Болит шея")).toBe("А,\nБ");
+  });
+
+  it("treats a run of end marks as one separator", () => {
+    expect(toggleNotePhrase("Болит шея!!!", "Болит шея")).toBe("");
+    expect(toggleNotePhrase("А. Болит шея?! Б", "Болит шея")).toBe("А. Б");
+    expect(toggleNotePhrase("А... Болит шея", "Болит шея")).toBe("А...");
+  });
+
+  it("treats CRLF as one separator", () => {
+    expect(toggleNotePhrase("А.\r\nБолит шея.\r\nБ.", "Болит шея")).toBe("А.\r\nБ.");
+  });
+
+  it("strips leading spaces of the next part after a line break", () => {
+    expect(toggleNotePhrase("А.\nБолит шея. Б", "Болит шея")).toBe("А.\nБ");
+  });
+});
+
 describe("noteSheetSubtitle", () => {
   it("adds the privacy hint", () => {
     expect(noteSheetSubtitle("Айгуль Сапарова")).toBe("Айгуль Сапарова · видите только вы");
