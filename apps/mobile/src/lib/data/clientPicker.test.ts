@@ -85,14 +85,37 @@ describe("pickerView", () => {
     expect(view).toEqual({ kind: "selected", showNewLink: false, showNewInfo: false });
   });
 
-  it("is a new client without info when chosen manually next to an exact match", () => {
+  it("shows the info for a chosen new client with a checked, unknown number", () => {
+    expect(pickerView({ ...base, phone: PHONE, newClient: true })).toEqual({
+      kind: "newClient",
+      showNewLink: false,
+      showNewInfo: true,
+    });
+  });
+
+  it("hides the new client info while the search is loading", () => {
+    const view = pickerView({ ...base, phone: PHONE, newClient: true, loading: true });
+    expect(view.showNewInfo).toBe(false);
+  });
+
+  it("hides the new client info offline", () => {
+    const view = pickerView({ ...base, phone: PHONE, newClient: true, online: false });
+    expect(view.showNewInfo).toBe(false);
+  });
+
+  it("hides the new client info when the search failed", () => {
+    const view = pickerView({ ...base, phone: PHONE, newClient: true, failed: true });
+    expect(view.showNewInfo).toBe(false);
+  });
+
+  it("lets an existing client win over the new client choice", () => {
     const view = pickerView({
       ...base,
       results: [client("a", PHONE)],
       phone: PHONE,
       newClient: true,
     });
-    expect(view).toEqual({ kind: "newClient", showNewLink: false, showNewInfo: false });
+    expect(view).toEqual({ kind: "results", showNewLink: false, showNewInfo: false });
   });
 });
 

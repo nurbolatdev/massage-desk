@@ -63,7 +63,11 @@ export function pickerView(input: PickerInput): PickerView {
   const newInfo = phone !== null && !matched;
 
   if (selectedId !== null) return { kind: "selected", showNewLink: false, showNewInfo: false };
-  if (newClient) return { kind: "newClient", showNewLink: false, showNewInfo: newInfo };
+  // An existing client wins over the new client choice: fall through to the results.
+  if (newClient && !matched) {
+    const checked = query !== null && online && !loading && !failed;
+    return { kind: "newClient", showNewLink: false, showNewInfo: checked && newInfo };
+  }
   if (query === null) return { kind: "idle", showNewLink: true, showNewInfo: false };
   if (results.length > 0) return { kind: "results", showNewLink: !matched, showNewInfo: false };
   if (!online) return { kind: "offline", showNewLink: true, showNewInfo: false };
