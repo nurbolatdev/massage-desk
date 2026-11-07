@@ -25,7 +25,7 @@ Later:
 Done in M1-12. The next-client card and every row on Today open it. It shows the time, service, client and who booked; call and WhatsApp buttons; the client's note with quick phrases (saved with `PATCH /clients/{id}`); and, for a confirmed appointment, «Отменить» and, once it has started, «Не пришёл». Both destructive actions ask for confirmation, and no request is sent before «Да». The status chip is shown only for unusual statuses (cancelled, no-show, done), not for a confirmed one. States: loading, offline, error, «Запись не найдена».
 
 - The card route is `/appointment/<id>?day=YYYY-MM-DD`. The API has no single-appointment endpoint, so the card finds the appointment in the list of that day (same cache as Today). Without `day` it shows «Запись не найдена» ([#59](https://github.com/nurbolatdev/massage-desk/issues/59)).
-- Not shown yet, because the API does not provide it: price, who cancelled and when, visit history, the no-show counter. «Перенести» comes with M1-13.
+- Not shown yet, because the API does not provide it: price, who cancelled and when, visit history, the no-show counter. «Перенести» comes later as a separate task.
 
 ## New appointment
 
@@ -33,7 +33,7 @@ Done in M1-13. Opened from «Записать клиента» on Today. Three s
 
 - Only free times are offered. A time that is taken cannot be chosen.
 - If the time was taken meanwhile (409), the master sees an alert and the list of free times is refreshed.
-- Offline, booking is blocked and the button explains why.
+- Offline, a banner explains that booking needs the internet, and the button is disabled.
 - The client gets no message about the booking yet.
 
 ## Data
