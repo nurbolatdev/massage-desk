@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -6,16 +7,19 @@ import { AppointmentHeader } from "@/components/AppointmentHeader";
 import { AppointmentSkeleton } from "@/components/AppointmentSkeleton";
 import { AppointmentSummary } from "@/components/AppointmentSummary";
 import { Button } from "@/components/Button";
+import { ClientNoteCard, type NoteState } from "@/components/ClientNoteCard";
 import { ErrorBanner } from "@/components/ErrorBanner";
+import { NoteSheet } from "@/components/NoteSheet";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { RefreshFailedBanner } from "@/components/RefreshFailedBanner";
 import { BACK_LABEL, NOT_FOUND_TEXT, NOT_FOUND_TITLE, detailRows } from "@/lib/data/appointmentCard";
-import { useAppointment } from "@/lib/data/hooks";
+import { NOTE_INLINE_PREFIX, NOTE_SAVE_FAILED } from "@/lib/data/clientNote";
+import { useAppointment, useClient, useUpdateClientNotes } from "@/lib/data/hooks";
 import { RETRY_LABEL, todayState } from "@/lib/data/todayState";
 import { formatTime } from "@/lib/format";
 import { useOnline } from "@/lib/query/online";
 import { useNow } from "@/lib/time/useNow";
-import { colors, space, typography } from "@/theme";
+import { colors, radii, space, typography } from "@/theme";
 
 function stringParam(value: string | string[] | undefined): string | undefined {
   return typeof value === "string" ? value : undefined;
@@ -36,6 +40,18 @@ export default function AppointmentScreen() {
     appointmentsError: card.appointmentsError,
   });
   const { appointment, timeZone } = card;
+  const client = useClient(appointment?.clientId);
+  const saveNote = useUpdateClientNotes(appointment?.clientId ?? "");
+  const [editingNote, setEditingNote] = useState(false);
+  const note = client.data?.notes ?? null;
+  const noteState: NoteState =
+    client.data !== undefined ? "ready" : client.isError ? "error" : !online ? "offline" : "loading";
+  const closeNote = () => {
+    setEditingNote(false);
+    saveNote.reset();
+  };
+  const showNote = appointment?.status === "confirmed" || appointment?.status === "done";
+  const inlineNote = appointment?.status === "no_show" ? (note?.trim() ?? "") : "";
   const savedAt =
     timeZone !== undefined && card.dataUpdatedAt > 0 ? formatTime(new Date(card.dataUpdatedAt), timeZone) : null;
 
@@ -73,11 +89,37 @@ export default function AppointmentScreen() {
                 {state.refreshFailed && <RefreshFailedBanner savedAt={savedAt} onRetry={card.refetch} />}
                 <AppointmentSummary appointment={appointment} now={now} timeZone={timeZone} online={online} />
                 <AppointmentDetails rows={detailRows(appointment)} />
+                {showNote && (
+                  <ClientNoteCard
+                    note={note}
+                    state={noteState}
+                    online={online}
+                    onEdit={() => setEditingNote(true)}
+                    onRetry={() => void client.refetch()}
+                  />
+                )}
+                {inlineNote !== "" && (
+                  <Text style={styles.inlineNote}>
+                    <Text style={styles.inlineNotePrefix}>{NOTE_INLINE_PREFIX} </Text>
+                    {inlineNote}
+                  </Text>
+                )}
               </>
             )}
           </>
         )}
       </ScrollView>
+      {appointment !== undefined && (
+        <NoteSheet
+          visible={editingNote}
+          clientName={appointment.clientName}
+          initial={note ?? ""}
+          busy={saveNote.isPending}
+          error={saveNote.isError ? NOTE_SAVE_FAILED : undefined}
+          onSave={(text) => saveNote.mutate(text.trim(), { onSuccess: closeNote })}
+          onClose={closeNote}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -85,6 +127,15 @@ export default function AppointmentScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   content: { flexGrow: 1, paddingTop: space[4], paddingHorizontal: space[16], paddingBottom: space[24], gap: space[12] },
+  inlineNote: {
+    ...typography.body,
+    color: colors.ink,
+    backgroundColor: colors.note,
+    borderRadius: radii[16],
+    paddingVertical: space[12],
+    paddingHorizontal: space[14],
+  },
+  inlineNotePrefix: { fontWeight: "700" },
   errorBox: { gap: space[12] },
   notFound: { flexGrow: 1, alignItems: "center", justifyContent: "center", gap: space[12] },
   notFoundTitle: { ...typography.titleS, color: colors.ink, textAlign: "center" },
