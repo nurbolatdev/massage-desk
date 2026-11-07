@@ -109,7 +109,7 @@ describe("appointment card screen", () => {
         </QueryClientProvider>
       </SafeAreaProvider>,
     );
-    expect(screen.getByText("Анна")).not.toBeNull();
+    expect(screen.getByText("Анна")).toBeOnTheScreen();
 
     const user = userEvent.setup();
     await user.press(screen.getByRole("button", { name: CANCEL_LABEL }));
