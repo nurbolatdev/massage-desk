@@ -63,14 +63,14 @@ export default function NewAppointmentScreen() {
 
   const debounced = useDebouncedValue(form.phoneText, SEARCH_DELAY_MS);
   const search = useClientSearch(searchQuery(debounced));
-  const query = searchQuery(form.phoneText);
+  const query = searchQuery(debounced);
   const phone = normalizePhone(form.phoneText.trim());
   const results = search.data ?? [];
   const view = pickerView({
     query,
     online,
     results,
-    loading: search.isFetching,
+    loading: search.isLoading || searchQuery(form.phoneText) !== searchQuery(debounced),
     failed: search.isError,
     selectedId: form.clientId,
     newClient: form.newClient,

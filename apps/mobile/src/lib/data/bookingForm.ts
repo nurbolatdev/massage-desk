@@ -78,8 +78,10 @@ export type BookingAction =
 export function bookingFormReducer(state: BookingForm, action: BookingAction): BookingForm {
   switch (action.type) {
     case "phoneChanged":
-      if (action.text === state.phoneText && state.clientId === null && state.error === null) return state;
-      return { ...state, phoneText: action.text, clientId: null, clientLabel: null, error: null };
+      if (action.text === state.phoneText && state.clientId === null && !state.newClient && state.error === null) {
+        return state;
+      }
+      return { ...state, phoneText: action.text, clientId: null, clientLabel: null, newClient: false, error: null };
     case "clientPicked":
       return {
         ...state,

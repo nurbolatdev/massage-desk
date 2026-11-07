@@ -65,6 +65,13 @@ describe("bookingFormReducer", () => {
     expect(next.clientLabel).toBeNull();
   });
 
+  it("resets the new-client choice when the phone is edited", () => {
+    const chosen = bookingFormReducer(initialForm(null), { type: "newClientChosen" });
+    expect(chosen.newClient).toBe(true);
+    const next = bookingFormReducer(chosen, { type: "phoneChanged", text: "90 123" });
+    expect(next.newClient).toBe(false);
+  });
+
   it("expands the folded steps", () => {
     const failed = bookingFormReducer(withTime(), { type: "bookFailed", kind: "taken" });
     expect(bookingFormReducer(failed, { type: "expanded" }).collapsed).toBe(false);

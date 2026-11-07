@@ -1,4 +1,5 @@
 import { localDay, nextDay } from "./days";
+import type { ClientStatus } from "./clientPicker";
 import { formatTime, NBSP } from "../format";
 
 export const NEW_BOOKING_TITLE = "Новая запись";
@@ -99,8 +100,6 @@ export function whenText(start: Date, today: string, timeZone: string): string {
   const { weekday, day: number, month } = shortDayParts(start, timeZone);
   return `${weekday}, ${number} ${month}, ${time}`;
 }
-
-export type ClientStatus = "none" | "invalidPhone" | "needsName" | "ready";
 
 export type SubmitInput = {
   client: ClientStatus;

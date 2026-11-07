@@ -8,7 +8,7 @@ import NewAppointmentScreen from "@/app/new-appointment";
 import { clearBookingNotice, getBookingNotice } from "@/lib/data/bookingNotice";
 import { localDay } from "@/lib/data/days";
 import { CHOOSE_TIME, conflictTitle, takenA11y } from "@/lib/data/newBooking";
-import { PHONE_STEP } from "@/lib/data/clientPicker";
+import { NEW_CLIENT_INFO_BOLD, PHONE_STEP } from "@/lib/data/clientPicker";
 import { queryKeys } from "@/lib/data/queryKeys";
 
 type Call = (path: string, init?: unknown) => Promise<unknown>;
@@ -144,5 +144,24 @@ describe("new appointment screen", () => {
     await waitFor(() => expect(mockBack).toHaveBeenCalled());
     expect(getBookingNotice()?.appointmentId).toBe("a-new");
     expect(screen.queryByRole("button", { name: takenA11y("10:00") })).toBeNull();
+  });
+
+  it("never shows the new-client box while a known number is being checked", async () => {
+    await render(
+      <SafeAreaProvider
+        initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}
+      >
+        <QueryClientProvider client={queryClient}>
+          <NewAppointmentScreen />
+        </QueryClientProvider>
+      </SafeAreaProvider>,
+    );
+    const user = userEvent.setup();
+    const newClientBox = () => screen.queryByText(NEW_CLIENT_INFO_BOLD);
+
+    await user.type(screen.getByLabelText(PHONE_STEP), "+998901234567");
+    expect(newClientBox()).toBeNull();
+    expect(await screen.findByText("Анна")).toBeOnTheScreen();
+    expect(newClientBox()).toBeNull();
   });
 });
