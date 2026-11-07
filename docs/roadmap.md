@@ -282,6 +282,9 @@ The master runs the schedule in the app; admin panel basics; event log; deploy a
   1. `test(mobile): booking cache and debounce guards`
   1. `refactor(mobile): derive the booking skeleton height`
   1. `docs: manual booking commits in the roadmap`
+  1. `fix(mobile): booked notice shows the client the server booked`
+  1. `docs: grey disabled button in the design rules`
+  1. `docs: manual booking review commits in the roadmap`
 
 ### M1-14 · Calendar
 
