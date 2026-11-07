@@ -35,6 +35,13 @@ export const colors = {
   neutralSoft: "#ECE7DF",
   neutralFg: "#6B675C",
   disabledBg: "#E3DCCF",
+  danger: "#B3261E",
+  dangerBorder: "#E9B4A6",
+  note: "#FFF6DE",
+  divider: "#F0E8DB",
+  accentSoft: "#FDE3D6",
+  accentStrong: "#8A2E12",
+  primaryFaint: "#EEF7F3",
 } as const;
 
 export const fontSize = {

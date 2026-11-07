@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, Text } from "react-native";
 
 import { colors, radii, size, space, typography } from "@/theme";
 
-type Variant = "primary" | "outline" | "soft";
+type Variant = "primary" | "outline" | "soft" | "danger";
 
 type Props = {
   label: string;
@@ -50,6 +50,11 @@ const containerStyles = StyleSheet.create({
     borderRadius: radii[18],
     backgroundColor: colors.primary,
   },
+  danger: {
+    minHeight: size.button,
+    borderRadius: radii[18],
+    backgroundColor: colors.danger,
+  },
   outline: {
     minHeight: size.buttonSecondary,
     borderRadius: radii[16],
@@ -66,6 +71,7 @@ const containerStyles = StyleSheet.create({
 
 const labelStyles = StyleSheet.create({
   primary: { fontWeight: "800", color: colors.onPrimary },
+  danger: { fontWeight: "800", color: colors.onPrimary },
   outline: { fontWeight: "700", color: colors.neutralStrong },
   soft: { fontWeight: "700", color: colors.ink },
 });

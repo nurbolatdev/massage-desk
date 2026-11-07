@@ -12,6 +12,7 @@ import { OfflineBanner } from "@/components/OfflineBanner";
 import { RefreshFailedBanner } from "@/components/RefreshFailedBanner";
 import { TodayHeader } from "@/components/TodayHeader";
 import { TodaySkeleton } from "@/components/TodaySkeleton";
+import { appointmentRouteParams } from "@/lib/data/appointmentCard";
 import { useTodayAppointments, useTomorrowAppointments } from "@/lib/data/hooks";
 import { todaySchedule, tomorrowSummary } from "@/lib/data/todaySchedule";
 import { EMPTY_TITLE, FINISHED_TITLE, RETRY_LABEL, moreClientsTitle, todayState } from "@/lib/data/todayState";
@@ -19,6 +20,7 @@ import { useOnline } from "@/lib/query/online";
 import { formatTime } from "@/lib/format";
 import { useNow } from "@/lib/time/useNow";
 import { colors, space, typography } from "@/theme";
+import type { Appointment } from "@/types";
 
 export default function TodayScreen() {
   const router = useRouter();
@@ -26,7 +28,7 @@ export default function TodayScreen() {
   const online = useOnline();
   const today = useTodayAppointments(now);
   const hasData = today.appointments !== undefined;
-  const state = todayState({ online, hasData, error: today.error, appointmentsError: today.appointmentsError });
+  const state = todayState({ online, hasData, error: today.error, appointmentsError: today.refreshError });
   const schedule = todaySchedule(today.appointments ?? [], now);
   const timeZone = today.timeZone;
   const tomorrow = useTomorrowAppointments(now, schedule.kind !== "schedule" && state.view === "list");
@@ -34,6 +36,14 @@ export default function TodayScreen() {
     timeZone !== undefined && today.dataUpdatedAt > 0
       ? formatTime(new Date(today.dataUpdatedAt), timeZone)
       : null;
+
+  const open = (a: Appointment) => {
+    if (timeZone === undefined) return;
+    router.push({ pathname: "/appointment/[id]", params: appointmentRouteParams(a, timeZone) });
+  };
+
+  const next = schedule.kind === "schedule" ? schedule.next : null;
+  const openNext = next === null ? undefined : () => open(next);
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -58,14 +68,14 @@ export default function TodayScreen() {
 
             {schedule.kind === "schedule" && schedule.next !== null && (
               <>
-                <NextClientCard appointment={schedule.next} now={now} timeZone={timeZone} online={online} />
+                <NextClientCard appointment={schedule.next} now={now} timeZone={timeZone} online={online} onOpen={openNext} />
                 {schedule.rows.length > 0 && (
                   <View style={styles.section}>
                     <Text style={styles.heading}>{moreClientsTitle(schedule.laterCount)}</Text>
                     <View style={styles.rows}>
                       {schedule.rows.map((row) =>
                         row.kind === "appointment" ? (
-                          <AppointmentRow key={row.appointment.id} appointment={row.appointment} timeZone={timeZone} />
+                          <AppointmentRow key={row.appointment.id} appointment={row.appointment} timeZone={timeZone} onPress={() => open(row.appointment)} />
                         ) : (
                           <FreeTimeRow key={`free-${row.start.getTime()}`} start={row.start} end={row.end} timeZone={timeZone} />
                         ),

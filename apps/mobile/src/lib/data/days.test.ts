@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { localDay, nextDay } from "./days";
+import { isDay, localDay, nextDay } from "./days";
 
 describe("localDay", () => {
   it("uses the master's zone, not UTC", () => {
@@ -22,5 +22,18 @@ describe("nextDay", () => {
     expect(nextDay("2026-11-30")).toBe("2026-12-01");
     expect(nextDay("2026-12-31")).toBe("2027-01-01");
     expect(nextDay("2028-02-28")).toBe("2028-02-29");
+  });
+});
+
+describe("isDay", () => {
+  it("accepts a real day", () => {
+    expect(isDay("2026-11-02")).toBe(true);
+  });
+
+  it("rejects malformed or impossible days", () => {
+    expect(isDay("")).toBe(false);
+    expect(isDay("2026-11-2")).toBe(false);
+    expect(isDay("2026-02-30")).toBe(false);
+    expect(isDay("abc")).toBe(false);
   });
 });
