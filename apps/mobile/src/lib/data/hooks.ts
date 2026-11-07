@@ -2,6 +2,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api, unwrap } from "@/lib/api";
 
+import type { AppointmentAction } from "./appointmentActions";
+import { postAppointmentAction, withStatus } from "./appointmentActions";
+import type { AppointmentListItem } from "./appointments";
 import { fetchAppointments, toAppointments } from "./appointments";
 import { isDay, localDay, nextDay } from "./days";
 import { queryKeys } from "./queryKeys";
@@ -63,6 +66,21 @@ export function useEnableBot() {
     onSuccess: (settings) => {
       queryClient.setQueryData(queryKeys.settings, settings);
     },
+  });
+}
+
+export function useAppointmentAction() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, action }: { id: string; action: AppointmentAction }) =>
+      postAppointmentAction(api, id, action),
+    onSuccess: (result) => {
+      queryClient.setQueriesData<AppointmentListItem[]>(
+        { queryKey: queryKeys.appointments.all },
+        (items) => withStatus(items, result.id, result.status),
+      );
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all }),
   });
 }
 
