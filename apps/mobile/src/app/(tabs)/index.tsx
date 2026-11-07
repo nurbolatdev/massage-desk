@@ -28,7 +28,7 @@ export default function TodayScreen() {
   const online = useOnline();
   const today = useTodayAppointments(now);
   const hasData = today.appointments !== undefined;
-  const state = todayState({ online, hasData, error: today.error, appointmentsError: today.appointmentsError });
+  const state = todayState({ online, hasData, error: today.error, appointmentsError: today.refreshError });
   const schedule = todaySchedule(today.appointments ?? [], now);
   const timeZone = today.timeZone;
   const tomorrow = useTomorrowAppointments(now, schedule.kind !== "schedule" && state.view === "list");

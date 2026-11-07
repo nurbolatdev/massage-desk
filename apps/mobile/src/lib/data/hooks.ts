@@ -47,7 +47,7 @@ export function useTodayAppointments(now: Date) {
     appointments: appointments.data,
     dataUpdatedAt: appointments.dataUpdatedAt,
     error: settings.error ?? appointments.error,
-    appointmentsError: appointments.error,
+    refreshError: appointments.error,
     refetch,
   };
 }
@@ -110,8 +110,7 @@ export function useAppointment(id: string, day: string | undefined) {
     notFound: !valid || (appointments.data !== undefined && appointment === undefined),
     hasData: load.hasData,
     timeZone: settings.data?.timeZone,
-    error: load.error,
-    appointmentsError: load.refreshError,
+    refreshError: load.error,
     dataUpdatedAt: appointments.dataUpdatedAt,
     refetch,
   };

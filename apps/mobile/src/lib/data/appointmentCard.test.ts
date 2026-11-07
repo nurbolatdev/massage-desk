@@ -175,10 +175,10 @@ describe("cardLoad", () => {
   it("reports a settings error as an error and as a failed refresh", () => {
     const load = cardLoad({ ...base, settingsLoaded: false, settingsError: failure });
     expect(load.error).toBe(failure);
-    expect(cardLoad({ ...base, settingsError: failure }).refreshError).toBe(failure);
+    expect(cardLoad({ ...base, settingsError: failure }).error).toBe(failure);
   });
 
   it("has no error when nothing failed", () => {
-    expect(cardLoad(base)).toEqual({ hasData: true, error: null, refreshError: null });
+    expect(cardLoad(base)).toEqual({ hasData: true, error: null });
   });
 });
