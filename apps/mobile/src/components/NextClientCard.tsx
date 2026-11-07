@@ -1,5 +1,6 @@
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { BigButton } from "@/components/BigButton";
+import { OPEN_APPOINTMENT_HINT } from "@/lib/data/appointmentCard";
 import { callPhone, openWhatsApp } from "@/lib/contact";
 import { formatTime } from "@/lib/format";
 import { minutesBetween } from "@/lib/data/todaySchedule";
@@ -12,13 +13,13 @@ interface Props {
   now: Date;
   timeZone?: string;
   online: boolean;
+  onOpen?: () => void;
 }
 
-export function NextClientCard({ appointment, now, timeZone, online }: Props) {
+export function NextClientCard({ appointment, now, timeZone, online, onOpen }: Props) {
   const minutes = minutesBetween(appointment.start, appointment.end);
-  return (
-    <View style={styles.card}>
-      <View style={styles.info}>
+  const info = (
+    <>
         <Text style={styles.label}>{nextClientLabel(appointment.start, now)}</Text>
         <View style={styles.timeRow}>
           <Text style={styles.time}>{formatTime(appointment.start, timeZone)}</Text>
@@ -26,7 +27,22 @@ export function NextClientCard({ appointment, now, timeZone, online }: Props) {
         </View>
         <Text style={styles.name}>{appointment.clientName}</Text>
         <Text style={styles.service}>{serviceLine(appointment.serviceName, minutes)}</Text>
-      </View>
+    </>
+  );
+  return (
+    <View style={styles.card}>
+      {onOpen === undefined ? (
+        <View style={styles.info}>{info}</View>
+      ) : (
+        <Pressable
+          style={({ pressed }) => [styles.info, pressed && styles.pressed]}
+          onPress={onOpen}
+          accessibilityRole="button"
+          accessibilityHint={OPEN_APPOINTMENT_HINT}
+        >
+          {info}
+        </Pressable>
+      )}
       <View style={styles.actions}>
         <BigButton
           label={CALL_LABEL}
@@ -56,6 +72,7 @@ const styles = StyleSheet.create({
     paddingBottom: space[16],
     gap: space[12],
   },
+  pressed: { opacity: 0.8 },
   info: { gap: space[4] },
   label: { ...typography.secondary, fontWeight: "600", color: colors.onPrimaryMuted },
   timeRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "baseline", columnGap: space[12] },

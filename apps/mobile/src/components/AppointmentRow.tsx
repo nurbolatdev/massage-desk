@@ -1,7 +1,8 @@
-import { StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { isActiveStatus } from "@massage-desk/shared";
 import { formatTime } from "@/lib/format";
 import { TIME_MIN_WIDTH } from "@/components/rowLayout";
+import { OPEN_APPOINTMENT_HINT } from "@/lib/data/appointmentCard";
 import { minutesBetween } from "@/lib/data/todaySchedule";
 import { MANUAL_CHIP, serviceLine } from "@/lib/data/todayState";
 import { colors, radii, space, typography } from "@/theme";
@@ -9,12 +10,18 @@ import type { Appointment } from "@/types";
 
 const ROW_MIN_HEIGHT = 64;
 
-export function AppointmentRow({ appointment, timeZone }: { appointment: Appointment; timeZone?: string }) {
+interface Props {
+  appointment: Appointment;
+  timeZone?: string;
+  onPress?: () => void;
+}
+
+export function AppointmentRow({ appointment, timeZone, onPress }: Props) {
   const { fontScale } = useWindowDimensions();
   const inactive = !isActiveStatus(appointment.status);
   const minutes = minutesBetween(appointment.start, appointment.end);
-  return (
-    <View style={styles.row}>
+  const content = (
+    <>
       <Text style={[styles.time, { minWidth: Math.round(TIME_MIN_WIDTH * fontScale) }, inactive && styles.inactive]}>{formatTime(appointment.start, timeZone)}</Text>
       <View style={styles.info}>
         <Text style={[styles.name, inactive && styles.inactive]}>{appointment.clientName}</Text>
@@ -27,7 +34,20 @@ export function AppointmentRow({ appointment, timeZone }: { appointment: Appoint
           <Text style={styles.chipText}>{MANUAL_CHIP}</Text>
         </View>
       ) : null}
-    </View>
+    </>
+  );
+  if (onPress === undefined) {
+    return <View style={styles.row}>{content}</View>;
+  }
+  return (
+    <Pressable
+      style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityHint={OPEN_APPOINTMENT_HINT}
+    >
+      {content}
+    </Pressable>
   );
 }
 
@@ -54,5 +74,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.neutralSoft,
   },
   chipText: { ...typography.label, color: colors.neutralStrong },
+  pressed: { opacity: 0.8 },
   inactive: { color: colors.neutralFg, textDecorationLine: "line-through" },
 });
