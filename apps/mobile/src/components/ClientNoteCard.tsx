@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { NOTE_ADD_LABEL, NOTE_EDIT_LABEL, NOTE_EMPTY, NOTE_LOAD_FAILED, NOTE_OFFLINE, NOTE_TITLE } from "@/lib/data/clientNote";
 import { RETRY_LABEL } from "@/lib/data/todayState";
-import { colors, radii, space, typography } from "@/theme";
+import { colors, radii, size, space, typography } from "@/theme";
 
 export type NoteState = "loading" | "error" | "offline" | "ready";
 
@@ -13,9 +13,6 @@ type Props = {
   onEdit: () => void;
   onRetry: () => void;
 };
-
-const MIN_TOUCH = 48;
-const BAR_HEIGHT = 26;
 
 export function ClientNoteCard({ note, state, online, onEdit, onRetry }: Props) {
   const text = note?.trim() ?? "";
@@ -63,11 +60,11 @@ const styles = StyleSheet.create({
   },
   head: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" },
   title: { ...typography.body, fontWeight: "700", color: colors.ink },
-  link: { minHeight: MIN_TOUCH, paddingHorizontal: space[12], alignItems: "center", justifyContent: "center" },
+  link: { minHeight: size.iconButton, paddingHorizontal: space[12], alignItems: "center", justifyContent: "center" },
   linkText: { ...typography.secondary, fontWeight: "700", color: colors.primaryStrong },
   linkDisabled: { color: colors.neutralFg },
   text: { ...typography.body, color: colors.ink },
   empty: { ...typography.body, color: colors.muted },
-  bar: { height: BAR_HEIGHT, borderRadius: radii[8], backgroundColor: colors.segmentBg },
+  bar: { height: typography.body.lineHeight, borderRadius: radii[8], backgroundColor: colors.segmentBg },
   errorRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", columnGap: space[8] },
 });

@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from "react-native";
 import type { DetailRow } from "@/lib/data/appointmentCard";
 import { colors, radii, space, typography } from "@/theme";
 
+// from the Appointment mockup
 const BOT_ICON_SIZE = 18;
 
 interface Props {

@@ -65,6 +65,11 @@ export default function AppointmentScreen() {
   const flow = useDestructiveFlow((kind) => mutation.mutateAsync({ id, action: kind }));
   const actions = appointment !== undefined ? cardActions(appointment, now) : { cancel: false, noShow: false };
   const asking = flow.state.asking;
+  const [lastAsked, setLastAsked] = useState<"cancel" | "noShow">("cancel");
+  const ask = (kind: "cancel" | "noShow") => {
+    setLastAsked(kind);
+    flow.ask(kind);
+  };
   const closeNote = () => {
     setEditingNote(false);
     saveNote.reset();
@@ -132,17 +137,17 @@ export default function AppointmentScreen() {
         <AppointmentActionBar
           showNoShow={actions.noShow}
           disabled={!online}
-          onNoShow={() => flow.ask("noShow")}
-          onCancel={() => flow.ask("cancel")}
+          onNoShow={() => ask("noShow")}
+          onCancel={() => ask("cancel")}
         />
       )}
       {appointment !== undefined && timeZone !== undefined && (
         <ConfirmSheet
           visible={asking !== null}
-          title={asking === "noShow" ? NO_SHOW_CONFIRM_TITLE : CANCEL_CONFIRM_TITLE}
-          text={asking === "noShow" ? NO_SHOW_CONFIRM_TEXT : cancelConfirmText(appointment.start, timeZone)}
-          confirmLabel={asking === "noShow" ? NO_SHOW_CONFIRM_YES : CANCEL_CONFIRM_YES}
-          confirmVariant={asking === "noShow" ? "primary" : "danger"}
+          title={lastAsked === "noShow" ? NO_SHOW_CONFIRM_TITLE : CANCEL_CONFIRM_TITLE}
+          text={lastAsked === "noShow" ? NO_SHOW_CONFIRM_TEXT : cancelConfirmText(appointment.start, timeZone)}
+          confirmLabel={lastAsked === "noShow" ? NO_SHOW_CONFIRM_YES : CANCEL_CONFIRM_YES}
+          confirmVariant={lastAsked === "noShow" ? "primary" : "danger"}
           confirmDisabled={!online}
           onConfirm={() => void flow.confirm()}
           onCancel={flow.dismiss}

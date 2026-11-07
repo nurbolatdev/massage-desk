@@ -25,7 +25,7 @@ import {
   noteSheetSubtitle,
   toggleNotePhrase,
 } from "@/lib/data/clientNote";
-import { colors, radii, space, typography } from "@/theme";
+import { colors, radii, size, space, typography } from "@/theme";
 
 type Props = {
   visible: boolean;
@@ -43,7 +43,6 @@ const HANDLE_WIDTH = 44;
 const HANDLE_HEIGHT = 5;
 const FIELD_LINES = 4;
 const FIELD_PADDING = 14;
-const CHIP_HEIGHT = 48;
 
 export function NoteSheet(props: Props) {
   const { visible, busy, onClose } = props;
@@ -188,7 +187,7 @@ const styles = StyleSheet.create({
   },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: space[8] },
   chip: {
-    minHeight: CHIP_HEIGHT,
+    minHeight: size.iconButton,
     paddingHorizontal: space[14],
     borderRadius: radii.full,
     borderWidth: 2,
