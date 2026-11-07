@@ -63,6 +63,38 @@ describe("whole-part matching", () => {
   });
 });
 
+describe("separators and line breaks", () => {
+  it("treats a separator followed by a line break as one separator", () => {
+    expect(toggleNotePhrase("Любит тишину.\nБолит шея.\nБ.", "Болит шея")).toBe(
+      "Любит тишину.\nБ.",
+    );
+  });
+
+  it("removes a phrase after a semicolon", () => {
+    expect(toggleNotePhrase("А; Болит шея", "Болит шея")).toBe("А");
+  });
+
+  it("removes a phrase between plain line breaks", () => {
+    expect(toggleNotePhrase("Любит тишину\nБолит шея\nБ", "Болит шея")).toBe("Любит тишину\nБ");
+  });
+
+  it("adds after a trailing comma or semicolon with a period", () => {
+    expect(toggleNotePhrase("Любит тишину,", "Болит шея")).toBe("Любит тишину. Болит шея");
+    expect(toggleNotePhrase("Любит тишину;", "Болит шея")).toBe("Любит тишину. Болит шея");
+  });
+
+  it("recognises a phrase ending with ! or ? and does not duplicate it", () => {
+    expect(hasPhrase("Болит шея!", "Болит шея")).toBe(true);
+    expect(hasPhrase("Болит шея?", "Болит шея")).toBe(true);
+    expect(toggleNotePhrase("Болит шея!", "Болит шея")).toBe("");
+  });
+
+  it("removes every occurrence of a repeated phrase in one tap", () => {
+    expect(toggleNotePhrase("Болит шея. Болит шея", "Болит шея")).toBe("");
+    expect(toggleNotePhrase("А. Болит шея. Б. Болит шея", "Болит шея")).toBe("А. Б.");
+  });
+});
+
 describe("noteSheetSubtitle", () => {
   it("adds the privacy hint", () => {
     expect(noteSheetSubtitle("Айгуль Сапарова")).toBe("Айгуль Сапарова · видите только вы");

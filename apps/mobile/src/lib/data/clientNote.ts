@@ -25,8 +25,10 @@ export function noteSheetSubtitle(name: string): string {
   return `${name} · видите только вы`;
 }
 
+const SEPARATORS = /([.,;!?]?[ \t]*\n|[.,;!?])/;
+
 function splitParts(text: string): { content: string; separator: string }[] {
-  const pieces = text.split(/([.,;\n])/);
+  const pieces = text.split(SEPARATORS);
   const parts: { content: string; separator: string }[] = [];
   for (let i = 0; i < pieces.length; i += 2) {
     parts.push({ content: pieces[i] ?? "", separator: pieces[i + 1] ?? "" });
@@ -44,15 +46,14 @@ export function hasPhrase(text: string, phrase: string): boolean {
 
 export function toggleNotePhrase(text: string, phrase: string): string {
   const parts = splitParts(text);
-  const index = parts.findIndex((part) => sameText(part.content, phrase));
-  if (index === -1) {
-    const base = text.trimEnd();
+  if (!parts.some((part) => sameText(part.content, phrase))) {
+    const base = text.replace(/[,;\s]+$/, "");
     if (base === "") return phrase;
     const separator = /[.!?]$/.test(base) ? " " : ". ";
     return `${base}${separator}${phrase}`;
   }
   const rest = parts
-    .filter((_, i) => i !== index)
+    .filter((part) => !sameText(part.content, phrase))
     .map((part) => `${part.content}${part.separator}`)
     .join("");
   return rest.trim().replace(/[,;]+$/, "");
