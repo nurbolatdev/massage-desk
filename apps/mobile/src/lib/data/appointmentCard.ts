@@ -2,7 +2,8 @@ import type { AppointmentSource, AppointmentStatus } from "@massage-desk/shared"
 
 import type { Appointment } from "@/types";
 
-import { NBSP, formatDayTitle, formatTime, plural } from "../format";
+import { ApiError } from "../api/errors";
+import { NBSP, formatDayMonth, formatDayTitle, formatTime, plural } from "../format";
 import { localDay, nextDay } from "./days";
 
 export const CARD_TITLE = "Запись";
@@ -31,6 +32,17 @@ export const NOT_FOUND_TITLE = "Запись не найдена";
 export const NOT_FOUND_TEXT = "Возможно, её перенесли на другой день.";
 export const OPEN_APPOINTMENT_HINT = "Открыть запись";
 export const LOADING_LABEL = "Загрузка";
+
+export const NO_SHOW_LABEL = "Не пришёл";
+export const CANCEL_LABEL = "Отменить";
+export const CANCEL_CONFIRM_TITLE = "Отменить запись?";
+export const CANCEL_CONFIRM_YES = "Да, отменить";
+export const NO_SHOW_CONFIRM_TITLE = "Клиент не пришёл?";
+export const NO_SHOW_CONFIRM_TEXT =
+  "Запись отметится как «не пришёл». Это видно в истории клиента и в отчётах.";
+export const NO_SHOW_CONFIRM_YES = "Да, не пришёл";
+export const ACTION_FAILED = "Не получилось сохранить. Проверьте интернет и попробуйте ещё раз.";
+export const ACTION_CONFLICT = "Запись уже изменилась. Закройте окно — на экране новое состояние.";
 
 export interface DetailRow {
   label: string;
@@ -88,4 +100,19 @@ export function detailRows(a: Appointment): DetailRow[] {
 /** Route params that open the card of `a`. */
 export function appointmentRouteParams(a: Appointment, timeZone: string): { id: string; day: string } {
   return { id: a.id, day: localDay(a.start, timeZone) };
+}
+
+/** "Запись на 2 ноября в 10:00 отменится, ..." */
+export function cancelConfirmText(start: Date, timeZone: string): string {
+  return `Запись на ${formatDayMonth(start, timeZone)} в ${formatTime(start, timeZone)} отменится, время станет свободным для бота. Клиенту сообщение не придёт — если нужно, напишите ему сами.`;
+}
+
+/** Which destructive actions the card offers; follows the API rules. */
+export function cardActions(a: Appointment, now: Date): { cancel: boolean; noShow: boolean } {
+  const confirmed = a.status === "confirmed";
+  return { cancel: confirmed, noShow: confirmed && a.start.getTime() <= now.getTime() };
+}
+
+export function actionErrorText(error: unknown): string {
+  return error instanceof ApiError && error.status === 409 ? ACTION_CONFLICT : ACTION_FAILED;
 }
