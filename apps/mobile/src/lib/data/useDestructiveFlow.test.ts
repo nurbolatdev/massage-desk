@@ -76,4 +76,20 @@ describe("useDestructiveFlow", () => {
     expect(second).toHaveBeenCalledTimes(1);
     expect(first).not.toHaveBeenCalled();
   });
+
+  it("uses a custom error text and a custom kind, and closes when perform resolves", async () => {
+    type Kind = "reschedule";
+    const perform = jest.fn<(kind: Kind) => Promise<unknown>>().mockRejectedValueOnce(new Error("boom"));
+    const hook = await renderHook(() => useDestructiveFlow<Kind>(perform, () => "custom text"));
+    await act(async () => hook.result.current.ask("reschedule"));
+    await act(async () => {
+      await hook.result.current.confirm();
+    });
+    expect(hook.result.current.state).toEqual({ asking: "reschedule", busy: false, error: "custom text" });
+    perform.mockResolvedValueOnce(undefined);
+    await act(async () => {
+      await hook.result.current.confirm();
+    });
+    expect(hook.result.current.state).toEqual(IDLE);
+  });
 });
