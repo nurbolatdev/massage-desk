@@ -56,6 +56,25 @@ export function useTodayAppointments(now: Date) {
   };
 }
 
+export function useScheduleRange(from: string | undefined, to: string | undefined) {
+  const settings = useSettings();
+  const appointments = useAppointments(from ?? "", to ?? "", from !== undefined && to !== undefined);
+
+  const refetch = () => {
+    void settings.refetch();
+    void appointments.refetch();
+  };
+
+  return {
+    timeZone: settings.data?.timeZone,
+    appointments: appointments.data,
+    dataUpdatedAt: appointments.dataUpdatedAt,
+    error: settings.error ?? appointments.error,
+    refreshError: appointments.error,
+    refetch,
+  };
+}
+
 export function useTomorrowAppointments(now: Date, enabled: boolean) {
   const settings = useSettings();
   const timeZone = settings.data?.timeZone;

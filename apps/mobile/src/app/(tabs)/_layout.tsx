@@ -25,7 +25,7 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen name="index" options={{ title: "Сегодня", headerShown: false, tabBarIcon: icon("today-outline") }} />
-      <Tabs.Screen name="calendar" options={{ title: "Календарь", tabBarIcon: icon("calendar-outline") }} />
+      <Tabs.Screen name="calendar" options={{ title: "Календарь", headerShown: false, tabBarIcon: icon("calendar-outline") }} />
       <Tabs.Screen name="chats" options={{ title: "Чаты", tabBarIcon: icon("chatbubbles-outline") }} />
       <Tabs.Screen name="settings" options={{ title: "Настройки", tabBarIcon: icon("settings-outline") }} />
     </Tabs>
