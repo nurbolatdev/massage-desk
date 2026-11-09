@@ -1,6 +1,17 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { addDays, dayDate, isDay, isoWeekday, localDay, nextDay, weekDays } from "./days";
+import {
+  addDays,
+  addMonths,
+  dayDate,
+  isDay,
+  isoWeekday,
+  localDay,
+  monthDays,
+  monthGrid,
+  nextDay,
+  weekDays,
+} from "./days";
 
 describe("localDay", () => {
   it("uses the master's zone, not UTC", () => {
@@ -75,5 +86,52 @@ describe("weekDays", () => {
 describe("dayDate", () => {
   it("is noon UTC", () => {
     expect(dayDate("2026-11-02").toISOString()).toBe("2026-11-02T12:00:00.000Z");
+  });
+});
+
+describe("addMonths", () => {
+  it("clamps to the length of the target month", () => {
+    expect(addMonths("2027-01-31", 1)).toBe("2027-02-28");
+    expect(addMonths("2028-03-31", -1)).toBe("2028-02-29");
+  });
+
+  it("keeps the day number and crosses years", () => {
+    expect(addMonths("2026-12-15", 1)).toBe("2027-01-15");
+    expect(addMonths("2026-11-04", -1)).toBe("2026-10-04");
+    expect(addMonths("2026-01-10", -1)).toBe("2025-12-10");
+  });
+});
+
+describe("monthDays", () => {
+  it("lists the whole month", () => {
+    const days = monthDays("2026-11-17");
+    expect(days).toHaveLength(30);
+    expect(days[0]).toBe("2026-11-01");
+    expect(days[29]).toBe("2026-11-30");
+    expect(monthDays("2028-02-03")).toHaveLength(29);
+  });
+});
+
+describe("monthGrid", () => {
+  it("pads a month that starts on Sunday-adjacent days with nulls", () => {
+    const grid = monthGrid("2026-11-17");
+    expect(grid).toHaveLength(42);
+    expect(grid.slice(0, 6).every((c) => c === null)).toBe(true);
+    expect(grid[6]).toBe("2026-11-01");
+    expect(grid[35]).toBe("2026-11-30");
+    expect(grid.slice(36).every((c) => c === null)).toBe(true);
+    expect(grid.slice(36)).toHaveLength(6);
+  });
+
+  it("has four rows and no padding for a February starting on Monday", () => {
+    const grid = monthGrid("2027-02-10");
+    expect(grid).toHaveLength(28);
+    expect(grid.includes(null)).toBe(false);
+    expect(grid[0]).toBe("2027-02-01");
+    expect(grid[27]).toBe("2027-02-28");
+  });
+
+  it("uses six rows for a month starting on Sunday", () => {
+    expect(monthGrid("2026-03-05")).toHaveLength(42);
   });
 });

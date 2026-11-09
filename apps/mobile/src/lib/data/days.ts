@@ -16,6 +16,34 @@ export function addDays(day: string, n: number): string {
   return new Date(Date.UTC(year, month - 1, date + n)).toISOString().slice(0, 10);
 }
 
+/** Number of days in the month of `day`. */
+function daysInMonth(day: string): number {
+  const [year = 0, month = 1] = day.split("-").map(Number);
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+
+/** `day` moved by `n` months, may be negative; same day number, clamped to the last day of that month. */
+export function addMonths(day: string, n: number): string {
+  const [year = 0, month = 1, date = 1] = day.split("-").map(Number);
+  const first = new Date(Date.UTC(year, month - 1 + n, 1)).toISOString().slice(0, 10);
+  return `${first.slice(0, 8)}${String(Math.min(date, daysInMonth(first))).padStart(2, "0")}`;
+}
+
+/** Every day, 1st to last, of the month that contains `day`. */
+export function monthDays(day: string): string[] {
+  const prefix = day.slice(0, 8);
+  return Array.from({ length: daysInMonth(day) }, (_, i) => `${prefix}${String(i + 1).padStart(2, "0")}`);
+}
+
+/** Month cells, Monday first: `null` pads before the 1st and after the last day up to full weeks. */
+export function monthGrid(day: string): (string | null)[] {
+  const days = monthDays(day);
+  const lead = isoWeekday(days[0] ?? day) - 1;
+  const cells: (string | null)[] = [...Array<null>(lead).fill(null), ...days];
+  while (cells.length % 7 !== 0) cells.push(null);
+  return cells;
+}
+
 /** The day after `day` (YYYY-MM-DD). */
 export function nextDay(day: string): string {
   return addDays(day, 1);
