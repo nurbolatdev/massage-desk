@@ -264,6 +264,8 @@ The master runs the schedule in the app; admin panel basics; event log; deploy a
     1. `feat(mobile): reschedule from the appointment card`
     1. `test(mobile): reschedule keeps taken time out of reach`
     1. `docs: reschedule in the roadmap and mobile guide`
+    1. `fix(mobile): no flash of not found after reschedule`
+    1. `fix(mobile): freeze the reschedule screen before the request`
 
 ### M1-13 · Manual booking
 

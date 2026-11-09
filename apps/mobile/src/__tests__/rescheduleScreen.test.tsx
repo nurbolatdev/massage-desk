@@ -14,8 +14,10 @@ import {
   NOW_LABEL,
   RESCHEDULE_CONFIRM_TITLE,
   RESCHEDULE_CONFIRM_YES,
+  RESCHEDULE_GONE_TEXT,
   RESCHEDULE_GONE_TITLE,
   RESCHEDULE_OFFLINE_TEXT,
+  rescheduleConfirmText,
 } from "@/lib/data/reschedule";
 
 type Call = (path: string, init?: unknown) => Promise<unknown>;
@@ -98,6 +100,7 @@ const queryClient = new QueryClient({
 });
 
 let appointmentsAnswer: () => Schemas["AppointmentListItem"][] = () => [listItem];
+let slotsGate: Promise<void> | null = null;
 
 function slotRequests(): number {
   return mockGet.mock.calls.filter(([path]) => path === "/slots").length;
@@ -126,13 +129,15 @@ describe("reschedule screen", () => {
     mockPost.mockReset();
     mockDismissTo.mockReset();
     appointmentsAnswer = () => [listItem];
+    slotsGate = null;
     mockGet.mockImplementation(async (path, init) => {
       if (path === "/settings") return ok(settings);
       if (path === "/appointments") return ok(appointmentsAnswer());
       if (path === "/slots") {
         const requested = (init as { params: { query: { day: string } } }).params.query.day;
+        if (slotRequests() === 2 && slotsGate !== null) await slotsGate;
         const starts =
-          slotRequests() === 1
+          slotRequests() <= 2
             ? [`${requested}T10:00:00+05:00`, `${requested}T11:30:00+05:00`]
             : [`${requested}T11:30:00+05:00`];
         return ok({ day: requested, timeZone: TIME_ZONE, durationMin: 60, starts });
@@ -211,13 +216,18 @@ describe("reschedule screen", () => {
     await user.press(screen.getByRole("button", { name: RESCHEDULE_CONFIRM_YES }));
 
     expect(await screen.findByText(RESCHEDULE_GONE_TITLE)).toBeOnTheScreen();
-    expect(screen.getAllByRole("button", { name: BACK_LABEL }).length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText(RESCHEDULE_GONE_TEXT)).toBeOnTheScreen();
+    expect(screen.getAllByRole("button", { name: BACK_LABEL })).toHaveLength(2);
     expect(mockDismissTo).not.toHaveBeenCalled();
   });
 
-  it("does not flash not found after moving to another day", async () => {
+  it("keeps the sheet while the data refreshes after a move to another day", async () => {
     const next = localDay(new Date(Date.now() + 24 * 3600 * 1000), TIME_ZONE);
     const target = `${next}T11:30:00+05:00`;
+    let release: () => void = () => undefined;
+    slotsGate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
     mockPost.mockImplementation(async () => {
       appointmentsAnswer = () => [];
       return ok({ ...moved, start: target, end: `${next}T12:30:00+05:00` });
@@ -227,11 +237,47 @@ describe("reschedule screen", () => {
 
     await user.press(await screen.findByText("10:00"));
     await user.press(screen.getByRole("button", { name: /^Перенести на / }));
+    const before = appointmentRequests();
     await user.press(screen.getByRole("button", { name: RESCHEDULE_CONFIRM_YES }));
 
+    await waitFor(() => expect(appointmentRequests()).toBeGreaterThan(before));
+    await waitFor(() => expect(queryClient.getQueryData(queryKeys.appointments.range(DAY, DAY))).toEqual([]));
+    expect(mockDismissTo).not.toHaveBeenCalled();
+    expect(screen.queryByText(NOT_FOUND_TITLE)).not.toBeOnTheScreen();
+    expect(screen.getByText(RESCHEDULE_CONFIRM_TITLE)).toBeOnTheScreen();
+
+    release();
     await waitFor(() => expect(mockDismissTo).toHaveBeenCalled());
     expect(mockDismissTo).toHaveBeenCalledWith({ pathname: "/appointment/[id]", params: { id: "a1", day: next } });
-    expect(screen.queryByText(NOT_FOUND_TITLE)).not.toBeOnTheScreen();
+  });
+
+  it("keeps the old time in the sheet while the data refreshes after a same-day move", async () => {
+    let release: () => void = () => undefined;
+    slotsGate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    mockPost.mockImplementation(async () => {
+      appointmentsAnswer = () => [{ ...listItem, start: BUSY, end: `${DAY}T11:00:00+05:00` }];
+      return ok({ ...moved, start: BUSY, end: `${DAY}T11:00:00+05:00` });
+    });
+    await renderScreen();
+    const user = userEvent.setup();
+
+    await user.press(await screen.findByText("10:00"));
+    await user.press(screen.getByRole("button", { name: /^Перенести на / }));
+    const before = appointmentRequests();
+    await user.press(screen.getByRole("button", { name: RESCHEDULE_CONFIRM_YES }));
+
+    await waitFor(() => expect(appointmentRequests()).toBeGreaterThan(before));
+    await waitFor(() =>
+      expect(queryClient.getQueryData(queryKeys.appointments.range(DAY, DAY))).toEqual([
+        { ...listItem, start: BUSY, end: `${DAY}T11:00:00+05:00` },
+      ]),
+    );
+    expect(screen.getByText(rescheduleConfirmText(new Date(START), new Date(BUSY), TIME_ZONE))).toBeOnTheScreen();
+
+    release();
+    await waitFor(() => expect(mockDismissTo).toHaveBeenCalled());
   });
 
   it("shows the outside-schedule text and disables the time", async () => {
