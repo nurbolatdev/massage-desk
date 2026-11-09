@@ -6,6 +6,7 @@ export interface Appointment {
   clientId: string;
   clientName: string;
   clientPhone: string;
+  serviceId: string;
   serviceName: string;
   start: Date;
   end: Date;

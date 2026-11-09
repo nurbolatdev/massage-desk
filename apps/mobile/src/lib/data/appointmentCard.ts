@@ -115,9 +115,9 @@ export function cancelConfirmText(start: Date, timeZone: string): string {
 }
 
 /** Which destructive actions the card offers; follows the API rules. */
-export function cardActions(a: Appointment, now: Date): { cancel: boolean; noShow: boolean } {
+export function cardActions(a: Appointment, now: Date): { reschedule: boolean; cancel: boolean; noShow: boolean } {
   const confirmed = a.status === "confirmed";
-  return { cancel: confirmed, noShow: confirmed && a.start.getTime() <= now.getTime() };
+  return { reschedule: confirmed, cancel: confirmed, noShow: confirmed && a.start.getTime() <= now.getTime() };
 }
 
 export function actionErrorText(error: unknown): string {

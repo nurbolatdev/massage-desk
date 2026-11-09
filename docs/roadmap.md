@@ -252,6 +252,20 @@ The master runs the schedule in the app; admin panel basics; event log; deploy a
   1. `fix(mobile): note phrases handle line breaks and separators`
   1. `refactor(mobile): status chip helper with tests`
   1. `fix(mobile): keep line breaks when removing a note phrase`
+- **Follow-up ([#66](https://github.com/nurbolatdev/massage-desk/issues/66)):**
+  - **Branch:** `feature/mobile-reschedule`
+  - **Pull request:** `feat(mobile): reschedule an appointment`
+  - **Commits:**
+    1. `feat(mobile): reschedule request and hook`
+    1. `feat(mobile): reschedule texts and error kinds`
+    1. `refactor(mobile): confirmation flow for any action kind`
+    1. `feat(mobile): reschedule building blocks`
+    1. `feat(mobile): reschedule screen`
+    1. `feat(mobile): reschedule from the appointment card`
+    1. `test(mobile): reschedule keeps taken time out of reach`
+    1. `docs: reschedule in the roadmap and mobile guide`
+    1. `fix(mobile): no flash of not found after reschedule`
+    1. `fix(mobile): freeze the reschedule screen before the request`
 
 ### M1-13 · Manual booking
 

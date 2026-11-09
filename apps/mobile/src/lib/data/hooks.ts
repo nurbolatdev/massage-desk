@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, unwrap } from "@/lib/api";
 
 import type { AppointmentAction } from "./appointmentActions";
-import { postAppointmentAction, withStatus } from "./appointmentActions";
+import { postAppointmentAction, rescheduleAppointment, withStatus } from "./appointmentActions";
 import type { AppointmentListItem } from "./appointments";
 import { fetchAppointments, toAppointments } from "./appointments";
 import { cardLoad } from "./appointmentCard";
@@ -88,6 +88,20 @@ export function useAppointmentAction() {
       );
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all }),
+  });
+}
+
+export function useRescheduleAppointment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, start }: { id: string; start: string }) =>
+      rescheduleAppointment(api, id, start),
+    networkMode: "always",
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.slots.all }),
+      ]),
   });
 }
 

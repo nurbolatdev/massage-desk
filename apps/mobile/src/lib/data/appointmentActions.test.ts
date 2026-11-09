@@ -2,7 +2,7 @@ import { describe, expect, it, jest } from "@jest/globals";
 
 import { createApi } from "@/lib/api/client";
 
-import { postAppointmentAction, withStatus } from "./appointmentActions";
+import { postAppointmentAction, rescheduleAppointment, withStatus } from "./appointmentActions";
 import type { AppointmentListItem } from "./appointments";
 
 const response = {
@@ -43,6 +43,30 @@ describe("postAppointmentAction", () => {
     expect(fetch.mock.calls[0]?.[0].method).toBe("POST");
     expect(fetch.mock.calls[0]?.[0].url).toBe("https://api.test/appointments/a1/no-show");
     expect(result).toEqual(response);
+  });
+});
+
+describe("rescheduleAppointment", () => {
+  it("sends POST /appointments/{id}/reschedule with the new start", async () => {
+    const { api, fetch } = setup();
+    const start = "2026-11-04T11:30:00+05:00";
+    const result = await rescheduleAppointment(api, "a1", start);
+    const request = fetch.mock.calls[0]?.[0];
+    expect(request?.method).toBe("POST");
+    expect(request?.url).toBe("https://api.test/appointments/a1/reschedule");
+    expect(await request?.json()).toEqual({ start });
+    expect(result).toEqual(response);
+  });
+
+  it("rejects with ApiError carrying the code", async () => {
+    const { api, fetch } = setup();
+    fetch.mockImplementation(
+      async () =>
+        new Response(JSON.stringify({ code: "TIME_TAKEN", message: "taken" }), { status: 409 }),
+    );
+    await expect(rescheduleAppointment(api, "a1", "2026-11-04T11:30:00+05:00")).rejects.toMatchObject(
+      { status: 409, code: "TIME_TAKEN" },
+    );
   });
 });
 

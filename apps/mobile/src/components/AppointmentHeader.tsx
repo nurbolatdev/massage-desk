@@ -10,6 +10,7 @@ const BACK_ICON_SIZE = 26;
 
 interface Props {
   status?: AppointmentStatus;
+  title?: string;
   onBack: () => void;
 }
 
@@ -19,7 +20,7 @@ const CHIP: Record<ChipStatus, { bg: string; fg: string; paddingHorizontal: numb
   done: { bg: colors.primaryFaint, fg: colors.textStrong, paddingHorizontal: space[10] },
 };
 
-export function AppointmentHeader({ status, onBack }: Props) {
+export function AppointmentHeader({ status, title = CARD_TITLE, onBack }: Props) {
   const chipStatus = statusChip(status);
   const chip = chipStatus === undefined ? undefined : CHIP[chipStatus];
   return (
@@ -28,7 +29,7 @@ export function AppointmentHeader({ status, onBack }: Props) {
         <Feather name="chevron-left" size={BACK_ICON_SIZE} color={colors.ink} accessible={false} />
       </Pressable>
       <Text accessibilityRole="header" style={styles.title}>
-        {CARD_TITLE}
+        {title}
       </Text>
       {chipStatus !== undefined && chip !== undefined && (
         <View

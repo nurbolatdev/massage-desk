@@ -23,6 +23,8 @@ const SKELETON_CHIPS = 4;
 
 type Props = {
   title: string;
+  /** Heading above the times; when set, days and times are separate sections. */
+  timesTitle?: string;
   days: DayChoice[];
   day: string;
   onDay: (day: string) => void;
@@ -48,34 +50,13 @@ function Grid<T>({ items, columns, render }: { items: T[]; columns: number; rend
   );
 }
 
-export function DayTimePicker({ title, days, day, onDay, times, timesState, onTime, onRetry }: Props) {
+export function DayTimePicker({ title, timesTitle, days, day, onDay, times, timesState, onTime, onRetry }: Props) {
   const { fontScale } = useWindowDimensions();
   const columns = chipColumns(fontScale);
   const list = times ?? [];
 
-  return (
-    <View style={styles.section}>
-      <Text accessibilityRole="header" style={styles.heading}>
-        {title}
-      </Text>
-      <Grid
-        items={days}
-        columns={columns}
-        render={(choice) => {
-          const selected = choice.day === day;
-          return (
-            <Pressable
-              key={choice.day}
-              accessibilityRole="button"
-              accessibilityState={{ selected }}
-              onPress={() => onDay(choice.day)}
-              style={[styles.dayChip, selected && styles.dayChipSelected]}
-            >
-              <Text style={[styles.dayText, selected && styles.onDark]}>{choice.label}</Text>
-            </Pressable>
-          );
-        }}
-      />
+  const timesBlock = (
+    <>
       {timesState === "noService" ? <Text style={styles.hint}>{PICK_SERVICE_FIRST}</Text> : null}
       {timesState === "loading" ? (
         <View accessible accessibilityLabel={LOADING_LABEL} style={styles.gridRow}>
@@ -116,11 +97,59 @@ export function DayTimePicker({ title, days, day, onDay, times, timesState, onTi
           }}
         />
       ) : null}
+    </>
+  );
+
+  const dayBlock = (
+    <>
+      <Text accessibilityRole="header" style={styles.heading}>
+        {title}
+      </Text>
+      <Grid
+        items={days}
+        columns={columns}
+        render={(choice) => {
+          const selected = choice.day === day;
+          return (
+            <Pressable
+              key={choice.day}
+              accessibilityRole="button"
+              accessibilityState={{ selected }}
+              onPress={() => onDay(choice.day)}
+              style={[styles.dayChip, selected && styles.dayChipSelected]}
+            >
+              <Text style={[styles.dayText, selected && styles.onDark]}>{choice.label}</Text>
+            </Pressable>
+          );
+        }}
+      />
+    </>
+  );
+
+  if (timesTitle === undefined) {
+    return (
+      <View style={styles.section}>
+        {dayBlock}
+        {timesBlock}
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.sections}>
+      <View style={styles.section}>{dayBlock}</View>
+      <View style={styles.section}>
+        <Text accessibilityRole="header" style={styles.heading}>
+          {timesTitle}
+        </Text>
+        {timesBlock}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  sections: { gap: space[16] },
   section: { gap: space[8] },
   heading: { ...typography.body, fontWeight: "700", color: colors.ink },
   hint: { ...typography.secondary, color: colors.muted },
