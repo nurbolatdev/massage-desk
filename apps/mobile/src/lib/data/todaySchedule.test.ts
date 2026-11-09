@@ -10,6 +10,7 @@ function appt(start: string, status: Appointment["status"] = "confirmed", end?: 
     clientId: "c1",
     clientName: "Клиент",
     clientPhone: "+998900000000",
+    serviceId: "s1",
     serviceName: "Массаж",
     start: new Date(start),
     end: new Date(end ?? start),

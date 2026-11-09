@@ -28,6 +28,7 @@ const appt: Appointment = {
   clientId: "c1",
   clientName: "Анна",
   clientPhone: "+998901234567",
+  serviceId: "s1",
   serviceName: "Классический массаж",
   start: new Date("2026-11-02T05:00:00Z"),
   end: new Date("2026-11-02T06:00:00Z"),

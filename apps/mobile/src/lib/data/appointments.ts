@@ -20,6 +20,7 @@ export function toAppointment(item: AppointmentListItem): Appointment {
     clientId: item.clientId,
     clientName: item.clientName ?? item.clientPhone,
     clientPhone: item.clientPhone,
+    serviceId: item.serviceId,
     serviceName: item.serviceName,
     start: new Date(item.start),
     end: new Date(item.end),

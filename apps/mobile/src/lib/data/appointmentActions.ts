@@ -21,6 +21,16 @@ export function postAppointmentAction(
   );
 }
 
+export function rescheduleAppointment(
+  api: ReturnType<typeof createApi>,
+  id: string,
+  start: string,
+): Promise<AppointmentResponse> {
+  return unwrap(
+    api.POST("/appointments/{id}/reschedule", { params: { path: { id } }, body: { start } }),
+  );
+}
+
 /** Returns a new list where only the item with this id has the new status. */
 export function withStatus(
   items: AppointmentListItem[] | undefined,
