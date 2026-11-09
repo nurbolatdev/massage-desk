@@ -184,6 +184,36 @@ describe("calendar screen", () => {
     expect(screen.getByText("Обновить")).toBeTruthy();
   });
 
+  it("does not request appointments on refresh while settings are failing", async () => {
+    const { ApiError } = jest.requireActual<typeof import("@/lib/api/errors")>("@/lib/api/errors");
+    const user = userEvent.setup();
+    mockGet.mockImplementation(async (path) => {
+      if (path === "/settings") throw new ApiError("server", { status: 500 });
+      throw new Error(`unexpected GET ${path}`);
+    });
+    await renderScreen();
+
+    await user.press(await screen.findByText("Обновить"));
+
+    await waitFor(() => expect(mockGet.mock.calls.filter(([path]) => path === "/settings")).toHaveLength(2));
+    expect(appointmentCalls()).toHaveLength(0);
+  });
+
+  it("requests appointments again on refresh when the dates are known", async () => {
+    const { ApiError } = jest.requireActual<typeof import("@/lib/api/errors")>("@/lib/api/errors");
+    const user = userEvent.setup();
+    mockGet.mockImplementation(async (path) => {
+      if (path === "/settings") return ok(settings);
+      throw new ApiError("server", { status: 500 });
+    });
+    await renderScreen();
+
+    await user.press(await screen.findByText("Обновить"));
+
+    await waitFor(() => expect(appointmentCalls()).toHaveLength(2));
+    expect(appointmentCalls()[1]).toEqual({ params: { query: { from: "2026-11-02", to: "2026-11-08" } } });
+  });
+
   it("shows the offline message when there is no saved schedule", async () => {
     onlineManager.setOnline(false);
     await renderScreen();
