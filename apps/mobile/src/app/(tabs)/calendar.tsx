@@ -6,26 +6,37 @@ import { AppointmentRow } from "@/components/AppointmentRow";
 import { Button } from "@/components/Button";
 import { CalendarHeader } from "@/components/CalendarHeader";
 import { CalendarSkeleton } from "@/components/CalendarSkeleton";
+import { DayCard } from "@/components/DayCard";
 import { ErrorBanner } from "@/components/ErrorBanner";
 import { FreeTimeRow } from "@/components/FreeTimeRow";
+import { MonthGrid } from "@/components/MonthGrid";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { RefreshFailedBanner } from "@/components/RefreshFailedBanner";
+import { SegmentedControl } from "@/components/SegmentedControl";
 import { WeekStrip } from "@/components/WeekStrip";
 import { appointmentRouteParams } from "@/lib/data/appointmentCard";
 import { BOOK_CLIENT_LABEL } from "@/lib/data/bookingNotice";
 import {
   EMPTY_DAY_TEXT,
+  MONTH_VIEW_LABEL,
+  NEXT_MONTH_LABEL,
   NEXT_WEEK_LABEL,
+  OPEN_WEEK_HINT,
+  PREV_MONTH_LABEL,
   PREV_WEEK_LABEL,
+  VIEW_SWITCH_LABEL,
+  WEEK_VIEW_LABEL,
   appointmentsOfDay,
   calendarRows,
+  dayCardLine,
+  dayCardTitle,
   dayCounts,
   daySummary,
   dayTitle,
   monthTitle,
   weekRangeLabel,
 } from "@/lib/data/calendar";
-import { addDays, localDay, weekDays } from "@/lib/data/days";
+import { addDays, addMonths, localDay, monthDays, monthGrid, weekDays } from "@/lib/data/days";
 import { useScheduleRange, useSettings } from "@/lib/data/hooks";
 import { RETRY_LABEL, todayState } from "@/lib/data/todayState";
 import { formatTime } from "@/lib/format";
@@ -36,20 +47,28 @@ import type { Appointment } from "@/types";
 
 const WEEK = 7;
 
+type Mode = "week" | "month";
+
+const VIEW_OPTIONS: readonly { value: Mode; label: string }[] = [
+  { value: "week", label: WEEK_VIEW_LABEL },
+  { value: "month", label: MONTH_VIEW_LABEL },
+];
+
 export default function CalendarScreen() {
   const router = useRouter();
   const now = useNow();
   const online = useOnline();
   const [picked, setPicked] = useState<string | null>(null);
+  const [mode, setMode] = useState<Mode>("week");
 
   // The zone is unknown until the settings load; the week then comes from the UTC date.
   const settingsZone = useSettings().data?.timeZone;
   const today = localDay(now, settingsZone ?? "UTC");
   const selected = picked ?? today;
-  const days = weekDays(selected);
+  const rangeDays = mode === "week" ? weekDays(selected) : monthDays(selected);
   const range = useScheduleRange(
-    settingsZone === undefined ? undefined : days[0],
-    settingsZone === undefined ? undefined : days[WEEK - 1],
+    settingsZone === undefined ? undefined : rangeDays[0],
+    settingsZone === undefined ? undefined : rangeDays[rangeDays.length - 1],
   );
   const timeZone = range.timeZone;
   const hasData = range.appointments !== undefined;
@@ -72,61 +91,87 @@ export default function CalendarScreen() {
     router.push({ pathname: "/appointment/[id]", params: appointmentRouteParams(a, timeZone) });
   };
 
+  const notices = (
+    <>
+      {state.view === "offlineEmpty" && <OfflineBanner savedAt={null} />}
+      {state.view === "error" && state.errorText !== null && (
+        <View style={styles.errorBox}>
+          <ErrorBanner message={state.errorText} />
+          {state.canRetry && <Button label={RETRY_LABEL} onPress={range.refetch} />}
+        </View>
+      )}
+      {state.view === "list" && state.showOfflineBanner && <OfflineBanner savedAt={savedAt} />}
+      {state.view === "list" && state.refreshFailed && <RefreshFailedBanner savedAt={savedAt} onRetry={range.refetch} />}
+    </>
+  );
+
+  const dayContent = (
+    <>
+      {state.view === "loading" && <CalendarSkeleton />}
+      {state.view === "list" &&
+        (rows.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyText}>{EMPTY_DAY_TEXT}</Text>
+          </View>
+        ) : (
+          <View style={styles.rows}>
+            {rows.map((row) =>
+              row.kind === "appointment" ? (
+                <AppointmentRow
+                  key={row.appointment.id}
+                  appointment={row.appointment}
+                  timeZone={timeZone}
+                  onPress={() => open(row.appointment)}
+                />
+              ) : (
+                <FreeTimeRow key={`free-${row.start.getTime()}`} start={row.start} end={row.end} timeZone={timeZone} />
+              ),
+            )}
+          </View>
+        ))}
+    </>
+  );
+
+  const week = mode === "week";
+
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <CalendarHeader
         title={monthTitle(selected, today)}
-        rangeLabel={weekRangeLabel(days)}
-        onPrev={() => setPicked(addDays(selected, -WEEK))}
-        onNext={() => setPicked(addDays(selected, WEEK))}
-        prevLabel={PREV_WEEK_LABEL}
-        nextLabel={NEXT_WEEK_LABEL}
+        rangeLabel={weekRangeLabel(rangeDays)}
+        onPrev={() => setPicked(week ? addDays(selected, -WEEK) : addMonths(selected, -1))}
+        onNext={() => setPicked(week ? addDays(selected, WEEK) : addMonths(selected, 1))}
+        prevLabel={week ? PREV_WEEK_LABEL : PREV_MONTH_LABEL}
+        nextLabel={week ? NEXT_WEEK_LABEL : NEXT_MONTH_LABEL}
+        right={<SegmentedControl options={VIEW_OPTIONS} value={mode} onChange={setMode} accessibilityLabel={VIEW_SWITCH_LABEL} />}
       >
-        <WeekStrip days={days} selected={selected} today={today} counts={counts} onPick={setPicked} />
+        {week && <WeekStrip days={rangeDays} selected={selected} today={today} counts={counts} onPick={setPicked} />}
       </CalendarHeader>
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.headingRow}>
-          <Text accessibilityRole="header" style={styles.heading}>
-            {dayTitle(selected)}
-          </Text>
-          {state.view === "list" && <Text style={styles.summary}>{daySummary(dayList.length, selected < today)}</Text>}
-        </View>
-
-        {state.view === "loading" && <CalendarSkeleton />}
-
-        {state.view === "offlineEmpty" && <OfflineBanner savedAt={null} />}
-
-        {state.view === "error" && state.errorText !== null && (
-          <View style={styles.errorBox}>
-            <ErrorBanner message={state.errorText} />
-            {state.canRetry && <Button label={RETRY_LABEL} onPress={range.refetch} />}
-          </View>
-        )}
-
-        {state.view === "list" && (
+      <ScrollView contentContainerStyle={week ? styles.content : styles.monthContent}>
+        {week ? (
           <>
-            {state.showOfflineBanner && <OfflineBanner savedAt={savedAt} />}
-            {state.refreshFailed && <RefreshFailedBanner savedAt={savedAt} onRetry={range.refetch} />}
-            {rows.length === 0 ? (
-              <View style={styles.emptyCard}>
-                <Text style={styles.emptyText}>{EMPTY_DAY_TEXT}</Text>
-              </View>
-            ) : (
-              <View style={styles.rows}>
-                {rows.map((row) =>
-                  row.kind === "appointment" ? (
-                    <AppointmentRow
-                      key={row.appointment.id}
-                      appointment={row.appointment}
-                      timeZone={timeZone}
-                      onPress={() => open(row.appointment)}
-                    />
-                  ) : (
-                    <FreeTimeRow key={`free-${row.start.getTime()}`} start={row.start} end={row.end} timeZone={timeZone} />
-                  ),
-                )}
-              </View>
-            )}
+            <View style={styles.headingRow}>
+              <Text accessibilityRole="header" style={styles.heading}>
+                {dayTitle(selected)}
+              </Text>
+              {state.view === "list" && (
+                <Text style={styles.summary}>{daySummary(dayList.length, selected < today)}</Text>
+              )}
+            </View>
+            {notices}
+            {dayContent}
+          </>
+        ) : (
+          <>
+            {notices}
+            <MonthGrid cells={monthGrid(selected)} selected={selected} today={today} counts={counts} onPick={setPicked} />
+            <DayCard
+              title={dayCardTitle(selected, hasData ? dayList.length : undefined, selected < today)}
+              line={hasData && timeZone !== undefined ? dayCardLine(dayList, selected >= today, timeZone) : null}
+              onPress={() => setMode("week")}
+              accessibilityHint={OPEN_WEEK_HINT}
+            />
+            {dayContent}
           </>
         )}
       </ScrollView>
@@ -140,6 +185,7 @@ export default function CalendarScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   content: { flexGrow: 1, paddingTop: space[6], paddingHorizontal: space[16], paddingBottom: space[24], gap: space[10] },
+  monthContent: { flexGrow: 1, paddingTop: space[4], paddingHorizontal: space[14], paddingBottom: space[24], gap: space[10] },
   headingRow: {
     flexDirection: "row",
     flexWrap: "wrap",

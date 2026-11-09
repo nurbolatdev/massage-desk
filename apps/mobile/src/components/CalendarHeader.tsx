@@ -69,9 +69,11 @@ const styles = StyleSheet.create({
   },
   titleRow: {
     flexDirection: "row",
+    flexWrap: "wrap",
     justifyContent: "space-between",
     alignItems: "center",
     gap: space[8],
+    rowGap: space[8],
     paddingHorizontal: space[6],
   },
   title: { ...typography.title, letterSpacing: -0.5, color: colors.ink, flexShrink: 1 },
