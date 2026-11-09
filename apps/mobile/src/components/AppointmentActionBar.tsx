@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 
 import { CANCEL_LABEL, NO_SHOW_LABEL } from "@/lib/data/appointmentCard";
+import { RESCHEDULE_LABEL } from "@/lib/data/reschedule";
 import { colors, radii, size, space, typography } from "@/theme";
 
 // from the Appointment mockup
@@ -8,15 +9,19 @@ const ACTION_FLEX_BASIS = 110;
 const BORDER_WIDTH = 2;
 
 interface Props {
+  onReschedule?: () => void;
   showNoShow: boolean;
   onNoShow: () => void;
   onCancel: () => void;
   disabled: boolean;
 }
 
-export function AppointmentActionBar({ showNoShow, onNoShow, onCancel, disabled }: Props) {
+export function AppointmentActionBar({ onReschedule, showNoShow, onNoShow, onCancel, disabled }: Props) {
   return (
     <View style={styles.bar}>
+      {onReschedule !== undefined && (
+        <ActionButton label={RESCHEDULE_LABEL} onPress={onReschedule} disabled={disabled} borderColor={colors.borderStrong} textColor={colors.ink} />
+      )}
       {showNoShow && (
         <ActionButton label={NO_SHOW_LABEL} onPress={onNoShow} disabled={disabled} borderColor={colors.borderStrong} textColor={colors.ink} />
       )}

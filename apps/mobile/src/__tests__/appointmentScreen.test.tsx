@@ -6,6 +6,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import AppointmentScreen from "@/app/appointment/[id]";
 import { CANCEL_CONFIRM_YES, CANCEL_LABEL } from "@/lib/data/appointmentCard";
+import { RESCHEDULE_LABEL } from "@/lib/data/reschedule";
 import { queryKeys } from "@/lib/data/queryKeys";
 
 type Call = (path: string, init?: unknown) => Promise<unknown>;
@@ -13,10 +14,11 @@ type Call = (path: string, init?: unknown) => Promise<unknown>;
 const mockGet = jest.fn<Call>();
 const mockPost = jest.fn<Call>();
 const mockPatch = jest.fn<Call>();
+const mockPush = jest.fn();
 
 jest.mock("expo-router", () => ({
   useLocalSearchParams: () => ({ id: "a1", day: "2026-11-03" }),
-  useRouter: () => ({ canGoBack: () => true, back: jest.fn(), replace: jest.fn(), push: jest.fn() }),
+  useRouter: () => ({ canGoBack: () => true, back: jest.fn(), replace: jest.fn(), push: mockPush }),
 }));
 
 jest.mock("@/lib/api", () => ({
@@ -76,12 +78,25 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false, gcTime: Infinity }, mutations: { retry: false, gcTime: Infinity } },
 });
 
+function renderCard() {
+  return render(
+    <SafeAreaProvider
+      initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}
+    >
+      <QueryClientProvider client={queryClient}>
+        <AppointmentScreen />
+      </QueryClientProvider>
+    </SafeAreaProvider>,
+  );
+}
+
 describe("appointment card screen", () => {
   beforeEach(() => {
     onlineManager.setOnline(true);
     mockGet.mockReset();
     mockPost.mockReset();
     mockPatch.mockReset();
+    mockPush.mockReset();
     mockGet.mockImplementation(async (path) => {
       if (path === "/settings") return ok(settings);
       if (path === "/appointments") return ok([listItem]);
@@ -121,5 +136,31 @@ describe("appointment card screen", () => {
 
     expect(mockPost).toHaveBeenCalledTimes(1);
     expect(mockPost).toHaveBeenCalledWith("/appointments/{id}/cancel", { params: { path: { id: "a1" } } });
+  });
+
+  it("opens the reschedule screen for a confirmed appointment", async () => {
+    await renderCard();
+    const user = userEvent.setup();
+    await user.press(screen.getByRole("button", { name: RESCHEDULE_LABEL }));
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/reschedule/[id]", params: { id: "a1", day: DAY } });
+  });
+
+  it("has no reschedule button for a cancelled appointment", async () => {
+    const cancelledItem = { ...listItem, status: "cancelled" as const };
+    queryClient.setQueryData(queryKeys.appointments.range(DAY, DAY), [cancelledItem]);
+    mockGet.mockImplementation(async (path) => {
+      if (path === "/settings") return ok(settings);
+      if (path === "/appointments") return ok([cancelledItem]);
+      if (path === "/clients/{id}") return ok(client);
+      throw new Error(`unexpected GET ${path}`);
+    });
+    await renderCard();
+    expect(screen.queryByRole("button", { name: RESCHEDULE_LABEL })).toBeNull();
+  });
+
+  it("disables reschedule offline", async () => {
+    onlineManager.setOnline(false);
+    await renderCard();
+    expect(screen.getByRole("button", { name: RESCHEDULE_LABEL })).toBeDisabled();
   });
 });

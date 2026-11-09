@@ -128,20 +128,20 @@ describe("appointmentRouteParams", () => {
 describe("cardActions", () => {
   it("offers only cancel before the start", () => {
     const now = new Date("2026-11-02T04:00:00Z");
-    expect(cardActions(appt, now)).toEqual({ cancel: true, noShow: false });
+    expect(cardActions(appt, now)).toEqual({ reschedule: true, cancel: true, noShow: false });
   });
 
   it("offers both at the start", () => {
-    expect(cardActions(appt, appt.start)).toEqual({ cancel: true, noShow: true });
+    expect(cardActions(appt, appt.start)).toEqual({ reschedule: true, cancel: true, noShow: true });
   });
 
   it("offers both after the end", () => {
-    expect(cardActions(appt, new Date("2026-11-02T08:00:00Z"))).toEqual({ cancel: true, noShow: true });
+    expect(cardActions(appt, new Date("2026-11-02T08:00:00Z"))).toEqual({ reschedule: true, cancel: true, noShow: true });
   });
 
   it.each(["cancelled", "no_show", "done"] as const)("offers nothing for %s", (status) => {
     const now = new Date("2026-11-02T08:00:00Z");
-    expect(cardActions({ ...appt, status }, now)).toEqual({ cancel: false, noShow: false });
+    expect(cardActions({ ...appt, status }, now)).toEqual({ reschedule: false, cancel: false, noShow: false });
   });
 });
 

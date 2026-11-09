@@ -23,6 +23,7 @@ import {
   NO_SHOW_CONFIRM_TEXT,
   NO_SHOW_CONFIRM_TITLE,
   NO_SHOW_CONFIRM_YES,
+  appointmentRouteParams,
   cancelConfirmText,
   cardActions,
   detailRows,
@@ -65,7 +66,7 @@ export default function AppointmentScreen() {
     client.data !== undefined ? "ready" : client.isError ? "error" : !online ? "offline" : "loading";
   const mutation = useAppointmentAction();
   const flow = useDestructiveFlow((kind) => mutation.mutateAsync({ id, action: kind }));
-  const actions = appointment !== undefined ? cardActions(appointment, now) : { cancel: false, noShow: false };
+  const actions = appointment !== undefined ? cardActions(appointment, now) : { reschedule: false, cancel: false, noShow: false };
   const asking = flow.state.asking;
   const [lastAsked, setLastAsked] = useState<AppointmentAction>("cancel");
   const ask = (kind: AppointmentAction) => {
@@ -137,6 +138,11 @@ export default function AppointmentScreen() {
       </ScrollView>
       {actions.cancel && state.view === "list" && timeZone !== undefined && (
         <AppointmentActionBar
+          onReschedule={
+            actions.reschedule && appointment !== undefined
+              ? () => router.push({ pathname: "/reschedule/[id]", params: appointmentRouteParams(appointment, timeZone) })
+              : undefined
+          }
           showNoShow={actions.noShow}
           disabled={!online}
           onNoShow={() => ask("noShow")}
