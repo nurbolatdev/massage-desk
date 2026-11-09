@@ -132,7 +132,7 @@ export function useAppointment(id: string, day: string | undefined) {
 
   const refetch = () => {
     void settings.refetch();
-    void appointments.refetch();
+    if (valid) void appointments.refetch();
   };
 
   const load = cardLoad({
