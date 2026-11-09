@@ -63,13 +63,19 @@ export function CalendarHeader({
 const styles = StyleSheet.create({
   header: {
     paddingTop: space[24],
-    paddingHorizontal: space[20],
+    paddingHorizontal: space[14],
     paddingBottom: space[10],
     gap: space[14],
   },
-  titleRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: space[8] },
+  titleRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: space[8],
+    paddingHorizontal: space[6],
+  },
   title: { ...typography.title, letterSpacing: -0.5, color: colors.ink, flexShrink: 1 },
-  weekRow: { flexDirection: "row", alignItems: "center", gap: space[4] },
+  weekRow: { flexDirection: "row", alignItems: "center", gap: space[4], paddingHorizontal: space[6] },
   arrow: {
     width: size.iconButton,
     height: size.iconButton,

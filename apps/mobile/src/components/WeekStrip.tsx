@@ -47,6 +47,7 @@ export function WeekStrip({ days, selected, today, counts, onPick }: Props) {
 }
 
 const styles = StyleSheet.create({
+  // 7 cells: touch width = (screen − 2 × header padding + gap) / 7 ≥ 48 dp from 360 dp; hitSlop = gap / 2 so neighbours never overlap
   row: { flexDirection: "row", gap: space[4] },
   cell: {
     flex: 1,
