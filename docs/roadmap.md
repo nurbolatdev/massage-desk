@@ -322,8 +322,15 @@ Split into three pull requests (about 1000 lines in total).
 
 - **Branch:** `feature/mobile-calendar-month`
 - **Pull request:** `feat(mobile): month calendar with day counts`
+- **Issue:** #69
 - **Commits:**
+  1. `fix(mobile): no day summary while the week is loading`
+  1. `fix(mobile): 48 dp touch area for week days`
+  1. `feat(mobile): month calendar logic`
+  1. `feat(mobile): segmented control`
+  1. `feat(mobile): month grid and day card`
   1. `feat(mobile): month view with day counts`
+  1. `docs: month calendar in the roadmap and mobile guide`
 
 **Part 3**
 

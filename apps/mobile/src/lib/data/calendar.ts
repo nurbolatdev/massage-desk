@@ -1,4 +1,4 @@
-import { formatDayMonth, formatDayTitle, plural } from "@/lib/format";
+import { formatDayMonth, formatDayTitle, formatTime, plural } from "@/lib/format";
 import type { Appointment } from "@/types";
 
 import { dayDate, isoWeekday, localDay } from "./days";
@@ -23,6 +23,14 @@ export const WEEKDAYS_SHORT = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "
 
 export const PREV_WEEK_LABEL = "Прошлая неделя";
 export const NEXT_WEEK_LABEL = "Следующая неделя";
+export const PREV_MONTH_LABEL = "Прошлый месяц";
+export const NEXT_MONTH_LABEL = "Следующий месяц";
+export const VIEW_SWITCH_LABEL = "Вид";
+export const WEEK_VIEW_LABEL = "Неделя";
+export const MONTH_VIEW_LABEL = "Месяц";
+export const COUNT_LEGEND_SAMPLE = "5";
+export const COUNT_LEGEND_TEXT = " — число записей";
+export const OPEN_WEEK_HINT = "Открыть неделю";
 export const EMPTY_DAY_TEXT = "На этот день записей нет";
 
 /** Appointments the calendar shows and counts: everything except cancelled. */
@@ -84,7 +92,7 @@ export function monthTitle(day: string, today: string): string {
   return year === today.slice(0, 4) ? name : `${name} ${year}`;
 }
 
-/** "2–8 ноября" or "30 ноября – 6 декабря". */
+/** "2–8 ноября" or "30 ноября – 6 декабря"; works for any day list (a week or a month: "1–30 ноября"). */
 export function weekRangeLabel(days: readonly string[]): string {
   const first = days[0] ?? "";
   const last = days[days.length - 1] ?? first;
@@ -111,7 +119,28 @@ export function daySummary(count: number, past: boolean): string {
   return `${count} ${plural(count, "запись", "записи", "записей")}`;
 }
 
-/** Accessibility label of a week-strip cell. */
-export function dayCellLabel(day: string, count: number, past: boolean): string {
+/** Accessibility label of a week or month cell; without a summary while the count is unknown (loading). */
+export function dayCellLabel(day: string, count: number | undefined, past: boolean): string {
+  if (count === undefined) return dayTitle(day);
   return `${dayTitle(day)}, ${daySummary(count, past)}`;
+}
+
+/** Day card title: "Пн, 2 ноября · 5 записей"; only "Пн, 2 ноября" while the count is unknown. */
+export function dayCardTitle(day: string, count: number | undefined, past: boolean): string {
+  const title = `${weekdayShort(day)}, ${formatDayMonth(dayDate(day), "UTC")}`;
+  return count === undefined ? title : `${title} · ${daySummary(count, past)}`;
+}
+
+/** "Первая в 10:00, свободно 13:00–14:30"; the free part only when a free row exists; null for an empty day. */
+export function dayCardLine(
+  dayAppointments: readonly Appointment[],
+  withFree: boolean,
+  timeZone: string,
+): string | null {
+  const first = dayAppointments[0];
+  if (first === undefined) return null;
+  const line = `Первая в ${formatTime(first.start, timeZone)}`;
+  const free = calendarRows(dayAppointments, withFree).find((row) => row.kind === "free");
+  if (free?.kind !== "free") return line;
+  return `${line}, свободно ${formatTime(free.start, timeZone)}–${formatTime(free.end, timeZone)}`;
 }

@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { colors, radii, size, space, typography } from "@/theme";
+import { PRESSED_OPACITY } from "./pressed";
 
 interface Props {
   title: string;
@@ -16,7 +17,6 @@ interface Props {
 }
 
 const ARROW_ICON_SIZE = 24;
-const PRESSED_OPACITY = 0.8;
 
 export function CalendarHeader({
   title,
@@ -63,13 +63,21 @@ export function CalendarHeader({
 const styles = StyleSheet.create({
   header: {
     paddingTop: space[24],
-    paddingHorizontal: space[20],
+    paddingHorizontal: space[14],
     paddingBottom: space[10],
     gap: space[14],
   },
-  titleRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: space[8] },
+  titleRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: space[8],
+    rowGap: space[8],
+    paddingHorizontal: space[6],
+  },
   title: { ...typography.title, letterSpacing: -0.5, color: colors.ink, flexShrink: 1 },
-  weekRow: { flexDirection: "row", alignItems: "center", gap: space[4] },
+  weekRow: { flexDirection: "row", alignItems: "center", gap: space[4], paddingHorizontal: space[6] },
   arrow: {
     width: size.iconButton,
     height: size.iconButton,

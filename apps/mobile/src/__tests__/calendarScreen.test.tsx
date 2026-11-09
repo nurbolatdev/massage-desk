@@ -92,7 +92,7 @@ describe("calendar screen", () => {
       if (path === "/settings") return ok(settings);
       if (path === "/appointments") {
         const query = (init as { params: { query: { from: string } } }).params.query;
-        return ok(query.from === "2026-11-02" ? week : []);
+        return ok(query.from === "2026-11-02" || query.from === "2026-11-01" ? week : []);
       }
       throw new Error(`unexpected GET ${path}`);
     });
@@ -112,6 +112,17 @@ describe("calendar screen", () => {
     expect(appointmentCalls()).toContainEqual({ params: { query: { from: "2026-11-02", to: "2026-11-08" } } });
     const cell = await screen.findByLabelText("Среда, 4 ноября, 2 записи");
     expect(cell.props.accessibilityState).toMatchObject({ selected: true });
+  });
+
+  it("does not say Свободно while the week is loading", async () => {
+    mockGet.mockImplementation(async (path) => {
+      if (path === "/settings") return ok(settings);
+      return new Promise(() => {});
+    });
+    await renderScreen();
+
+    expect(await screen.findByLabelText("Среда, 4 ноября")).toBeTruthy();
+    expect(screen.queryByLabelText("Среда, 4 ноября, Свободно")).toBeNull();
   });
 
   it("counts shown appointments and skips cancelled ones", async () => {
@@ -219,5 +230,103 @@ describe("calendar screen", () => {
     await renderScreen();
 
     expect(await screen.findByText("Расписание появится, когда телефон подключится к интернету.")).toBeTruthy();
+  });
+
+  it("switches to the month", async () => {
+    const user = userEvent.setup();
+    await renderScreen();
+
+    await screen.findByText("Светлана Петрова");
+    await user.press(screen.getByText("Месяц"));
+
+    expect(await screen.findByText("1–30 ноября")).toBeTruthy();
+    expect(appointmentCalls().filter((c) => JSON.stringify(c).includes("2026-11-01"))).toEqual([
+      { params: { query: { from: "2026-11-01", to: "2026-11-30" } } },
+    ]);
+    expect(screen.getByRole("tab", { name: "Месяц" }).props.accessibilityState).toMatchObject({ selected: true });
+    expect(await screen.findByLabelText("Понедельник, 2 ноября, 2 записи")).toBeTruthy();
+    expect((await screen.findByLabelText("Среда, 4 ноября, 2 записи")).props.accessibilityState).toMatchObject({
+      selected: true,
+    });
+    expect(screen.queryByLabelText(/Понедельник, 26 октября/)).toBeNull();
+    expect(screen.queryByLabelText(/Вторник, 1 декабря/)).toBeNull();
+    expect(screen.getByText(/число записей/)).toBeTruthy();
+    expect(screen.getByLabelText(/Ср, 4 ноября · 2 записи/)).toBeTruthy();
+    expect(screen.getByLabelText(/Первая в 14:00, свободно 15:00–16:00/)).toBeTruthy();
+  });
+
+  it("tapping a month day shows its card and list", async () => {
+    const user = userEvent.setup();
+    await renderScreen();
+
+    await screen.findByText("Светлана Петрова");
+    await user.press(screen.getByText("Месяц"));
+    await user.press(await screen.findByLabelText("Понедельник, 2 ноября, 2 записи"));
+
+    expect(await screen.findByLabelText(/Пн, 2 ноября · 2 записи/)).toBeTruthy();
+    expect(screen.getByText("Айгуль Сапарова")).toBeTruthy();
+    expect(screen.queryByText("Светлана Петрова")).toBeNull();
+  });
+
+  it("the day card opens the week on that day", async () => {
+    const user = userEvent.setup();
+    await renderScreen();
+
+    await screen.findByText("Светлана Петрова");
+    await user.press(screen.getByText("Месяц"));
+    await user.press(await screen.findByLabelText(/Ср, 4 ноября · 2 записи/));
+
+    expect(await screen.findByText("2–8 ноября")).toBeTruthy();
+    expect((await screen.findByLabelText("Среда, 4 ноября, 2 записи")).props.accessibilityState).toMatchObject({
+      selected: true,
+    });
+    expect(screen.getByRole("tab", { name: "Неделя" }).props.accessibilityState).toMatchObject({ selected: true });
+  });
+
+  it("moves to the next month", async () => {
+    const user = userEvent.setup();
+    await renderScreen();
+
+    await screen.findByText("Светлана Петрова");
+    await user.press(screen.getByText("Месяц"));
+    await user.press(await screen.findByLabelText("Следующий месяц"));
+
+    expect(await screen.findByText("1–31 декабря")).toBeTruthy();
+    expect(screen.getByText("Декабрь")).toBeTruthy();
+    expect(await screen.findByLabelText(/Пт, 4 декабря · Свободно/)).toBeTruthy();
+    expect(screen.getByText("На этот день записей нет")).toBeTruthy();
+    await waitFor(() =>
+      expect(appointmentCalls()).toContainEqual({ params: { query: { from: "2026-12-01", to: "2026-12-31" } } }),
+    );
+  });
+
+  it("month day labels have no summary while loading", async () => {
+    const user = userEvent.setup();
+    mockGet.mockImplementation(async (path) => {
+      if (path === "/settings") return ok(settings);
+      return new Promise(() => {});
+    });
+    await renderScreen();
+
+    await user.press(await screen.findByText("Месяц"));
+
+    expect(await screen.findByLabelText("Среда, 4 ноября")).toBeTruthy();
+    expect(screen.getByLabelText("Ср, 4 ноября")).toBeTruthy();
+    expect(screen.queryByLabelText(/Свободно/)).toBeNull();
+  });
+
+  it("month view shows the load error above the grid", async () => {
+    const { ApiError } = jest.requireActual<typeof import("@/lib/api/errors")>("@/lib/api/errors");
+    const user = userEvent.setup();
+    mockGet.mockImplementation(async (path) => {
+      if (path === "/settings") return ok(settings);
+      throw new ApiError("server", { status: 500 });
+    });
+    await renderScreen();
+
+    await user.press(await screen.findByText("Месяц"));
+
+    expect(await screen.findByText("Не получилось загрузить расписание. Попробуйте ещё раз.")).toBeTruthy();
+    expect(screen.getByText("Обновить")).toBeTruthy();
   });
 });

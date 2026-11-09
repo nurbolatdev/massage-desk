@@ -6,6 +6,8 @@ import {
   appointmentsOfDay,
   calendarRows,
   dayCellLabel,
+  dayCardLine,
+  dayCardTitle,
   dayCounts,
   daySummary,
   dayTitle,
@@ -110,6 +112,11 @@ describe("calendar texts", () => {
     expect(weekRangeLabel(weekDays("2026-11-30"))).toBe("30 ноября – 6 декабря");
   });
 
+  it("labels the month range", () => {
+    expect(weekRangeLabel(["2026-11-01", "2026-11-30"])).toBe("1–30 ноября");
+    expect(weekRangeLabel(["2026-12-01", "2026-12-31"])).toBe("1–31 декабря");
+  });
+
   it("names days", () => {
     expect(dayTitle("2026-11-02")).toBe("Понедельник, 2 ноября");
     expect(weekdayShort("2026-11-02")).toBe("Пн");
@@ -127,5 +134,55 @@ describe("calendar texts", () => {
 
   it("builds the cell label", () => {
     expect(dayCellLabel("2026-11-02", 2, false)).toBe("Понедельник, 2 ноября, 2 записи");
+    expect(dayCellLabel("2026-11-02", 0, false)).toBe("Понедельник, 2 ноября, Свободно");
+    expect(dayCellLabel("2026-11-02", 0, true)).toBe("Понедельник, 2 ноября, Записей нет");
+  });
+
+  it("builds the cell label without a summary while loading", () => {
+    expect(dayCellLabel("2026-11-02", undefined, false)).toBe("Понедельник, 2 ноября");
+  });
+});
+
+describe("dayCardTitle", () => {
+  it("builds the title", () => {
+    expect(dayCardTitle("2026-11-02", 5, false)).toBe("Пн, 2 ноября · 5 записей");
+    expect(dayCardTitle("2026-11-01", 0, true)).toBe("Вс, 1 ноября · Записей нет");
+    expect(dayCardTitle("2026-12-04", 0, false)).toBe("Пт, 4 декабря · Свободно");
+  });
+
+  it("has no summary while loading", () => {
+    expect(dayCardTitle("2026-11-02", undefined, false)).toBe("Пн, 2 ноября");
+  });
+});
+
+describe("dayCardLine", () => {
+  // Asia/Tashkent is UTC+5: 10:00-11:00, 11:00-13:00, 14:30-15:30 local.
+  const all = [
+    appt("x", "2026-11-02T05:00:00Z", "2026-11-02T06:00:00Z"),
+    appt("y", "2026-11-02T06:00:00Z", "2026-11-02T08:00:00Z"),
+    appt("z", "2026-11-02T09:30:00Z", "2026-11-02T10:30:00Z"),
+  ];
+
+  it("names the first appointment and the first free gap", () => {
+    const list = appointmentsOfDay(all, "2026-11-02", TZ);
+    expect(dayCardLine(list, true, TZ)).toBe("Первая в 10:00, свободно 13:00–14:30");
+  });
+
+  it("omits the free gap when free time is off", () => {
+    const list = appointmentsOfDay(all, "2026-11-02", TZ);
+    expect(dayCardLine(list, false, TZ)).toBe("Первая в 10:00");
+  });
+
+  it("ignores a cancelled first appointment", () => {
+    const list = appointmentsOfDay(
+      [appt("c", "2026-11-02T03:00:00Z", "2026-11-02T04:00:00Z", "cancelled"), ...all],
+      "2026-11-02",
+      TZ,
+    );
+    expect(dayCardLine(list, true, TZ)).toBe("Первая в 10:00, свободно 13:00–14:30");
+  });
+
+  it("is null for an empty day", () => {
+    expect(dayCardLine([], true, TZ)).toBeNull();
   });
 });
