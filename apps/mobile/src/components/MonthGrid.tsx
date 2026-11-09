@@ -93,8 +93,8 @@ const styles = StyleSheet.create({
   count: { ...typography.label, fontWeight: "800" },
   ink: { color: colors.ink },
   onSelected: { color: colors.onPrimary },
-  countNormal: { color: colors.warningIcon },
+  countNormal: { color: colors.muted },
   countOnSelected: { color: colors.onPrimaryMuted },
   legend: { ...typography.label, fontWeight: "500", color: colors.muted, padding: space[4] },
-  legendSample: { fontWeight: "700", color: colors.warningIcon },
+  legendSample: { fontWeight: "700", color: colors.muted },
 });
