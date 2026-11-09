@@ -305,12 +305,33 @@ The master runs the schedule in the app; admin panel basics; event log; deploy a
 
 ### M1-14 · Calendar
 
+Split into three pull requests (about 1000 lines in total).
+
+**Part 1**
+
 - **Branch:** `feature/mobile-calendar`
-- **Pull request:** `feat(mobile): week and month calendar`
+- **Pull request:** `feat(mobile): week calendar`
 - **Depends on:** M1-11
 - **Commits:**
+  1. `feat(mobile): week calendar logic`
+  1. `feat(mobile): week strip and calendar header`
   1. `feat(mobile): week view`
+  1. `docs: week calendar in the roadmap and mobile guide`
+
+**Part 2**
+
+- **Branch:** `feature/mobile-calendar-month`
+- **Pull request:** `feat(mobile): month calendar with day counts`
+- **Commits:**
   1. `feat(mobile): month view with day counts`
+
+**Part 3**
+
+- **Branch:** `feature/mobile-calendar-days-off`
+- **Pull request:** `feat(mobile): days off in the calendar`
+- **Commits:**
+  1. `feat(mobile): days off in the calendar`
+  1. `feat(mobile): book from the calendar day`
   1. `test(mobile): days off are shown as closed`
 
 ### M1-15 · Days off and vacation
