@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useReducer } from "react";
+import { useReducer, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -45,6 +45,7 @@ import { formatTime } from "@/lib/format";
 import { useOnline } from "@/lib/query/online";
 import { useNow } from "@/lib/time/useNow";
 import { colors, space, typography } from "@/theme";
+import type { Appointment } from "@/types";
 
 function stringParam(value: string | string[] | undefined): string | undefined {
   return typeof value === "string" ? value : undefined;
@@ -64,7 +65,10 @@ export default function RescheduleScreen() {
     error: card.refreshError,
     appointmentsError: card.refreshError,
   });
-  const { appointment, timeZone } = card;
+  const { timeZone } = card;
+  // Set right before leaving: the refetch after a move drops the appointment from the old day.
+  const [leaving, setLeaving] = useState<Appointment | null>(null);
+  const appointment = leaving ?? card.appointment;
   const [form, dispatch] = useReducer(bookingFormReducer, null, () => initialForm(null));
   const reschedule = useRescheduleAppointment();
 
@@ -82,6 +86,7 @@ export default function RescheduleScreen() {
     if (form.start === null || timeZone === undefined) return;
     try {
       const result = await reschedule.mutateAsync({ id, start: form.start });
+      if (appointment !== undefined) setLeaving(appointment);
       router.dismissTo({
         pathname: "/appointment/[id]",
         params: { id, day: localDay(new Date(result.start), timeZone) },
@@ -90,7 +95,6 @@ export default function RescheduleScreen() {
       const kind = rescheduleErrorKind(error);
       if (kind !== "taken" && kind !== "outside") throw error;
       dispatch({ type: "bookFailed", kind });
-      void slots.refetch();
     }
   }, rescheduleSheetErrorText);
 
@@ -102,7 +106,7 @@ export default function RescheduleScreen() {
   const start = form.start === null ? null : new Date(form.start);
   const errorText = form.error === null ? null : bookingErrorText(form.error);
   const ready =
-    state.view === "list" && appointment !== undefined && timeZone !== undefined && today !== undefined && day !== null;
+    (state.view === "list" || leaving !== null) && appointment !== undefined && timeZone !== undefined && today !== undefined && day !== null;
   const canReschedule = ready && appointment.status === "confirmed";
   const footerEnabled = canReschedule && start !== null && online && !flow.state.busy;
 
@@ -110,7 +114,7 @@ export default function RescheduleScreen() {
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <AppointmentHeader title={RESCHEDULE_TITLE} onBack={goBack} />
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
-        {card.notFound ? (
+        {card.notFound && leaving === null ? (
           <GoneBlock title={NOT_FOUND_TITLE} text={NOT_FOUND_TEXT} onBack={goBack} />
         ) : (
           <>

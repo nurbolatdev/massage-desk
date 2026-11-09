@@ -5,7 +5,7 @@ import { cleanup, render, screen, userEvent, waitFor } from "@testing-library/re
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import RescheduleScreen from "@/app/reschedule/[id]";
-import { ACTION_CONFLICT } from "@/lib/data/appointmentCard";
+import { BACK_LABEL, NOT_FOUND_TITLE } from "@/lib/data/appointmentCard";
 import { localDay } from "@/lib/data/days";
 import { CHOOSE_TIME, conflictTitle, OUTSIDE_TEXT, serviceMeta, takenA11y } from "@/lib/data/newBooking";
 import { queryKeys } from "@/lib/data/queryKeys";
@@ -14,6 +14,7 @@ import {
   NOW_LABEL,
   RESCHEDULE_CONFIRM_TITLE,
   RESCHEDULE_CONFIRM_YES,
+  RESCHEDULE_GONE_TITLE,
   RESCHEDULE_OFFLINE_TEXT,
 } from "@/lib/data/reschedule";
 
@@ -96,6 +97,8 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false, gcTime: Infinity }, mutations: { retry: false, gcTime: Infinity } },
 });
 
+let appointmentsAnswer: () => Schemas["AppointmentListItem"][] = () => [listItem];
+
 function slotRequests(): number {
   return mockGet.mock.calls.filter(([path]) => path === "/slots").length;
 }
@@ -122,9 +125,10 @@ describe("reschedule screen", () => {
     mockGet.mockReset();
     mockPost.mockReset();
     mockDismissTo.mockReset();
+    appointmentsAnswer = () => [listItem];
     mockGet.mockImplementation(async (path, init) => {
       if (path === "/settings") return ok(settings);
-      if (path === "/appointments") return ok([listItem]);
+      if (path === "/appointments") return ok(appointmentsAnswer());
       if (path === "/slots") {
         const requested = (init as { params: { query: { day: string } } }).params.query.day;
         const starts =
@@ -195,7 +199,10 @@ describe("reschedule screen", () => {
   });
 
   it("tells that the appointment has changed when it is no longer confirmed", async () => {
-    mockPost.mockResolvedValue(failure(409, "NOT_CONFIRMED"));
+    mockPost.mockImplementation(async () => {
+      appointmentsAnswer = () => [{ ...listItem, status: "cancelled" }];
+      return failure(409, "NOT_CONFIRMED");
+    });
     await renderScreen();
     const user = userEvent.setup();
 
@@ -203,8 +210,28 @@ describe("reschedule screen", () => {
     await user.press(screen.getByRole("button", { name: /^Перенести на / }));
     await user.press(screen.getByRole("button", { name: RESCHEDULE_CONFIRM_YES }));
 
-    expect(await screen.findByText(ACTION_CONFLICT)).toBeOnTheScreen();
+    expect(await screen.findByText(RESCHEDULE_GONE_TITLE)).toBeOnTheScreen();
+    expect(screen.getAllByRole("button", { name: BACK_LABEL }).length).toBeGreaterThanOrEqual(2);
     expect(mockDismissTo).not.toHaveBeenCalled();
+  });
+
+  it("does not flash not found after moving to another day", async () => {
+    const next = localDay(new Date(Date.now() + 24 * 3600 * 1000), TIME_ZONE);
+    const target = `${next}T11:30:00+05:00`;
+    mockPost.mockImplementation(async () => {
+      appointmentsAnswer = () => [];
+      return ok({ ...moved, start: target, end: `${next}T12:30:00+05:00` });
+    });
+    await renderScreen();
+    const user = userEvent.setup();
+
+    await user.press(await screen.findByText("10:00"));
+    await user.press(screen.getByRole("button", { name: /^Перенести на / }));
+    await user.press(screen.getByRole("button", { name: RESCHEDULE_CONFIRM_YES }));
+
+    await waitFor(() => expect(mockDismissTo).toHaveBeenCalled());
+    expect(mockDismissTo).toHaveBeenCalledWith({ pathname: "/appointment/[id]", params: { id: "a1", day: next } });
+    expect(screen.queryByText(NOT_FOUND_TITLE)).not.toBeOnTheScreen();
   });
 
   it("shows the outside-schedule text and disables the time", async () => {
