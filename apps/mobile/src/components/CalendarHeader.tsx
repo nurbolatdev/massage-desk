@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { colors, radii, size, space, typography } from "@/theme";
+import { PRESSED_OPACITY } from "./pressed";
 
 interface Props {
   title: string;
@@ -16,7 +17,6 @@ interface Props {
 }
 
 const ARROW_ICON_SIZE = 24;
-const PRESSED_OPACITY = 0.8;
 
 export function CalendarHeader({
   title,

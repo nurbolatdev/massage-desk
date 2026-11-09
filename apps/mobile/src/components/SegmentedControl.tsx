@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { colors, radii, space, typography } from "@/theme";
+import { PRESSED_OPACITY } from "./pressed";
 
 interface Option<T extends string> {
   value: T;
@@ -16,7 +17,6 @@ interface Props<T extends string> {
 
 // from the CalendarMonth mockup; hitSlop of space[2] above and below makes the touch area 48 dp
 const SEGMENT_MIN_HEIGHT = 44;
-const PRESSED_OPACITY = 0.8;
 
 export function SegmentedControl<T extends string>({ options, value, onChange, accessibilityLabel }: Props<T>) {
   return (

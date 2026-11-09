@@ -2,6 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { colors, radii, space, typography } from "@/theme";
+import { PRESSED_OPACITY } from "./pressed";
 
 interface Props {
   title: string;
@@ -12,7 +13,6 @@ interface Props {
 
 // from the CalendarMonth mockup
 const CHEVRON_SIZE = 22;
-const PRESSED_OPACITY = 0.8;
 
 export function DayCard({ title, line, onPress, accessibilityHint }: Props) {
   return (

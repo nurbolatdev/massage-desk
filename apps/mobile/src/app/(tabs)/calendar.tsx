@@ -185,6 +185,7 @@ export default function CalendarScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   content: { flexGrow: 1, paddingTop: space[6], paddingHorizontal: space[16], paddingBottom: space[24], gap: space[10] },
+  // 14 keeps month cells at 48 dp on a 360 dp screen, see MonthGrid
   monthContent: { flexGrow: 1, paddingTop: space[4], paddingHorizontal: space[14], paddingBottom: space[24], gap: space[10] },
   headingRow: {
     flexDirection: "row",

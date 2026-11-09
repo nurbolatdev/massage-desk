@@ -95,6 +95,6 @@ const styles = StyleSheet.create({
   onSelected: { color: colors.onPrimary },
   countNormal: { color: colors.warningIcon },
   countOnSelected: { color: colors.onPrimaryMuted },
-  legend: { ...typography.label, fontWeight: "500", color: colors.muted, paddingHorizontal: space[4] },
+  legend: { ...typography.label, fontWeight: "500", color: colors.muted, padding: space[4] },
   legendSample: { fontWeight: "700", color: colors.warningIcon },
 });
