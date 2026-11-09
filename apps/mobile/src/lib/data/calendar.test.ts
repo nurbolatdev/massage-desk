@@ -127,5 +127,11 @@ describe("calendar texts", () => {
 
   it("builds the cell label", () => {
     expect(dayCellLabel("2026-11-02", 2, false)).toBe("Понедельник, 2 ноября, 2 записи");
+    expect(dayCellLabel("2026-11-02", 0, false)).toBe("Понедельник, 2 ноября, Свободно");
+    expect(dayCellLabel("2026-11-02", 0, true)).toBe("Понедельник, 2 ноября, Записей нет");
+  });
+
+  it("builds the cell label without a summary while loading", () => {
+    expect(dayCellLabel("2026-11-02", undefined, false)).toBe("Понедельник, 2 ноября");
   });
 });

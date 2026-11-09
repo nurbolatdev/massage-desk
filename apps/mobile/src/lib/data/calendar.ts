@@ -111,7 +111,8 @@ export function daySummary(count: number, past: boolean): string {
   return `${count} ${plural(count, "запись", "записи", "записей")}`;
 }
 
-/** Accessibility label of a week-strip cell. */
-export function dayCellLabel(day: string, count: number, past: boolean): string {
+/** Accessibility label of a week or month cell; without a summary while the count is unknown (loading). */
+export function dayCellLabel(day: string, count: number | undefined, past: boolean): string {
+  if (count === undefined) return dayTitle(day);
   return `${dayTitle(day)}, ${daySummary(count, past)}`;
 }

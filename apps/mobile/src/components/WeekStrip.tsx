@@ -21,7 +21,7 @@ export function WeekStrip({ days, selected, today, counts, onPick }: Props) {
     <View style={styles.row}>
       {days.map((day) => {
         const isSelected = day === selected;
-        const count = counts?.[day] ?? 0;
+        const count = counts === undefined ? undefined : (counts[day] ?? 0);
         return (
           <Pressable
             key={day}
@@ -37,7 +37,7 @@ export function WeekStrip({ days, selected, today, counts, onPick }: Props) {
               {Number(day.slice(8))}
             </Text>
             <Text style={[styles.count, isSelected ? styles.countOnSelected : styles.countNormal]}>
-              {count > 0 ? count : NBSP}
+              {count !== undefined && count > 0 ? count : NBSP}
             </Text>
           </Pressable>
         );

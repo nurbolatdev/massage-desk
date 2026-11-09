@@ -114,6 +114,17 @@ describe("calendar screen", () => {
     expect(cell.props.accessibilityState).toMatchObject({ selected: true });
   });
 
+  it("does not say Свободно while the week is loading", async () => {
+    mockGet.mockImplementation(async (path) => {
+      if (path === "/settings") return ok(settings);
+      return new Promise(() => {});
+    });
+    await renderScreen();
+
+    expect(await screen.findByLabelText("Среда, 4 ноября")).toBeTruthy();
+    expect(screen.queryByLabelText("Среда, 4 ноября, Свободно")).toBeNull();
+  });
+
   it("counts shown appointments and skips cancelled ones", async () => {
     await renderScreen();
 
