@@ -10,11 +10,31 @@ export function localDay(now: Date, timeZone: string): string {
   return `${part("year")}-${part("month")}-${part("day")}`;
 }
 
-/** The day after `day` (YYYY-MM-DD); UTC date arithmetic, so DST cannot shift it. */
-export function nextDay(day: string): string {
+/** `day` (YYYY-MM-DD) moved by `n` days, may be negative; UTC date arithmetic, so DST cannot shift it. */
+export function addDays(day: string, n: number): string {
   const [year = 0, month = 1, date = 1] = day.split("-").map(Number);
-  const next = new Date(Date.UTC(year, month - 1, date + 1));
-  return next.toISOString().slice(0, 10);
+  return new Date(Date.UTC(year, month - 1, date + n)).toISOString().slice(0, 10);
+}
+
+/** The day after `day` (YYYY-MM-DD). */
+export function nextDay(day: string): string {
+  return addDays(day, 1);
+}
+
+/** ISO weekday of `day`: 1 (Monday) to 7 (Sunday). */
+export function isoWeekday(day: string): number {
+  return new Date(`${day}T12:00:00Z`).getUTCDay() || 7;
+}
+
+/** The seven days, Monday to Sunday, of the week that contains `day`. */
+export function weekDays(day: string): string[] {
+  const monday = addDays(day, 1 - isoWeekday(day));
+  return Array.from({ length: 7 }, (_, i) => addDays(monday, i));
+}
+
+/** Noon UTC of `day`; format it with `timeZone: "UTC"`. */
+export function dayDate(day: string): Date {
+  return new Date(`${day}T12:00:00Z`);
 }
 
 /** True for a real calendar day written as YYYY-MM-DD. */
