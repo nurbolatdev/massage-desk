@@ -5,7 +5,7 @@ Expo SDK 58, Expo Router (`apps/mobile/src/app`), installed as an APK via EAS Bu
 | Tab | Purpose | Status |
 |---|---|---|
 | Today | Next client in large type, call and WhatsApp buttons, day list | Done in M1-11; see [Today](#today) |
-| Calendar | Week and month | Week view done in M1-14; see [Calendar](#calendar) |
+| Calendar | Week and month | Week and month views done in M1-14; see [Calendar](#calendar) |
 | Chats | Conversations and "I'll answer" take-over | M2 |
 | Settings | Days off and vacation | M1 |
 
@@ -24,9 +24,10 @@ Later:
 
 Done (part 1 of M1-14): the week Monday to Sunday with the number of appointments under each day; arrows to move to the previous or next week; tap a day to see its appointments; tap a row to open the appointment card. Free time between appointments is shown for today and future days. Cancelled appointments are hidden and not counted. States are the same as on Today: loading, offline, error, and a warning when a refresh fails. The «Записать клиента» button opens a new appointment.
 
+Done (part 2 of M1-14): the «Неделя / Месяц» switch; the month grid with the number of appointments under each day, loaded in one request; tap a day to see its card («Первая в …, свободно …») and its appointments; tap the card to open that week; arrows move by month. Day cells have a touch area of at least 48 dp from a 360 dp wide screen. While loading, a day is read out without a summary.
+
 Later:
 
-- month view with day counts (part 2 of M1-14)
 - days off shown as closed and booking for the picked day (part 3 of M1-14)
 
 ## Appointment card
