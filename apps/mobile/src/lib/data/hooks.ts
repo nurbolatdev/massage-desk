@@ -42,7 +42,7 @@ export function useTodayAppointments(now: Date) {
 
   const refetch = () => {
     void settings.refetch();
-    void appointments.refetch();
+    if (day !== undefined) void appointments.refetch();
   };
 
   return {
@@ -62,7 +62,7 @@ export function useScheduleRange(from: string | undefined, to: string | undefine
 
   const refetch = () => {
     void settings.refetch();
-    void appointments.refetch();
+    if (from !== undefined && to !== undefined) void appointments.refetch();
   };
 
   return {
