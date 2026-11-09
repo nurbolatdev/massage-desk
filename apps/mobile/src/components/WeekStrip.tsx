@@ -1,0 +1,68 @@
+import { Pressable, StyleSheet, Text, View } from "react-native";
+
+import { dayCellLabel, weekdayShort } from "@/lib/data/calendar";
+import { NBSP } from "@/lib/format";
+import { colors, radii, space, typography } from "@/theme";
+
+interface Props {
+  days: string[];
+  selected: string;
+  today: string;
+  /** Undefined while loading: the count line stays empty but keeps its height. */
+  counts: Record<string, number> | undefined;
+  onPick: (day: string) => void;
+}
+
+// from the Calendar mockup
+const CELL_MIN_HEIGHT = 64;
+
+export function WeekStrip({ days, selected, today, counts, onPick }: Props) {
+  return (
+    <View style={styles.row}>
+      {days.map((day) => {
+        const isSelected = day === selected;
+        const count = counts?.[day] ?? 0;
+        return (
+          <Pressable
+            key={day}
+            accessibilityRole="button"
+            accessibilityState={{ selected: isSelected }}
+            accessibilityLabel={dayCellLabel(day, count, day < today)}
+            hitSlop={{ left: space[2], right: space[2] }}
+            onPress={() => onPick(day)}
+            style={[styles.cell, isSelected && styles.cellSelected]}
+          >
+            <Text style={[styles.weekday, isSelected ? styles.onSelected : styles.ink]}>{weekdayShort(day)}</Text>
+            <Text style={[styles.number, isSelected ? styles.onSelected : styles.ink]}>
+              {Number(day.slice(8))}
+            </Text>
+            <Text style={[styles.count, isSelected ? styles.countOnSelected : styles.countNormal]}>
+              {count > 0 ? count : NBSP}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  row: { flexDirection: "row", gap: space[4] },
+  cell: {
+    flex: 1,
+    minHeight: CELL_MIN_HEIGHT,
+    borderRadius: radii[14],
+    backgroundColor: colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: space[2],
+  },
+  cellSelected: { backgroundColor: colors.primary },
+  weekday: { ...typography.secondary, fontWeight: "600" },
+  number: { ...typography.subtitle, fontWeight: "800" },
+  count: { ...typography.label, fontWeight: "800" },
+  ink: { color: colors.ink },
+  onSelected: { color: colors.onPrimary },
+  countNormal: { color: colors.muted },
+  countOnSelected: { color: colors.onPrimaryMuted },
+});
