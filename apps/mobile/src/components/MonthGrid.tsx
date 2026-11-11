@@ -19,7 +19,8 @@ interface Props {
   counts: Record<string, number> | undefined;
   /** Days fully covered by time off; undefined while loading. */
   closed: ReadonlySet<string> | undefined;
-  partial?: ReadonlySet<string>;
+  /** Days only partly covered by time off; undefined while loading. */
+  partial: ReadonlySet<string> | undefined;
   onPick: (day: string) => void;
 }
 

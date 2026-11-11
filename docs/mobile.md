@@ -26,7 +26,7 @@ Done (part 1 of M1-14): the week Monday to Sunday with the number of appointment
 
 Done (part 2 of M1-14): the «Неделя / Месяц» switch; the month grid with the number of appointments under each day, loaded in one request; tap a day to see its card («Первая в …, свободно …») and its appointments; tap the card to open that week; arrows move by month. Day cells have a touch area of at least 48 dp from a 360 dp wide screen. While loading, a day is read out without a summary.
 
-Done (part 3 of M1-14): a day fully covered by time off is grey and signed «Выходной» in the week and the month, shows the «Выходной день — бот не предлагает это время» card and a disabled «Выходной — запись закрыта» button. An empty today or future day without time off says «Свободно весь день». The button books for the picked day when it is within the 8 booking days («Записать на пн, 2 ноября», opens `/new-appointment?day=YYYY-MM-DD`); otherwise it opens a new appointment on today.
+Done (part 3 of M1-14): a day fully covered by time off is grey and signed «Выходной» in the week and the month, shows the «Выходной день — бот не предлагает это время» card and a disabled «Выходной — запись закрыта» button. An empty today or future day without time off says «Свободно весь день». The button books for the picked day when it is within the 8 booking days («Записать на пн, 2 ноября», opens `/new-appointment?day=YYYY-MM-DD`); otherwise it opens a new appointment on today. A today or future day with partial time off and no appointments says «Записей нет» / «На этот день записей нет», not «Свободно».
 
 Later:
 

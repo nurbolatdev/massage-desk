@@ -345,6 +345,7 @@ Split into three pull requests (about 1000 lines in total).
   1. `feat(mobile): book from the calendar day`
   1. `test(mobile): days off are shown as closed`
   1. `docs: days off in the roadmap and mobile guide`
+  1. `fix(mobile): calendar days off review fixes`
 
 ### M1-15 · Days off and vacation
 

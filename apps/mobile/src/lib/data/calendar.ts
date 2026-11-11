@@ -37,7 +37,7 @@ export const EMPTY_DAY_TEXT = "На этот день записей нет";
 export const DAY_OFF_SUMMARY = "Выходной";
 export const DAY_OFF_TEXT = "Выходной день — бот не предлагает это время";
 export const DAY_OFF_BUTTON = "Выходной — запись закрыта";
-export const PARTIAL_DAY_SUMMARY = "Записей нет";
+export const NO_APPOINTMENTS_SUMMARY = "Записей нет";
 export const FREE_ALL_DAY_TEXT = "Свободно весь день";
 export const DAY_OFF_LEGEND_TEXT = "выходной";
 
@@ -165,7 +165,7 @@ export function daySummary(count: number, past: boolean, off = false, partial = 
       ? DAY_OFF_SUMMARY
       : `${DAY_OFF_SUMMARY} · ${count} ${plural(count, "запись", "записи", "записей")}`;
   }
-  if (count === 0) return past || partial ? PARTIAL_DAY_SUMMARY : "Свободно";
+  if (count === 0) return past || partial ? NO_APPOINTMENTS_SUMMARY : "Свободно";
   return `${count} ${plural(count, "запись", "записи", "записей")}`;
 }
 
