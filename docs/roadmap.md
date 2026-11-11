@@ -336,10 +336,16 @@ Split into three pull requests (about 1000 lines in total).
 
 - **Branch:** `feature/mobile-calendar-days-off`
 - **Pull request:** `feat(mobile): days off in the calendar`
+- **Issue:** #70
 - **Commits:**
+  1. `feat(mobile): time off query`
+  1. `refactor(mobile): rename the calendar range label`
+  1. `feat(mobile): days off logic for the calendar`
   1. `feat(mobile): days off in the calendar`
   1. `feat(mobile): book from the calendar day`
   1. `test(mobile): days off are shown as closed`
+  1. `docs: days off in the roadmap and mobile guide`
+  1. `fix(mobile): calendar days off review fixes`
 
 ### M1-15 · Days off and vacation
 

@@ -8,7 +8,7 @@ import { CalendarHeader } from "@/components/CalendarHeader";
 import { CalendarSkeleton } from "@/components/CalendarSkeleton";
 import { DayCard } from "@/components/DayCard";
 import { ErrorBanner } from "@/components/ErrorBanner";
-import { FreeTimeRow } from "@/components/FreeTimeRow";
+import { FreeDayRow, FreeTimeRow } from "@/components/FreeTimeRow";
 import { MonthGrid } from "@/components/MonthGrid";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { RefreshFailedBanner } from "@/components/RefreshFailedBanner";
@@ -17,6 +17,8 @@ import { WeekStrip } from "@/components/WeekStrip";
 import { appointmentRouteParams } from "@/lib/data/appointmentCard";
 import { BOOK_CLIENT_LABEL } from "@/lib/data/bookingNotice";
 import {
+  DAY_OFF_BUTTON,
+  DAY_OFF_TEXT,
   EMPTY_DAY_TEXT,
   MONTH_VIEW_LABEL,
   NEXT_MONTH_LABEL,
@@ -27,14 +29,17 @@ import {
   VIEW_SWITCH_LABEL,
   WEEK_VIEW_LABEL,
   appointmentsOfDay,
+  bookDayLabel,
+  bookingDay,
   calendarRows,
   dayCardLine,
   dayCardTitle,
   dayCounts,
   daySummary,
   dayTitle,
+  daysOff,
   monthTitle,
-  weekRangeLabel,
+  rangeLabel,
 } from "@/lib/data/calendar";
 import { addDays, addMonths, localDay, monthDays, monthGrid, weekDays } from "@/lib/data/days";
 import { useScheduleRange, useSettings } from "@/lib/data/hooks";
@@ -71,7 +76,7 @@ export default function CalendarScreen() {
     settingsZone === undefined ? undefined : rangeDays[rangeDays.length - 1],
   );
   const timeZone = range.timeZone;
-  const hasData = range.appointments !== undefined;
+  const hasData = range.appointments !== undefined && range.timeOff !== undefined;
   const state = todayState({ online, hasData, error: range.error, appointmentsError: range.refreshError });
   const savedAt =
     timeZone !== undefined && range.dataUpdatedAt > 0
@@ -84,7 +89,15 @@ export default function CalendarScreen() {
     range.appointments !== undefined && timeZone !== undefined
       ? appointmentsOfDay(range.appointments, selected, timeZone)
       : [];
-  const rows = calendarRows(dayList, selected >= today);
+  const off =
+    hasData && range.timeOff !== undefined && timeZone !== undefined
+      ? daysOff(range.timeOff, rangeDays, timeZone)
+      : undefined;
+  const closedDay = off?.closed.has(selected) ?? false;
+  const bookDay = bookingDay(selected, today);
+  const partialDay = off?.partial.has(selected) ?? false;
+  const withFree = selected >= today && !closedDay;
+  const rows = calendarRows(dayList, withFree);
 
   const open = (a: Appointment) => {
     if (timeZone === undefined) return;
@@ -108,11 +121,20 @@ export default function CalendarScreen() {
   const dayContent = (
     <>
       {state.view === "loading" && <CalendarSkeleton />}
+      {state.view === "list" && closedDay && (
+        <View style={styles.offCard}>
+          <Text style={styles.offText}>{DAY_OFF_TEXT}</Text>
+        </View>
+      )}
       {state.view === "list" &&
         (rows.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyText}>{EMPTY_DAY_TEXT}</Text>
-          </View>
+          closedDay ? null : off !== undefined && selected >= today && !partialDay ? (
+            <FreeDayRow />
+          ) : (
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyText}>{EMPTY_DAY_TEXT}</Text>
+            </View>
+          )
         ) : (
           <View style={styles.rows}>
             {rows.map((row) =>
@@ -138,14 +160,14 @@ export default function CalendarScreen() {
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <CalendarHeader
         title={monthTitle(selected, today)}
-        rangeLabel={weekRangeLabel(rangeDays)}
+        rangeLabel={rangeLabel(rangeDays)}
         onPrev={() => setPicked(week ? addDays(selected, -WEEK) : addMonths(selected, -1))}
         onNext={() => setPicked(week ? addDays(selected, WEEK) : addMonths(selected, 1))}
         prevLabel={week ? PREV_WEEK_LABEL : PREV_MONTH_LABEL}
         nextLabel={week ? NEXT_WEEK_LABEL : NEXT_MONTH_LABEL}
         right={<SegmentedControl options={VIEW_OPTIONS} value={mode} onChange={setMode} accessibilityLabel={VIEW_SWITCH_LABEL} />}
       >
-        {week && <WeekStrip days={rangeDays} selected={selected} today={today} counts={counts} onPick={setPicked} />}
+        {week && <WeekStrip days={rangeDays} selected={selected} today={today} counts={counts} closed={off?.closed} partial={off?.partial} onPick={setPicked} />}
       </CalendarHeader>
       <ScrollView contentContainerStyle={week ? styles.content : styles.monthContent}>
         {week ? (
@@ -155,7 +177,7 @@ export default function CalendarScreen() {
                 {dayTitle(selected)}
               </Text>
               {state.view === "list" && (
-                <Text style={styles.summary}>{daySummary(dayList.length, selected < today)}</Text>
+                <Text style={styles.summary}>{daySummary(dayList.length, selected < today, closedDay, partialDay)}</Text>
               )}
             </View>
             {notices}
@@ -164,10 +186,18 @@ export default function CalendarScreen() {
         ) : (
           <>
             {notices}
-            <MonthGrid cells={monthGrid(selected)} selected={selected} today={today} counts={counts} onPick={setPicked} />
+            <MonthGrid
+              cells={monthGrid(selected)}
+              selected={selected}
+              today={today}
+              counts={counts}
+              closed={off?.closed}
+              partial={off?.partial}
+              onPick={setPicked}
+            />
             <DayCard
-              title={dayCardTitle(selected, hasData ? dayList.length : undefined, selected < today)}
-              line={hasData && timeZone !== undefined ? dayCardLine(dayList, selected >= today, timeZone) : null}
+              title={dayCardTitle(selected, hasData ? dayList.length : undefined, selected < today, closedDay, partialDay)}
+              line={hasData && timeZone !== undefined ? dayCardLine(dayList, withFree, timeZone) : null}
               onPress={() => setMode("week")}
               accessibilityHint={OPEN_WEEK_HINT}
             />
@@ -176,7 +206,20 @@ export default function CalendarScreen() {
         )}
       </ScrollView>
       <View style={styles.footer}>
-        <Button label={BOOK_CLIENT_LABEL} icon="plus" disabled={!online} onPress={() => router.push("/new-appointment")} />
+        {closedDay ? (
+          <Button label={DAY_OFF_BUTTON} disabled onPress={() => undefined} />
+        ) : (
+          <Button
+            label={bookDay === null ? BOOK_CLIENT_LABEL : bookDayLabel(bookDay)}
+            icon="plus"
+            disabled={!online}
+            onPress={() =>
+              bookDay === null
+                ? router.push("/new-appointment")
+                : router.push({ pathname: "/new-appointment", params: { day: bookDay } })
+            }
+          />
+        )}
       </View>
     </SafeAreaView>
   );
@@ -200,6 +243,8 @@ const styles = StyleSheet.create({
   errorBox: { gap: space[12] },
   rows: { gap: space[8] },
   emptyCard: { backgroundColor: colors.surface, borderRadius: radii[16], padding: space[20], alignItems: "center" },
+  offCard: { backgroundColor: colors.neutralSoft, borderRadius: radii[18], paddingVertical: space[28], paddingHorizontal: space[20], alignItems: "center" },
+  offText: { ...typography.body, fontWeight: "600", color: colors.neutralStrong, textAlign: "center" },
   emptyText: { ...typography.body, color: colors.muted, textAlign: "center" },
   footer: { paddingVertical: space[10], paddingHorizontal: space[16] },
 });

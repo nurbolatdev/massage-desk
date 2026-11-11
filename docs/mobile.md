@@ -5,7 +5,7 @@ Expo SDK 58, Expo Router (`apps/mobile/src/app`), installed as an APK via EAS Bu
 | Tab | Purpose | Status |
 |---|---|---|
 | Today | Next client in large type, call and WhatsApp buttons, day list | Done in M1-11; see [Today](#today) |
-| Calendar | Week and month | Week and month views done in M1-14; see [Calendar](#calendar) |
+| Calendar | Week and month | Week and month views, days off done in M1-14; see [Calendar](#calendar) |
 | Chats | Conversations and "I'll answer" take-over | M2 |
 | Settings | Days off and vacation | M1 |
 
@@ -26,9 +26,13 @@ Done (part 1 of M1-14): the week Monday to Sunday with the number of appointment
 
 Done (part 2 of M1-14): the «Неделя / Месяц» switch; the month grid with the number of appointments under each day, loaded in one request; tap a day to see its card («Первая в …, свободно …») and its appointments; tap the card to open that week; arrows move by month. Day cells have a touch area of at least 48 dp from a 360 dp wide screen. While loading, a day is read out without a summary.
 
+Done (part 3 of M1-14): a day fully covered by time off is grey and signed «Выходной» in the week and the month, shows the «Выходной день — бот не предлагает это время» card and a disabled «Выходной — запись закрыта» button. An empty today or future day without time off says «Свободно весь день». The button books for the picked day when it is within the 8 booking days («Записать на пн, 2 ноября», opens `/new-appointment?day=YYYY-MM-DD`); otherwise it opens a new appointment on today. A today or future day with partial time off and no appointments says «Записей нет» / «На этот день записей нет», not «Свободно».
+
 Later:
 
-- days off shown as closed and booking for the picked day (part 3 of M1-14)
+- marking days off and vacations in the app ([M1-15](roadmap.md#m1-15--days-off-and-vacation))
+- partial time off is not drawn yet and free gaps do not subtract it
+- weekly days off are not used: the master works every day
 
 ## Appointment card
 
