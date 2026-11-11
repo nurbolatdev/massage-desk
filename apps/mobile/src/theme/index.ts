@@ -1,4 +1,4 @@
-import type { TextStyle } from "react-native";
+import type { TextStyle, ViewStyle } from "react-native";
 
 // Design tokens. The user is an elderly master: large text, large touch targets, high contrast.
 export const colors = {
@@ -120,3 +120,8 @@ export const size = {
   iconButton: 48,
   progress: 6,
 } as const;
+
+// DESIGN.md section 6: level 1 = mobile card / row. No blur, so it takes no layout space.
+export const depth = {
+  level1: { boxShadow: `0 1px 0 ${colors.line}` },
+} as const satisfies Record<string, ViewStyle>;

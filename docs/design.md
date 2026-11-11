@@ -118,10 +118,12 @@ Minimum: 14 sp on mobile, 12 px in admin. Mobile layouts must work at 130 % syst
 | Level | Use | Value |
 |---|---|---|
 | 0 | Page | flat background |
-| 1 | Mobile card / row | `0 1px 0 #E6DCCB` |
+| 1 | Mobile card / row | `0 1px 0 #E6DCCB` on every white card and row on the page background |
 | 1 | Admin card | `1px solid #E6DCCB` border, no shadow |
 | 2 | Toast | solid `ink` surface, no shadow |
 | 3 | Dialog / bottom sheet | `0 20px 50px rgba(13,34,30,.25)` over scrim `rgba(20,51,46,.5)` |
+
+**Level 1 on mobile:** appointment rows, the appointment card, the day card, summary cards and empty-state cards have the level-1 shadow. Tinted cards (next client, client note, day off), the dashed free-time row, banners, buttons, inputs, chips and calendar day cells do not. The shadow has no blur, so it never changes the layout; Android 8 and older do not draw it and the card stays flat.
 
 | z-index | Layer |
 |---|---|

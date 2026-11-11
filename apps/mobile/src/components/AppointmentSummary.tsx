@@ -1,6 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { StyleSheet, Text, View } from "react-native";
 import { BigButton } from "@/components/BigButton";
+import { Surface } from "@/components/Surface";
 import { callPhone, openWhatsApp } from "@/lib/contact";
 import { WHATSAPP_LABEL, cardDayTitle, initials, timeRange } from "@/lib/data/appointmentCard";
 import { CALL_LABEL } from "@/lib/data/todayState";
@@ -22,7 +23,7 @@ export function AppointmentSummary({ appointment, now, timeZone, online }: Props
   const letters = initials(appointment.clientName);
   const cancelled = appointment.status === "cancelled";
   return (
-    <View style={styles.card}>
+    <Surface style={styles.card}>
       <View style={styles.when}>
         <Text style={styles.date}>{cardDayTitle(appointment.start, now, timeZone)}</Text>
         <Text style={[styles.time, cancelled && styles.struck]}>
@@ -52,17 +53,15 @@ export function AppointmentSummary({ appointment, now, timeZone, online }: Props
           onPress={() => void openWhatsApp(appointment.clientPhone)}
         />
       </View>
-    </View>
+    </Surface>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
     borderRadius: radii[22],
     padding: space[20],
     gap: space[14],
-    boxShadow: `0 1px 0 ${colors.line}`,
   },
   when: { gap: space[2] },
   date: { ...typography.secondary, color: colors.muted },

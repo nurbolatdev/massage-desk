@@ -1,7 +1,8 @@
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { isActiveStatus } from "@massage-desk/shared";
 import { formatTime } from "@/lib/format";
 import { TIME_MIN_WIDTH } from "@/components/rowLayout";
+import { PressableSurface, Surface } from "@/components/Surface";
 import { OPEN_APPOINTMENT_HINT } from "@/lib/data/appointmentCard";
 import { minutesBetween } from "@/lib/data/todaySchedule";
 import { MANUAL_CHIP, serviceLine } from "@/lib/data/todayState";
@@ -37,17 +38,17 @@ export function AppointmentRow({ appointment, timeZone, onPress }: Props) {
     </>
   );
   if (onPress === undefined) {
-    return <View style={styles.row}>{content}</View>;
+    return <Surface style={styles.row}>{content}</Surface>;
   }
   return (
-    <Pressable
-      style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+    <PressableSurface
+      style={styles.row}
       onPress={onPress}
       accessibilityRole="button"
       accessibilityHint={OPEN_APPOINTMENT_HINT}
     >
       {content}
-    </Pressable>
+    </PressableSurface>
   );
 }
 
@@ -60,8 +61,6 @@ const styles = StyleSheet.create({
     paddingVertical: space[12],
     paddingHorizontal: space[14],
     borderRadius: radii[16],
-    backgroundColor: colors.surface,
-    boxShadow: `0 1px 0 ${colors.line}`,
   },
   time: { ...typography.body, fontWeight: "800", color: colors.ink },
   info: { flex: 1, minWidth: 0, gap: space[2] },
@@ -74,6 +73,5 @@ const styles = StyleSheet.create({
     backgroundColor: colors.neutralSoft,
   },
   chipText: { ...typography.label, color: colors.neutralStrong },
-  pressed: { opacity: 0.8 },
   inactive: { color: colors.neutralFg, textDecorationLine: "line-through" },
 });

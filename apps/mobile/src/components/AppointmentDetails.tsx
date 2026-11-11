@@ -1,5 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { StyleSheet, Text, View } from "react-native";
+import { Surface } from "@/components/Surface";
 import type { DetailRow } from "@/lib/data/appointmentCard";
 import { colors, radii, space, typography } from "@/theme";
 
@@ -12,7 +13,7 @@ interface Props {
 
 export function AppointmentDetails({ rows }: Props) {
   return (
-    <View style={styles.card}>
+    <Surface style={styles.card}>
       {rows.map((row, index) => (
         <View key={row.label} style={[styles.row, index < rows.length - 1 && styles.divided]}>
           <Text style={styles.label}>{row.label}</Text>
@@ -24,17 +25,15 @@ export function AppointmentDetails({ rows }: Props) {
           </View>
         </View>
       ))}
-    </View>
+    </Surface>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
     borderRadius: radii[22],
     paddingVertical: space[6],
     paddingHorizontal: space[20],
-    boxShadow: `0 1px 0 ${colors.line}`,
   },
   row: {
     flexDirection: "row",
