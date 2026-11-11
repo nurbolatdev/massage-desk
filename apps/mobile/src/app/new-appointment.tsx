@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { normalizePhone } from "@massage-desk/shared";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useReducer, useRef } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -32,6 +32,7 @@ import {
   submitState,
   timeChoices,
 } from "@/lib/data/newBooking";
+import { rescheduleDay } from "@/lib/data/reschedule";
 import { LOAD_ERROR_TEXT, RETRY_LABEL, serviceLine } from "@/lib/data/todayState";
 import { useDebouncedValue } from "@/lib/data/useDebouncedValue";
 import { formatTime } from "@/lib/format";
@@ -46,8 +47,13 @@ const CLOSE_ICON_SIZE = 26;
 // Loading placeholder for the day and time block: one row of days and one row of times.
 const SKELETON_HEIGHT = DAY_CHIP_HEIGHT + CHIP_GAP + TIME_CHIP_HEIGHT;
 
+function stringParam(value: string | string[] | undefined): string | undefined {
+  return typeof value === "string" ? value : undefined;
+}
+
 export default function NewAppointmentScreen() {
   const router = useRouter();
+  const dayParam = stringParam(useLocalSearchParams().day);
   const now = useNow();
   const online = useOnline();
   const settings = useSettings();
@@ -58,7 +64,8 @@ export default function NewAppointmentScreen() {
 
   const tz = settings.data?.timeZone;
   const today = tz === undefined ? undefined : localDay(now, tz);
-  const day = form.day ?? today ?? null;
+  const choices = today === undefined ? [] : dayChoices(today, BOOKING_DAYS);
+  const day = form.day ?? (today === undefined ? null : rescheduleDay(dayParam ?? today, choices, today));
   const active = services.data ?? [];
   const serviceId = form.serviceId ?? (active.length === 1 ? (active[0]?.id ?? null) : null);
   const service = active.find((s) => s.id === serviceId);
@@ -179,7 +186,7 @@ export default function NewAppointmentScreen() {
         ) : (
           <DayTimePicker
             title={form.collapsed ? TIME_STEP_SHORT : TIME_STEP}
-            days={dayChoices(today, BOOKING_DAYS)}
+            days={choices}
             day={day}
             onDay={(next) => dispatch({ type: "dayPicked", day: next })}
             times={timeChoices(slots.data?.starts ?? [], form.start, form.taken, tz)}

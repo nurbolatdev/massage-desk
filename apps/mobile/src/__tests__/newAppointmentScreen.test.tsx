@@ -6,7 +6,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import NewAppointmentScreen from "@/app/new-appointment";
 import { clearBookingNotice, getBookingNotice } from "@/lib/data/bookingNotice";
-import { localDay } from "@/lib/data/days";
+import { addDays, localDay } from "@/lib/data/days";
 import { CHOOSE_TIME, conflictTitle, takenA11y } from "@/lib/data/newBooking";
 import { NAME_LABEL, NEW_CLIENT_INFO_BOLD, PHONE_STEP } from "@/lib/data/clientPicker";
 import { queryKeys } from "@/lib/data/queryKeys";
@@ -16,9 +16,11 @@ type Call = (path: string, init?: unknown) => Promise<unknown>;
 const mockGet = jest.fn<Call>();
 const mockPost = jest.fn<Call>();
 const mockBack = jest.fn();
+const mockParams = jest.fn<() => Record<string, string>>(() => ({}));
 
 jest.mock("expo-router", () => ({
   useRouter: () => ({ canGoBack: () => true, back: mockBack, replace: jest.fn(), push: jest.fn() }),
+  useLocalSearchParams: () => mockParams(),
 }));
 
 jest.mock("@/lib/api", () => ({
@@ -91,6 +93,8 @@ describe("new appointment screen", () => {
     mockGet.mockReset();
     mockPost.mockReset();
     mockBack.mockReset();
+    mockParams.mockReset();
+    mockParams.mockReturnValue({});
     mockGet.mockImplementation(async (path, init) => {
       if (path === "/clients") return ok([client]);
       if (path === "/services") return ok([service]);
@@ -112,6 +116,52 @@ describe("new appointment screen", () => {
     // Unmount first: observers leaving after clear() would re-arm the 5 minute query gc timers.
     await cleanup();
     queryClient.clear();
+  });
+
+  function renderScreen() {
+    return render(
+      <SafeAreaProvider
+        initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}
+      >
+        <QueryClientProvider client={queryClient}>
+          <NewAppointmentScreen />
+        </QueryClientProvider>
+      </SafeAreaProvider>,
+    );
+  }
+
+  function requestedSlotDays(): string[] {
+    return mockGet.mock.calls
+      .filter(([path]) => path === "/slots")
+      .map(([, init]) => (init as { params: { query: { day: string } } }).params.query.day);
+  }
+
+  it("opens on the day from the calendar", async () => {
+    const target = addDays(day, 2);
+    mockParams.mockReturnValue({ day: target });
+    await renderScreen();
+
+    await waitFor(() => expect(requestedSlotDays()).toContain(target));
+    expect(requestedSlotDays()).not.toContain(day);
+  });
+
+  it.each([
+    ["yesterday", -1],
+    ["beyond the booking days", 10],
+  ])("a day outside the booking days opens today (%s)", async (_name, offset) => {
+    const outside = addDays(day, offset);
+    mockParams.mockReturnValue({ day: outside });
+    await renderScreen();
+
+    await waitFor(() => expect(requestedSlotDays()).toContain(day));
+    expect(requestedSlotDays()).not.toContain(outside);
+  });
+
+  it("an invalid day opens today", async () => {
+    mockParams.mockReturnValue({ day: "2026-13-40" });
+    await renderScreen();
+    await waitFor(() => expect(requestedSlotDays()).toContain(day));
+    expect(requestedSlotDays()).not.toContain("2026-13-40");
   });
 
   it("busy time cannot be chosen", async () => {

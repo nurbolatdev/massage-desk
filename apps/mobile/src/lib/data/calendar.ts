@@ -1,7 +1,8 @@
 import { formatDayMonth, formatDayTitle, formatTime, plural } from "@/lib/format";
 import type { Appointment } from "@/types";
 
-import { dayDate, isoWeekday, localDay } from "./days";
+import { addDays, dayDate, isoWeekday, localDay } from "./days";
+import { BOOKING_DAYS } from "./newBooking";
 import type { TimeOffPeriod } from "./timeOff";
 import { FREE_GAP_MIN_MINUTES, minutesBetween, type TodayRow } from "./todaySchedule";
 
@@ -139,6 +140,16 @@ export function rangeLabel(days: readonly string[]): string {
 /** "Пн" */
 export function weekdayShort(day: string): string {
   return WEEKDAYS_SHORT[isoWeekday(day) - 1] ?? "";
+}
+
+/** The day to book for when it is inside the booking days (today and the next ones), else null. */
+export function bookingDay(selected: string, today: string): string | null {
+  return selected >= today && selected <= addDays(today, BOOKING_DAYS - 1) ? selected : null;
+}
+
+/** "Записать на пн, 2 ноября" */
+export function bookDayLabel(day: string): string {
+  return `Записать на ${weekdayShort(day).toLowerCase()}, ${formatDayMonth(dayDate(day), "UTC")}`;
 }
 
 /** "Понедельник, 2 ноября" */

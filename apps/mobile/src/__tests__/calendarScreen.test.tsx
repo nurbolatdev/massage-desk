@@ -195,6 +195,27 @@ describe("calendar screen", () => {
     expect(screen.queryByText("Свободно весь день")).toBeNull();
   });
 
+  it("books for the picked day", async () => {
+    const user = userEvent.setup();
+    await renderScreen();
+
+    await user.press(await screen.findByRole("button", { name: "Записать на ср, 4 ноября" }));
+
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/new-appointment", params: { day: "2026-11-04" } });
+  });
+
+  it("books without a day for a past day", async () => {
+    const user = userEvent.setup();
+    await renderScreen();
+
+    await screen.findByText("Светлана Петрова");
+    await user.press(screen.getByLabelText("Прошлая неделя"));
+    await screen.findByText("На этот день записей нет");
+    await user.press(screen.getByRole("button", { name: "Записать клиента" }));
+
+    expect(mockPush).toHaveBeenCalledWith("/new-appointment");
+  });
+
   it("shows the load error with a retry button", async () => {
     const { ApiError } = jest.requireActual<typeof import("@/lib/api/errors")>("@/lib/api/errors");
     mockGet.mockImplementation(async (path) => {

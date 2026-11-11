@@ -4,6 +4,8 @@ import type { Appointment } from "@/types";
 
 import {
   appointmentsOfDay,
+  bookDayLabel,
+  bookingDay,
   calendarRows,
   dayCellLabel,
   dayCardLine,
@@ -235,5 +237,21 @@ describe("days off logic", () => {
     expect(daySummary(2, false, true)).toBe("Выходной · 2 записи");
     expect(dayCellLabel("2026-11-08", 0, false, true)).toBe("Воскресенье, 8 ноября, Выходной");
     expect(dayCardTitle("2026-11-08", 0, false, true)).toBe("Вс, 8 ноября · Выходной");
+  });
+});
+
+describe("booking from the calendar day", () => {
+  it("allows today and the last booking day", () => {
+    expect(bookingDay("2026-11-04", "2026-11-04")).toBe("2026-11-04");
+    expect(bookingDay("2026-11-11", "2026-11-04")).toBe("2026-11-11");
+  });
+
+  it("gives no day for the past or beyond the booking days", () => {
+    expect(bookingDay("2026-11-12", "2026-11-04")).toBeNull();
+    expect(bookingDay("2026-11-03", "2026-11-04")).toBeNull();
+  });
+
+  it("labels the button with a lowercase weekday", () => {
+    expect(bookDayLabel("2026-11-02")).toBe("Записать на пн, 2 ноября");
   });
 });

@@ -29,6 +29,8 @@ import {
   VIEW_SWITCH_LABEL,
   WEEK_VIEW_LABEL,
   appointmentsOfDay,
+  bookDayLabel,
+  bookingDay,
   calendarRows,
   dayCardLine,
   dayCardTitle,
@@ -92,6 +94,7 @@ export default function CalendarScreen() {
       ? daysOff(range.timeOff, rangeDays, timeZone)
       : undefined;
   const closedDay = off?.closed.has(selected) ?? false;
+  const bookDay = bookingDay(selected, today);
   const rows = calendarRows(dayList, selected >= today && !closedDay);
 
   const open = (a: Appointment) => {
@@ -203,7 +206,16 @@ export default function CalendarScreen() {
         {closedDay ? (
           <Button label={DAY_OFF_BUTTON} disabled onPress={() => undefined} />
         ) : (
-          <Button label={BOOK_CLIENT_LABEL} icon="plus" disabled={!online} onPress={() => router.push("/new-appointment")} />
+          <Button
+            label={bookDay === null ? BOOK_CLIENT_LABEL : bookDayLabel(bookDay)}
+            icon="plus"
+            disabled={!online}
+            onPress={() =>
+              bookDay === null
+                ? router.push("/new-appointment")
+                : router.push({ pathname: "/new-appointment", params: { day: bookDay } })
+            }
+          />
         )}
       </View>
     </SafeAreaView>
