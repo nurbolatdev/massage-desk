@@ -305,7 +305,7 @@ The master runs the schedule in the app; admin panel basics; event log; deploy a
 
 ### M1-14 · Calendar
 
-Split into four pull requests (about 1200 lines in total).
+Split into four pull requests (about 1200 lines in total) and a follow-up for card depth.
 
 **Part 1**
 
@@ -363,6 +363,19 @@ Split into four pull requests (about 1200 lines in total).
   1. `docs: calendar polish in the roadmap and mobile guide`
   1. `fix(mobile): booking notice expires while the tab is hidden`
   1. `fix(mobile): do not draw an expired booking notice`
+
+**Part 5**
+
+- **Branch:** `feature/mobile-depth-level-1`
+- **Pull request:** `feat(mobile): level 1 depth on every card`
+- **Issue:** #74
+- **Commits:**
+  1. `docs: level 1 depth on every mobile card`
+  1. `feat(mobile): level 1 depth token and surface`
+  1. `refactor(mobile): cards on the shared surface`
+  1. `feat(mobile): level 1 depth on the day card and empty cards`
+  1. `test(mobile): guard level 1 depth in the theme`
+  1. `docs: card depth in the roadmap and mobile guide`
 
 ### M1-15 · Days off and vacation
 

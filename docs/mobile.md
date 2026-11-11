@@ -11,6 +11,8 @@ Expo SDK 58, Expo Router (`apps/mobile/src/app`), installed as an APK via EAS Bu
 
 **UX for an elderly user:** text 18–34, touch targets ≥ 56dp, high contrast, verbs on buttons, confirmation for destructive actions, plain wording. Tokens only from `src/theme`.
 
+**Cards:** white cards and rows use `Surface` or `PressableSurface` (`src/components/Surface.tsx`): the `surface` background with the level-1 depth `depth.level1` from `src/theme` (DESIGN.md section 6). Tinted cards, banners and controls stay flat. `src/__tests__/depthGuard.test.ts` fails if a shadow is written anywhere else.
+
 ## Today
 
 Done: next client in large type with call and WhatsApp buttons; the rest of the day with free time; empty, bot-off, loading, offline and error states; a warning with «Обновить» when a refresh fails; the «Записать клиента» button and the «Записано» notice with «Отменить» after a booking (M1-13).
