@@ -5,7 +5,7 @@ import { shortDayParts } from "./newBooking";
 
 export const BOOK_CLIENT_LABEL = "Записать клиента";
 export const NOTICE_TITLE = "Записано";
-/** How long the «Записано» notice stays on Today. */
+/** How long the «Записано» notice stays on Today and Calendar. */
 export const NOTICE_MS = 15_000;
 
 export type BookingNotice = { appointmentId: string; clientName: string; start: Date };

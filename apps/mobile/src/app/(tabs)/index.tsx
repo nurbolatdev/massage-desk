@@ -1,13 +1,11 @@
-import { useEffect } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { AppointmentRow } from "@/components/AppointmentRow";
-import { BookingNoticeToast } from "@/components/BookingNoticeToast";
+import { BookingNoticeBar } from "@/components/BookingNoticeBar";
 import { BotOffBanner } from "@/components/BotOffBanner";
 import { Button } from "@/components/Button";
 import { EmptyToday } from "@/components/EmptyToday";
-import { ConfirmSheet } from "@/components/ConfirmSheet";
 import { ErrorBanner } from "@/components/ErrorBanner";
 import { FreeTimeRow } from "@/components/FreeTimeRow";
 import { NextClientCard } from "@/components/NextClientCard";
@@ -15,25 +13,11 @@ import { OfflineBanner } from "@/components/OfflineBanner";
 import { RefreshFailedBanner } from "@/components/RefreshFailedBanner";
 import { TodayHeader } from "@/components/TodayHeader";
 import { TodaySkeleton } from "@/components/TodaySkeleton";
-import {
-  CANCEL_CONFIRM_TITLE,
-  CANCEL_CONFIRM_YES,
-  CANCEL_LABEL,
-  appointmentRouteParams,
-  cancelConfirmText,
-} from "@/lib/data/appointmentCard";
-import {
-  BOOK_CLIENT_LABEL,
-  NOTICE_MS,
-  NOTICE_TITLE,
-  clearBookingNotice,
-  noticeText,
-  useBookingNotice,
-} from "@/lib/data/bookingNotice";
-import { useAppointmentAction, useTodayAppointments, useTomorrowAppointments } from "@/lib/data/hooks";
+import { appointmentRouteParams } from "@/lib/data/appointmentCard";
+import { BOOK_CLIENT_LABEL, clearBookingNotice } from "@/lib/data/bookingNotice";
+import { useTodayAppointments, useTomorrowAppointments } from "@/lib/data/hooks";
 import { todaySchedule, tomorrowSummary } from "@/lib/data/todaySchedule";
 import { EMPTY_TITLE, FINISHED_TITLE, RETRY_LABEL, moreClientsTitle, todayState } from "@/lib/data/todayState";
-import { useDestructiveFlow } from "@/lib/data/useDestructiveFlow";
 import { useOnline } from "@/lib/query/online";
 import { formatTime } from "@/lib/format";
 import { useNow } from "@/lib/time/useNow";
@@ -54,22 +38,6 @@ export default function TodayScreen() {
     timeZone !== undefined && today.dataUpdatedAt > 0
       ? formatTime(new Date(today.dataUpdatedAt), timeZone)
       : null;
-
-  const notice = useBookingNotice();
-  const mutation = useAppointmentAction();
-  const flow = useDestructiveFlow(async (kind) => {
-    if (notice === null) return;
-    await mutation.mutateAsync({ id: notice.appointmentId, action: kind });
-    clearBookingNotice();
-  });
-  const asking = flow.state.asking;
-
-  // The notice hides by itself, but never while the cancel sheet is open.
-  useEffect(() => {
-    if (notice === null || asking !== null) return;
-    const timer = setTimeout(clearBookingNotice, NOTICE_MS);
-    return () => clearTimeout(timer);
-  }, [notice, asking]);
 
   const bookClient = () => {
     clearBookingNotice();
@@ -138,31 +106,9 @@ export default function TodayScreen() {
         )}
       </ScrollView>
       <View style={styles.footer}>
-        {notice !== null && timeZone !== undefined && (
-          <BookingNoticeToast
-            title={NOTICE_TITLE}
-            text={noticeText(notice, timeZone)}
-            actionLabel={CANCEL_LABEL}
-            onAction={() => flow.ask("cancel")}
-            actionDisabled={!online}
-          />
-        )}
+        <BookingNoticeBar timeZone={timeZone} online={online} />
         <Button label={BOOK_CLIENT_LABEL} icon="plus" disabled={!online} onPress={bookClient} />
       </View>
-      {notice !== null && timeZone !== undefined && (
-        <ConfirmSheet
-          visible={asking !== null}
-          title={CANCEL_CONFIRM_TITLE}
-          text={cancelConfirmText(notice.start, timeZone)}
-          confirmLabel={CANCEL_CONFIRM_YES}
-          confirmVariant="danger"
-          confirmDisabled={!online}
-          onConfirm={() => void flow.confirm()}
-          onCancel={flow.dismiss}
-          busy={flow.state.busy}
-          error={flow.state.error ?? undefined}
-        />
-      )}
     </SafeAreaView>
   );
 }

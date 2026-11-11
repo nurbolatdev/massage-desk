@@ -1,16 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { onlineManager, QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, userEvent, waitFor } from "@testing-library/react-native";
+import { cleanup, render, screen, userEvent, waitFor } from "@testing-library/react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import TodayScreen from "@/app/(tabs)/index";
+import { clearBookingNotice, getBookingNotice, noticeText, showBookingNotice } from "@/lib/data/bookingNotice";
 
 type Call = (path: string, init?: unknown) => Promise<unknown>;
 
 const mockGet = jest.fn<Call>();
+const mockPush = jest.fn();
+let mockFocused = true;
 
 jest.mock("expo-router", () => ({
-  useRouter: () => ({ canGoBack: () => true, back: jest.fn(), replace: jest.fn(), push: jest.fn() }),
+  useRouter: () => ({ canGoBack: () => true, back: jest.fn(), replace: jest.fn(), push: mockPush }),
+  useIsFocused: () => mockFocused,
 }));
 
 jest.mock("@/lib/time/useNow", () => ({
@@ -22,6 +26,10 @@ jest.mock("@/lib/api", () => ({
   unwrap: jest.requireActual<typeof import("@/lib/api/client")>("@/lib/api/client").unwrap,
   ApiError: jest.requireActual<typeof import("@/lib/api/errors")>("@/lib/api/errors").ApiError,
 }));
+
+function ok(data: unknown) {
+  return { data, response: new Response(null, { status: 200 }) };
+}
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false, gcTime: Infinity }, mutations: { retry: false, gcTime: Infinity } },
@@ -43,9 +51,13 @@ describe("today screen", () => {
   beforeEach(() => {
     onlineManager.setOnline(true);
     mockGet.mockReset();
+    mockPush.mockReset();
+    mockFocused = true;
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    await cleanup();
+    clearBookingNotice();
     queryClient.clear();
   });
 
@@ -62,5 +74,46 @@ describe("today screen", () => {
 
     await waitFor(() => expect(mockGet.mock.calls.filter(([path]) => path === "/settings")).toHaveLength(2));
     expect(mockGet.mock.calls.filter(([path]) => path === "/appointments")).toHaveLength(0);
+  });
+
+  describe("booking notice", () => {
+    const notice = { appointmentId: "n1", clientName: "Айгуль Сапарова", start: new Date("2026-11-05T15:00:00+05:00") };
+
+    beforeEach(() => {
+      mockGet.mockImplementation(async (path) => {
+        if (path === "/settings") return ok({ timeZone: "Asia/Tashkent", botEnabled: true, address: null });
+        if (path === "/appointments") return ok([]);
+        throw new Error(`unexpected GET ${path}`);
+      });
+    });
+
+    it("shows the notice with an enabled cancel button", async () => {
+      showBookingNotice(notice);
+      await renderScreen();
+
+      expect(await screen.findByText("Записано")).toBeOnTheScreen();
+      expect(screen.getByText(noticeText(notice, "Asia/Tashkent"))).toBeOnTheScreen();
+      expect(screen.getByRole("button", { name: "Отменить" })).toBeEnabled();
+    });
+
+    it("shows nothing while the tab is not focused", async () => {
+      mockFocused = false;
+      showBookingNotice(notice);
+      await renderScreen();
+
+      await waitFor(() => expect(mockGet).toHaveBeenCalled());
+      expect(screen.queryByText("Записано")).toBeNull();
+    });
+
+    it("clears the notice when booking a client", async () => {
+      const user = userEvent.setup();
+      showBookingNotice(notice);
+      await renderScreen();
+
+      await user.press(await screen.findByText("Записать клиента"));
+
+      expect(getBookingNotice()).toBeNull();
+      expect(mockPush).toHaveBeenCalledWith("/new-appointment");
+    });
   });
 });
