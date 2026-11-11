@@ -12,13 +12,14 @@ interface Props {
   counts: Record<string, number> | undefined;
   /** Days fully covered by time off; undefined while loading. */
   closed: ReadonlySet<string> | undefined;
+  partial?: ReadonlySet<string>;
   onPick: (day: string) => void;
 }
 
 // from the Calendar mockup
 const CELL_MIN_HEIGHT = 64;
 
-export function WeekStrip({ days, selected, today, counts, closed, onPick }: Props) {
+export function WeekStrip({ days, selected, today, counts, closed, partial, onPick }: Props) {
   return (
     <View style={styles.row}>
       {days.map((day) => {
@@ -30,7 +31,7 @@ export function WeekStrip({ days, selected, today, counts, closed, onPick }: Pro
             key={day}
             accessibilityRole="button"
             accessibilityState={{ selected: isSelected }}
-            accessibilityLabel={dayCellLabel(day, count, day < today, closed?.has(day) ?? false)}
+            accessibilityLabel={dayCellLabel(day, count, day < today, closed?.has(day) ?? false, partial?.has(day) ?? false)}
             hitSlop={{ left: space[2], right: space[2] }}
             onPress={() => onPick(day)}
             style={[styles.cell, isSelected && styles.cellSelected, isClosed && styles.cellClosed]}

@@ -37,6 +37,7 @@ export const EMPTY_DAY_TEXT = "На этот день записей нет";
 export const DAY_OFF_SUMMARY = "Выходной";
 export const DAY_OFF_TEXT = "Выходной день — бот не предлагает это время";
 export const DAY_OFF_BUTTON = "Выходной — запись закрыта";
+export const PARTIAL_DAY_SUMMARY = "Записей нет";
 export const FREE_ALL_DAY_TEXT = "Свободно весь день";
 export const DAY_OFF_LEGEND_TEXT = "выходной";
 
@@ -157,14 +158,14 @@ export function dayTitle(day: string): string {
   return formatDayTitle(dayDate(day), "UTC");
 }
 
-/** "5 записей"; "Свободно" for an empty today/future day, "Записей нет" for a past one. */
-export function daySummary(count: number, past: boolean, off = false): string {
+/** "5 записей"; "Свободно" for an empty today/future day, "Записей нет" for a past one or one with partial time off. */
+export function daySummary(count: number, past: boolean, off = false, partial = false): string {
   if (off) {
     return count === 0
       ? DAY_OFF_SUMMARY
       : `${DAY_OFF_SUMMARY} · ${count} ${plural(count, "запись", "записи", "записей")}`;
   }
-  if (count === 0) return past ? "Записей нет" : "Свободно";
+  if (count === 0) return past || partial ? PARTIAL_DAY_SUMMARY : "Свободно";
   return `${count} ${plural(count, "запись", "записи", "записей")}`;
 }
 
@@ -174,9 +175,10 @@ export function dayCellLabel(
   count: number | undefined,
   past: boolean,
   off = false,
+  partial = false,
 ): string {
   if (count === undefined) return dayTitle(day);
-  return `${dayTitle(day)}, ${daySummary(count, past, off)}`;
+  return `${dayTitle(day)}, ${daySummary(count, past, off, partial)}`;
 }
 
 /** Day card title: "Пн, 2 ноября · 5 записей"; only "Пн, 2 ноября" while the count is unknown. */
@@ -185,9 +187,10 @@ export function dayCardTitle(
   count: number | undefined,
   past: boolean,
   off = false,
+  partial = false,
 ): string {
   const title = `${weekdayShort(day)}, ${formatDayMonth(dayDate(day), "UTC")}`;
-  return count === undefined ? title : `${title} · ${daySummary(count, past, off)}`;
+  return count === undefined ? title : `${title} · ${daySummary(count, past, off, partial)}`;
 }
 
 /** "Первая в 10:00, свободно 13:00–14:30"; the free part only when a free row exists; null for an empty day. */

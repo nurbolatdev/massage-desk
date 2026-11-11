@@ -236,6 +236,10 @@ describe("days off logic", () => {
     expect(daySummary(0, false, true)).toBe("Выходной");
     expect(daySummary(2, false, true)).toBe("Выходной · 2 записи");
     expect(dayCellLabel("2026-11-08", 0, false, true)).toBe("Воскресенье, 8 ноября, Выходной");
+    expect(daySummary(0, false, false, true)).toBe("Записей нет");
+    expect(daySummary(2, false, false, true)).toBe("2 записи");
+    expect(dayCellLabel("2026-11-05", 0, false, false, true)).toBe("Четверг, 5 ноября, Записей нет");
+    expect(dayCardTitle("2026-11-05", 0, false, false, true)).toBe("Чт, 5 ноября · Записей нет");
     expect(dayCardTitle("2026-11-08", 0, false, true)).toBe("Вс, 8 ноября · Выходной");
   });
 });

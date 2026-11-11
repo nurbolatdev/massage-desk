@@ -403,9 +403,11 @@ describe("calendar screen", () => {
 
       await screen.findByLabelText("Воскресенье, 8 ноября, Выходной");
       expect(screen.queryByLabelText(/Четверг, 5 ноября, Выходной/)).toBeNull();
-      await user.press(screen.getByLabelText(/Четверг, 5 ноября/));
+      expect(screen.queryByLabelText("Четверг, 5 ноября, Свободно")).toBeNull();
+      await user.press(screen.getByLabelText("Четверг, 5 ноября, Записей нет"));
 
       expect(await screen.findByText("На этот день записей нет")).toBeTruthy();
+      expect(screen.queryByText("Свободно")).toBeNull();
       expect(screen.queryByText("Свободно весь день")).toBeNull();
     });
 
@@ -418,6 +420,56 @@ describe("calendar screen", () => {
 
       expect(await screen.findByText("Свободно весь день")).toBeTruthy();
       expect(screen.getByRole("button", { name: "Записать на пт, 6 ноября" })).toBeTruthy();
+    });
+
+    it("days off are shown as closed with appointments in the week", async () => {
+      const user = userEvent.setup();
+      const base = mockGet.getMockImplementation();
+      mockGet.mockImplementation(async (path, init) => {
+        if (path === "/appointments") {
+          return ok([
+            item("o1", "Ольга Ким", "2026-11-08T10:00:00+05:00", "2026-11-08T11:00:00+05:00"),
+            item("o2", "Тимур Ахмедов", "2026-11-08T14:00:00+05:00", "2026-11-08T15:00:00+05:00"),
+          ]);
+        }
+        return base ? base(path, init) : undefined;
+      });
+      await renderScreen();
+
+      await user.press(await screen.findByLabelText("Воскресенье, 8 ноября, Выходной · 2 записи"));
+
+      expect(await screen.findByText("Выходной день — бот не предлагает это время")).toBeTruthy();
+      expect(screen.getByText("Ольга Ким")).toBeTruthy();
+      expect(screen.getByText("Тимур Ахмедов")).toBeTruthy();
+      expect(screen.getAllByText("Выходной · 2 записи").length).toBeGreaterThan(0);
+      expect(screen.queryByText(/Свободно до/)).toBeNull();
+      const button = screen.getByRole("button", { name: "Выходной — запись закрыта" });
+      expect(button.props.accessibilityState).toMatchObject({ disabled: true });
+      await user.press(button);
+      expect(mockPush).not.toHaveBeenCalled();
+    });
+
+    it("days off are shown as closed without free hours in the month card", async () => {
+      const user = userEvent.setup();
+      const base = mockGet.getMockImplementation();
+      mockGet.mockImplementation(async (path, init) => {
+        if (path === "/appointments") {
+          return ok([
+            item("o1", "Ольга Ким", "2026-11-08T10:00:00+05:00", "2026-11-08T11:00:00+05:00"),
+            item("o2", "Тимур Ахмедов", "2026-11-08T14:00:00+05:00", "2026-11-08T15:00:00+05:00"),
+          ]);
+        }
+        return base ? base(path, init) : undefined;
+      });
+      await renderScreen();
+
+      await screen.findByLabelText("Воскресенье, 8 ноября, Выходной · 2 записи");
+      await user.press(screen.getByText("Месяц"));
+      await user.press(await screen.findByLabelText("Воскресенье, 8 ноября, Выходной · 2 записи"));
+
+      expect(await screen.findByText("Вс, 8 ноября · Выходной · 2 записи")).toBeTruthy();
+      expect(screen.getByText("Первая в 10:00")).toBeTruthy();
+      expect(screen.queryByText(/свободно/)).toBeNull();
     });
 
     it("days off are shown as closed in the month", async () => {

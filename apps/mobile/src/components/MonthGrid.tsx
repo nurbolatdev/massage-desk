@@ -19,6 +19,7 @@ interface Props {
   counts: Record<string, number> | undefined;
   /** Days fully covered by time off; undefined while loading. */
   closed: ReadonlySet<string> | undefined;
+  partial?: ReadonlySet<string>;
   onPick: (day: string) => void;
 }
 
@@ -32,7 +33,7 @@ function chunk<T>(items: readonly T[], size: number): T[][] {
   return rows;
 }
 
-export function MonthGrid({ cells, selected, today, counts, closed, onPick }: Props) {
+export function MonthGrid({ cells, selected, today, counts, closed, partial, onPick }: Props) {
   const hasClosed = cells.some((day) => day !== null && (closed?.has(day) ?? false));
   return (
     <View style={styles.root}>
@@ -59,7 +60,7 @@ export function MonthGrid({ cells, selected, today, counts, closed, onPick }: Pr
                 key={day}
                 accessibilityRole="button"
                 accessibilityState={{ selected: isSelected }}
-                accessibilityLabel={dayCellLabel(day, count, day < today, closed?.has(day) ?? false)}
+                accessibilityLabel={dayCellLabel(day, count, day < today, closed?.has(day) ?? false, partial?.has(day) ?? false)}
                 hitSlop={{ left: space[2], right: space[2] }}
                 onPress={() => onPick(day)}
                 style={[styles.cell, isSelected && styles.cellSelected, isClosed && styles.cellClosed]}

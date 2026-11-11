@@ -95,7 +95,9 @@ export default function CalendarScreen() {
       : undefined;
   const closedDay = off?.closed.has(selected) ?? false;
   const bookDay = bookingDay(selected, today);
-  const rows = calendarRows(dayList, selected >= today && !closedDay);
+  const partialDay = off?.partial.has(selected) ?? false;
+  const withFree = selected >= today && !closedDay;
+  const rows = calendarRows(dayList, withFree);
 
   const open = (a: Appointment) => {
     if (timeZone === undefined) return;
@@ -126,7 +128,7 @@ export default function CalendarScreen() {
       )}
       {state.view === "list" &&
         (rows.length === 0 ? (
-          closedDay ? null : off !== undefined && selected >= today && !off.partial.has(selected) ? (
+          closedDay ? null : off !== undefined && selected >= today && !partialDay ? (
             <FreeDayRow />
           ) : (
             <View style={styles.emptyCard}>
@@ -165,7 +167,7 @@ export default function CalendarScreen() {
         nextLabel={week ? NEXT_WEEK_LABEL : NEXT_MONTH_LABEL}
         right={<SegmentedControl options={VIEW_OPTIONS} value={mode} onChange={setMode} accessibilityLabel={VIEW_SWITCH_LABEL} />}
       >
-        {week && <WeekStrip days={rangeDays} selected={selected} today={today} counts={counts} closed={off?.closed} onPick={setPicked} />}
+        {week && <WeekStrip days={rangeDays} selected={selected} today={today} counts={counts} closed={off?.closed} partial={off?.partial} onPick={setPicked} />}
       </CalendarHeader>
       <ScrollView contentContainerStyle={week ? styles.content : styles.monthContent}>
         {week ? (
@@ -175,7 +177,7 @@ export default function CalendarScreen() {
                 {dayTitle(selected)}
               </Text>
               {state.view === "list" && (
-                <Text style={styles.summary}>{daySummary(dayList.length, selected < today, closedDay)}</Text>
+                <Text style={styles.summary}>{daySummary(dayList.length, selected < today, closedDay, partialDay)}</Text>
               )}
             </View>
             {notices}
@@ -190,11 +192,12 @@ export default function CalendarScreen() {
               today={today}
               counts={counts}
               closed={off?.closed}
+              partial={off?.partial}
               onPick={setPicked}
             />
             <DayCard
-              title={dayCardTitle(selected, hasData ? dayList.length : undefined, selected < today, closedDay)}
-              line={hasData && timeZone !== undefined ? dayCardLine(dayList, selected >= today, timeZone) : null}
+              title={dayCardTitle(selected, hasData ? dayList.length : undefined, selected < today, closedDay, partialDay)}
+              line={hasData && timeZone !== undefined ? dayCardLine(dayList, withFree, timeZone) : null}
               onPress={() => setMode("week")}
               accessibilityHint={OPEN_WEEK_HINT}
             />
