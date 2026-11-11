@@ -362,4 +362,93 @@ describe("calendar screen", () => {
     expect(await screen.findByText("Не получилось загрузить расписание. Попробуйте ещё раз.")).toBeTruthy();
     expect(screen.getByText("Обновить")).toBeTruthy();
   });
+
+  describe("days off are shown as closed", () => {
+    const timeOff: Schemas["TimeOffResponse"][] = [
+      { id: "t1", start: "2026-11-08T00:00:00+05:00", end: "2026-11-09T00:00:00+05:00", reason: null },
+      { id: "t2", start: "2026-11-05T14:00:00+05:00", end: "2026-11-05T18:00:00+05:00", reason: null },
+    ];
+
+    function timeOffCalls() {
+      return mockGet.mock.calls.filter(([path]) => path === "/time-off").map(([, init]) => init);
+    }
+
+    beforeEach(() => {
+      const base = mockGet.getMockImplementation();
+      mockGet.mockImplementation(async (path, init) => {
+        if (path === "/time-off") return ok(timeOff);
+        return base ? base(path, init) : undefined;
+      });
+    });
+
+    it("days off are shown as closed in the week", async () => {
+      const user = userEvent.setup();
+      await renderScreen();
+
+      await user.press(await screen.findByLabelText("Воскресенье, 8 ноября, Выходной"));
+
+      expect(await screen.findByText("Выходной день — бот не предлагает это время")).toBeTruthy();
+      expect(screen.getByText("Выходной")).toBeTruthy();
+      expect(screen.queryByText("Свободно весь день")).toBeNull();
+      const button = screen.getByRole("button", { name: "Выходной — запись закрыта" });
+      expect(button.props.accessibilityState).toMatchObject({ disabled: true });
+      await user.press(button);
+      expect(mockPush).not.toHaveBeenCalled();
+      expect(timeOffCalls()).toContainEqual({ params: { query: { from: "2026-11-02", to: "2026-11-08" } } });
+    });
+
+    it("days off are shown as closed only for a whole day", async () => {
+      const user = userEvent.setup();
+      await renderScreen();
+
+      await screen.findByLabelText("Воскресенье, 8 ноября, Выходной");
+      expect(screen.queryByLabelText(/Четверг, 5 ноября, Выходной/)).toBeNull();
+      await user.press(screen.getByLabelText(/Четверг, 5 ноября/));
+
+      expect(await screen.findByText("На этот день записей нет")).toBeTruthy();
+      expect(screen.queryByText("Свободно весь день")).toBeNull();
+    });
+
+    it("days off are shown as closed next to a free day", async () => {
+      const user = userEvent.setup();
+      await renderScreen();
+
+      await screen.findByLabelText("Воскресенье, 8 ноября, Выходной");
+      await user.press(screen.getByLabelText(/Пятница, 6 ноября/));
+
+      expect(await screen.findByText("Свободно весь день")).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Записать на пт, 6 ноября" })).toBeTruthy();
+    });
+
+    it("days off are shown as closed in the month", async () => {
+      const user = userEvent.setup();
+      await renderScreen();
+
+      await screen.findByText("Светлана Петрова");
+      await user.press(screen.getByText("Месяц"));
+
+      expect(await screen.findByLabelText("Воскресенье, 8 ноября, Выходной")).toBeTruthy();
+      expect(screen.getByText("выходной")).toBeTruthy();
+      expect(timeOffCalls()).toContainEqual({ params: { query: { from: "2026-11-01", to: "2026-11-30" } } });
+
+      await user.press(screen.getByLabelText("Следующий месяц"));
+
+      expect(await screen.findByText("1–31 декабря")).toBeTruthy();
+      expect(screen.queryByText("выходной")).toBeNull();
+    });
+
+    it("days off are shown as closed only when time off loads", async () => {
+      const { ApiError } = jest.requireActual<typeof import("@/lib/api/errors")>("@/lib/api/errors");
+      mockGet.mockImplementation(async (path) => {
+        if (path === "/settings") return ok(settings);
+        if (path === "/appointments") return ok(week);
+        throw new ApiError("server", { status: 500 });
+      });
+      await renderScreen();
+
+      expect(await screen.findByText("Не получилось загрузить расписание. Попробуйте ещё раз.")).toBeTruthy();
+      expect(screen.getByText("Обновить")).toBeTruthy();
+      expect(screen.queryByText("Светлана Петрова")).toBeNull();
+    });
+  });
 });
