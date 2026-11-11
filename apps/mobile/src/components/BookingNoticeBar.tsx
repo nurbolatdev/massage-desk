@@ -9,10 +9,11 @@ import {
   cancelConfirmText,
 } from "@/lib/data/appointmentCard";
 import {
-  NOTICE_MS,
+  bookingNoticeMsLeft,
   NOTICE_TITLE,
   clearBookingNotice,
   noticeText,
+  renewBookingNotice,
   useBookingNotice,
 } from "@/lib/data/bookingNotice";
 import { useAppointmentAction } from "@/lib/data/hooks";
@@ -38,7 +39,7 @@ export function BookingNoticeBar({ timeZone, online }: Props) {
   // The notice hides by itself, but never while the cancel sheet is open.
   useEffect(() => {
     if (!focused || notice === null || asking !== null) return;
-    const timer = setTimeout(clearBookingNotice, NOTICE_MS);
+    const timer = setTimeout(clearBookingNotice, bookingNoticeMsLeft());
     return () => clearTimeout(timer);
   }, [focused, notice, asking]);
 
@@ -61,7 +62,10 @@ export function BookingNoticeBar({ timeZone, online }: Props) {
         confirmVariant="danger"
         confirmDisabled={!online}
         onConfirm={() => void flow.confirm()}
-        onCancel={flow.dismiss}
+        onCancel={() => {
+          flow.dismiss();
+          renewBookingNotice();
+        }}
         busy={flow.state.busy}
         error={flow.state.error ?? undefined}
       />
