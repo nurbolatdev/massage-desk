@@ -28,6 +28,8 @@ Done (part 2 of M1-14): the «Неделя / Месяц» switch; the month grid
 
 Done (part 3 of M1-14): a day fully covered by time off is grey and signed «Выходной» in the week and the month, shows the «Выходной день — бот не предлагает это время» card and a disabled «Выходной — запись закрыта» button. An empty today or future day without time off says «Свободно весь день». The button books for the picked day when it is within the 8 booking days («Записать на пн, 2 ноября», opens `/new-appointment?day=YYYY-MM-DD`); otherwise it opens a new appointment on today. A today or future day with partial time off and no appointments says «Записей нет» / «На этот день записей нет», not «Свободно».
 
+Done (part 4 of M1-14): after a booking made from the calendar the «Записано» notice with «Отменить» is shown there, as on Today (only on the tab that is open). Coming back to the Calendar tab from another tab opens today; returning from an appointment card keeps the picked day, and the week or month view is kept. The loading skeleton shows only the rows.
+
 Later:
 
 - marking days off and vacations in the app ([M1-15](roadmap.md#m1-15--days-off-and-vacation))

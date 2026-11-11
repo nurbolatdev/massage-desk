@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useNavigation, useRouter } from "expo-router";
 import { AppointmentRow } from "@/components/AppointmentRow";
+import { BookingNoticeBar } from "@/components/BookingNoticeBar";
 import { Button } from "@/components/Button";
 import { CalendarHeader } from "@/components/CalendarHeader";
 import { CalendarSkeleton } from "@/components/CalendarSkeleton";
@@ -15,7 +16,7 @@ import { RefreshFailedBanner } from "@/components/RefreshFailedBanner";
 import { SegmentedControl } from "@/components/SegmentedControl";
 import { WeekStrip } from "@/components/WeekStrip";
 import { appointmentRouteParams } from "@/lib/data/appointmentCard";
-import { BOOK_CLIENT_LABEL } from "@/lib/data/bookingNotice";
+import { BOOK_CLIENT_LABEL, clearBookingNotice } from "@/lib/data/bookingNotice";
 import {
   DAY_OFF_BUTTON,
   DAY_OFF_TEXT,
@@ -51,6 +52,7 @@ import { colors, radii, space, typography } from "@/theme";
 import type { Appointment } from "@/types";
 
 const WEEK = 7;
+const CALENDAR_ROUTE = "calendar"; // the file name in (tabs)
 
 type Mode = "week" | "month";
 
@@ -61,10 +63,22 @@ const VIEW_OPTIONS: readonly { value: Mode; label: string }[] = [
 
 export default function CalendarScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
   const now = useNow();
   const online = useOnline();
   const [picked, setPicked] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>("week");
+
+  useFocusEffect(
+    useCallback(
+      () => () => {
+        // Back from another tab the calendar opens on today; a card opened on top keeps the day.
+        const tabs = navigation.getState();
+        if (tabs?.routes[tabs.index]?.name !== CALENDAR_ROUTE) setPicked(null);
+      },
+      [navigation],
+    ),
+  );
 
   // The zone is unknown until the settings load; the week then comes from the UTC date.
   const settingsZone = useSettings().data?.timeZone;
@@ -102,6 +116,12 @@ export default function CalendarScreen() {
   const open = (a: Appointment) => {
     if (timeZone === undefined) return;
     router.push({ pathname: "/appointment/[id]", params: appointmentRouteParams(a, timeZone) });
+  };
+
+  const book = () => {
+    clearBookingNotice();
+    if (bookDay === null) router.push("/new-appointment");
+    else router.push({ pathname: "/new-appointment", params: { day: bookDay } });
   };
 
   const notices = (
@@ -206,6 +226,7 @@ export default function CalendarScreen() {
         )}
       </ScrollView>
       <View style={styles.footer}>
+        <BookingNoticeBar timeZone={timeZone} online={online} />
         {closedDay ? (
           <Button label={DAY_OFF_BUTTON} disabled onPress={() => undefined} />
         ) : (
@@ -213,11 +234,7 @@ export default function CalendarScreen() {
             label={bookDay === null ? BOOK_CLIENT_LABEL : bookDayLabel(bookDay)}
             icon="plus"
             disabled={!online}
-            onPress={() =>
-              bookDay === null
-                ? router.push("/new-appointment")
-                : router.push({ pathname: "/new-appointment", params: { day: bookDay } })
-            }
+            onPress={book}
           />
         )}
       </View>
@@ -246,5 +263,5 @@ const styles = StyleSheet.create({
   offCard: { backgroundColor: colors.neutralSoft, borderRadius: radii[18], paddingVertical: space[28], paddingHorizontal: space[20], alignItems: "center" },
   offText: { ...typography.body, fontWeight: "600", color: colors.neutralStrong, textAlign: "center" },
   emptyText: { ...typography.body, color: colors.muted, textAlign: "center" },
-  footer: { paddingVertical: space[10], paddingHorizontal: space[16] },
+  footer: { paddingVertical: space[10], paddingHorizontal: space[16], gap: space[10] },
 });

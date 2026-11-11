@@ -305,7 +305,7 @@ The master runs the schedule in the app; admin panel basics; event log; deploy a
 
 ### M1-14 · Calendar
 
-Split into three pull requests (about 1000 lines in total).
+Split into four pull requests (about 1200 lines in total).
 
 **Part 1**
 
@@ -346,6 +346,23 @@ Split into three pull requests (about 1000 lines in total).
   1. `test(mobile): days off are shown as closed`
   1. `docs: days off in the roadmap and mobile guide`
   1. `fix(mobile): calendar days off review fixes`
+  1. `refactor(mobile): calendar days off polish`
+
+**Part 4**
+
+- **Branch:** `feature/mobile-calendar-polish`
+- **Pull request:** `feat(mobile): calendar polish`
+- **Issue:** #71
+- **Commits:**
+  1. `fix(mobile): calendar skeleton without the heading bar`
+  1. `test(mobile): unmount the calendar before going back online`
+  1. `test(mobile): appointment refetch never asks without dates`
+  1. `refactor(mobile): booking notice bar for the tab screens`
+  1. `feat(mobile): booking notice on the calendar`
+  1. `feat(mobile): calendar opens on today after another tab`
+  1. `docs: calendar polish in the roadmap and mobile guide`
+  1. `fix(mobile): booking notice expires while the tab is hidden`
+  1. `fix(mobile): do not draw an expired booking notice`
 
 ### M1-15 · Days off and vacation
 

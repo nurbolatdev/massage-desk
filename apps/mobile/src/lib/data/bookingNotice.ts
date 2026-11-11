@@ -5,7 +5,7 @@ import { shortDayParts } from "./newBooking";
 
 export const BOOK_CLIENT_LABEL = "Записать клиента";
 export const NOTICE_TITLE = "Записано";
-/** How long the «Записано» notice stays on Today. */
+/** How long the «Записано» notice stays on Today and Calendar. */
 export const NOTICE_MS = 15_000;
 
 export type BookingNotice = { appointmentId: string; clientName: string; start: Date };
@@ -25,6 +25,7 @@ export function noticeText(notice: BookingNotice, timeZone: string): string {
 }
 
 let current: BookingNotice | null = null;
+let expiresAt = 0;
 const listeners = new Set<() => void>();
 
 function emit(): void {
@@ -33,6 +34,7 @@ function emit(): void {
 
 export function showBookingNotice(notice: BookingNotice): void {
   current = notice;
+  expiresAt = Date.now() + NOTICE_MS;
   emit();
 }
 
@@ -40,6 +42,16 @@ export function clearBookingNotice(): void {
   if (current === null) return;
   current = null;
   emit();
+}
+
+/** Gives the notice a fresh lifetime (after the cancel sheet is closed). */
+export function renewBookingNotice(): void {
+  expiresAt = Date.now() + NOTICE_MS;
+}
+
+/** Milliseconds the notice has left; the clock runs even while its tab is hidden. */
+export function bookingNoticeMsLeft(): number {
+  return Math.max(0, expiresAt - Date.now());
 }
 
 export function getBookingNotice(): BookingNotice | null {
