@@ -44,6 +44,8 @@ export function BookingNoticeBar({ timeZone, online }: Props) {
   }, [focused, notice, asking]);
 
   if (!focused || notice === null || timeZone === undefined) return null;
+  // An expired notice is not drawn while the effect clears it.
+  if (asking === null && bookingNoticeMsLeft() === 0) return null;
 
   return (
     <>

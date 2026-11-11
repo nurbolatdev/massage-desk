@@ -361,6 +361,8 @@ Split into four pull requests (about 1200 lines in total).
   1. `feat(mobile): booking notice on the calendar`
   1. `feat(mobile): calendar opens on today after another tab`
   1. `docs: calendar polish in the roadmap and mobile guide`
+  1. `fix(mobile): booking notice expires while the tab is hidden`
+  1. `fix(mobile): do not draw an expired booking notice`
 
 ### M1-15 · Days off and vacation
 

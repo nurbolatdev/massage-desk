@@ -127,6 +127,7 @@ describe("today screen", () => {
             </SafeAreaProvider>,
           );
         });
+        expect(screen.queryByText("Записано")).toBeNull();
         await act(async () => {
           await new Promise((resolve) => setTimeout(resolve, 20));
         });
