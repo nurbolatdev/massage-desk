@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text } from "react-native";
 import { Surface } from "@/components/Surface";
 import { NOW_LABEL, clientServiceLine, currentLine } from "@/lib/data/reschedule";
 import { colors, radii, space, typography } from "@/theme";

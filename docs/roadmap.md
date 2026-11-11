@@ -376,6 +376,8 @@ Split into four pull requests (about 1200 lines in total) and a follow-up for ca
   1. `feat(mobile): level 1 depth on the day card and empty cards`
   1. `test(mobile): guard level 1 depth in the theme`
   1. `docs: card depth in the roadmap and mobile guide`
+  1. `test(mobile): stricter depth guard`
+  1. `fix(mobile): depth guard ignores comments`
 
 ### M1-15 · Days off and vacation
 
