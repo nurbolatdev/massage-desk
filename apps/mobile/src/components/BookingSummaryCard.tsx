@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { Surface } from "@/components/Surface";
 import { CHANGE_LABEL } from "@/lib/data/newBooking";
 import { colors, radii, size, space, typography } from "@/theme";
 
@@ -12,7 +13,7 @@ type Props = {
 /** Steps 1 and 2 folded into one card (BookingConflict mockup). */
 export function BookingSummaryCard({ clientLabel, serviceLine, onChange }: Props) {
   return (
-    <View style={styles.card}>
+    <Surface style={styles.card}>
       <View style={styles.texts}>
         <Text style={styles.name}>{clientLabel}</Text>
         <Text style={styles.service}>{serviceLine}</Text>
@@ -20,7 +21,7 @@ export function BookingSummaryCard({ clientLabel, serviceLine, onChange }: Props
       <Pressable accessibilityRole="button" onPress={onChange} style={styles.change}>
         <Text style={styles.changeText}>{CHANGE_LABEL}</Text>
       </Pressable>
-    </View>
+    </Surface>
   );
 }
 
@@ -31,11 +32,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     gap: space[8],
-    backgroundColor: colors.surface,
     borderRadius: radii[16],
     paddingVertical: space[12],
     paddingHorizontal: space[14],
-    boxShadow: `0 1px 0 ${colors.line}`,
   },
   texts: { flexShrink: 1 },
   name: { ...typography.body, fontWeight: "700", color: colors.ink },
