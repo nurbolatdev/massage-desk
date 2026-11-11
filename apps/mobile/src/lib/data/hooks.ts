@@ -11,6 +11,7 @@ import type { BookInput } from "./booking";
 import { bookAppointment, fetchServices, fetchSlots, searchClients } from "./booking";
 import { isDay, localDay, nextDay } from "./days";
 import { queryKeys } from "./queryKeys";
+import { fetchTimeOff, toTimeOffPeriods } from "./timeOff";
 
 const SETTINGS_STALE_TIME = 5 * 60 * 1000;
 // Slots and search results go stale fast, so they must not outlive the session cache.
@@ -30,6 +31,16 @@ export function useAppointments(from: string, to: string, enabled = true) {
     queryFn: () => fetchAppointments(api, from, to),
     // The cache keeps raw JSON; Dates are made here.
     select: toAppointments,
+    enabled,
+  });
+}
+
+export function useTimeOff(from: string, to: string, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.timeOff.range(from, to),
+    queryFn: () => fetchTimeOff(api, from, to),
+    // The cache keeps raw JSON; Dates are made here.
+    select: toTimeOffPeriods,
     enabled,
   });
 }
