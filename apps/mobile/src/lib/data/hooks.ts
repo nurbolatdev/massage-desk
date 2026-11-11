@@ -69,19 +69,25 @@ export function useTodayAppointments(now: Date) {
 
 export function useScheduleRange(from: string | undefined, to: string | undefined) {
   const settings = useSettings();
-  const appointments = useAppointments(from ?? "", to ?? "", from !== undefined && to !== undefined);
+  const known = from !== undefined && to !== undefined;
+  const appointments = useAppointments(from ?? "", to ?? "", known);
+  const timeOff = useTimeOff(from ?? "", to ?? "", known);
 
   const refetch = () => {
     void settings.refetch();
-    if (from !== undefined && to !== undefined) void appointments.refetch();
+    if (known) {
+      void appointments.refetch();
+      void timeOff.refetch();
+    }
   };
 
   return {
     timeZone: settings.data?.timeZone,
     appointments: appointments.data,
+    timeOff: timeOff.data,
     dataUpdatedAt: appointments.dataUpdatedAt,
-    error: settings.error ?? appointments.error,
-    refreshError: appointments.error,
+    error: settings.error ?? appointments.error ?? timeOff.error,
+    refreshError: appointments.error ?? timeOff.error,
     refetch,
   };
 }

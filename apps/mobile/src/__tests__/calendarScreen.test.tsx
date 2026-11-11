@@ -94,6 +94,7 @@ describe("calendar screen", () => {
         const query = (init as { params: { query: { from: string } } }).params.query;
         return ok(query.from === "2026-11-02" || query.from === "2026-11-01" ? week : []);
       }
+      if (path === "/time-off") return ok([]);
       throw new Error(`unexpected GET ${path}`);
     });
   });
@@ -179,8 +180,19 @@ describe("calendar screen", () => {
     await screen.findByText("Светлана Петрова");
     await user.press(screen.getByLabelText("Следующая неделя"));
 
-    expect(await screen.findByText("На этот день записей нет")).toBeTruthy();
+    expect(await screen.findByText("Свободно весь день")).toBeTruthy();
     expect(screen.getByText("Свободно")).toBeTruthy();
+  });
+
+  it("keeps the text card for a past empty day", async () => {
+    const user = userEvent.setup();
+    await renderScreen();
+
+    await screen.findByText("Светлана Петрова");
+    await user.press(screen.getByLabelText("Прошлая неделя"));
+
+    expect(await screen.findByText("На этот день записей нет")).toBeTruthy();
+    expect(screen.queryByText("Свободно весь день")).toBeNull();
   });
 
   it("shows the load error with a retry button", async () => {
@@ -294,7 +306,7 @@ describe("calendar screen", () => {
     expect(await screen.findByText("1–31 декабря")).toBeTruthy();
     expect(screen.getByText("Декабрь")).toBeTruthy();
     expect(await screen.findByLabelText(/Пт, 4 декабря · Свободно/)).toBeTruthy();
-    expect(screen.getByText("На этот день записей нет")).toBeTruthy();
+    expect(screen.getByText("Свободно весь день")).toBeTruthy();
     await waitFor(() =>
       expect(appointmentCalls()).toContainEqual({ params: { query: { from: "2026-12-01", to: "2026-12-31" } } }),
     );

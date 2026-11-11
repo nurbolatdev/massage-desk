@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { TIME_MIN_WIDTH } from "@/components/rowLayout";
+import { FREE_ALL_DAY_TEXT } from "@/lib/data/calendar";
 import { formatTime } from "@/lib/format";
 import { minutesBetween } from "@/lib/data/todaySchedule";
 import { freeTimeText } from "@/lib/data/todayState";
@@ -11,6 +12,14 @@ export function FreeTimeRow({ start, end, timeZone }: { start: Date; end: Date; 
     <View style={styles.row}>
       <Text style={[styles.time, { minWidth: Math.round(TIME_MIN_WIDTH * fontScale) }]}>{formatTime(start, timeZone)}</Text>
       <Text style={styles.text}>{freeTimeText(formatTime(end, timeZone), minutesBetween(start, end))}</Text>
+    </View>
+  );
+}
+
+export function FreeDayRow() {
+  return (
+    <View style={styles.row}>
+      <Text style={styles.text}>{FREE_ALL_DAY_TEXT}</Text>
     </View>
   );
 }
