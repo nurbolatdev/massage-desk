@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import type { components } from "@massage-desk/api-types";
 import { onlineManager, QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, userEvent, waitFor } from "@testing-library/react-native";
+import { cleanup, render, screen, userEvent, waitFor } from "@testing-library/react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import CalendarScreen from "@/app/(tabs)/calendar";
@@ -99,7 +99,9 @@ describe("calendar screen", () => {
     });
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    // Unmount before going back online, otherwise the mounted screen re-renders outside act().
+    await cleanup();
     onlineManager.setOnline(true);
     queryClient.clear();
   });

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import type { components } from "@massage-desk/api-types";
 import { onlineManager, QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, userEvent, waitFor } from "@testing-library/react-native";
+import { cleanup, render, screen, userEvent, waitFor } from "@testing-library/react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import AppointmentScreen from "@/app/appointment/[id]";
@@ -109,7 +109,9 @@ describe("appointment card screen", () => {
     queryClient.setQueryData(queryKeys.clients.one("c1"), client);
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    // Unmount before going back online, otherwise the mounted screen re-renders outside act().
+    await cleanup();
     onlineManager.setOnline(true);
     queryClient.clear();
   });
