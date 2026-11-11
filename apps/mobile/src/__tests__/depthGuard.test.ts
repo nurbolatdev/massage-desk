@@ -8,7 +8,7 @@ const SRC = join(__dirname, "..");
 
 const BOX_SHADOW = /\bboxShadow\b/;
 const LEGACY_SHADOW = /\bshadow(Color|Offset|Opacity|Radius)\b|\belevation\s*:/;
-const DEPTH_LEVEL1 = /\bdepth\.level1\b/;
+const DEPTH_TOKEN = /\bdepth\b/;
 
 function sourceFiles(): string[] {
   return readdirSync(SRC, { recursive: true, encoding: "utf8" })
@@ -38,15 +38,17 @@ describe("depth guard", () => {
     expect(filesMatching(LEGACY_SHADOW)).toEqual([]);
   });
 
-  it("uses depth.level1 only in Surface", () => {
-    expect(filesMatching(DEPTH_LEVEL1)).toEqual(["components/Surface.tsx"]);
+  it("uses the depth token only in the theme and Surface", () => {
+    expect(filesMatching(DEPTH_TOKEN)).toEqual(["components/Surface.tsx", "theme/index.ts"]);
   });
 
   it("detects the patterns", () => {
     expect(BOX_SHADOW.test("boxShadow: x")).toBe(true);
     expect(LEGACY_SHADOW.test("elevation: 2")).toBe(true);
-    expect(DEPTH_LEVEL1.test("...depth.level1")).toBe(true);
-    expect(DEPTH_LEVEL1.test("depthLevel")).toBe(false);
+    expect(DEPTH_TOKEN.test("...depth.level1")).toBe(true);
+    expect(DEPTH_TOKEN.test('depth["level1"]')).toBe(true);
+    expect(DEPTH_TOKEN.test("const { level1 } = depth")).toBe(true);
+    expect(DEPTH_TOKEN.test("depthLevel")).toBe(false);
     expect(BOX_SHADOW.test("depthLevel")).toBe(false);
     expect(LEGACY_SHADOW.test("depthLevel")).toBe(false);
   });
