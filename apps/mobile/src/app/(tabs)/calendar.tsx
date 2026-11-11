@@ -34,7 +34,7 @@ import {
   daySummary,
   dayTitle,
   monthTitle,
-  weekRangeLabel,
+  rangeLabel,
 } from "@/lib/data/calendar";
 import { addDays, addMonths, localDay, monthDays, monthGrid, weekDays } from "@/lib/data/days";
 import { useScheduleRange, useSettings } from "@/lib/data/hooks";
@@ -138,7 +138,7 @@ export default function CalendarScreen() {
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <CalendarHeader
         title={monthTitle(selected, today)}
-        rangeLabel={weekRangeLabel(rangeDays)}
+        rangeLabel={rangeLabel(rangeDays)}
         onPrev={() => setPicked(week ? addDays(selected, -WEEK) : addMonths(selected, -1))}
         onNext={() => setPicked(week ? addDays(selected, WEEK) : addMonths(selected, 1))}
         prevLabel={week ? PREV_WEEK_LABEL : PREV_MONTH_LABEL}

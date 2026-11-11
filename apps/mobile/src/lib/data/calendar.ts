@@ -93,7 +93,7 @@ export function monthTitle(day: string, today: string): string {
 }
 
 /** "2–8 ноября" or "30 ноября – 6 декабря"; works for any day list (a week or a month: "1–30 ноября"). */
-export function weekRangeLabel(days: readonly string[]): string {
+export function rangeLabel(days: readonly string[]): string {
   const first = days[0] ?? "";
   const last = days[days.length - 1] ?? first;
   const end = formatDayMonth(dayDate(last), "UTC");

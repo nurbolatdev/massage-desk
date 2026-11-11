@@ -13,7 +13,7 @@ import {
   dayTitle,
   monthTitle,
   weekdayShort,
-  weekRangeLabel,
+  rangeLabel,
 } from "./calendar";
 import { weekDays } from "./days";
 
@@ -108,13 +108,13 @@ describe("calendar texts", () => {
   });
 
   it("labels the week range", () => {
-    expect(weekRangeLabel(weekDays("2026-11-04"))).toBe("2–8 ноября");
-    expect(weekRangeLabel(weekDays("2026-11-30"))).toBe("30 ноября – 6 декабря");
+    expect(rangeLabel(weekDays("2026-11-04"))).toBe("2–8 ноября");
+    expect(rangeLabel(weekDays("2026-11-30"))).toBe("30 ноября – 6 декабря");
   });
 
   it("labels the month range", () => {
-    expect(weekRangeLabel(["2026-11-01", "2026-11-30"])).toBe("1–30 ноября");
-    expect(weekRangeLabel(["2026-12-01", "2026-12-31"])).toBe("1–31 декабря");
+    expect(rangeLabel(["2026-11-01", "2026-11-30"])).toBe("1–30 ноября");
+    expect(rangeLabel(["2026-12-01", "2026-12-31"])).toBe("1–31 декабря");
   });
 
   it("names days", () => {
