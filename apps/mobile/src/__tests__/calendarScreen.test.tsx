@@ -13,6 +13,7 @@ const mockPush = jest.fn();
 
 jest.mock("expo-router", () => ({
   useRouter: () => ({ canGoBack: () => true, back: jest.fn(), replace: jest.fn(), push: mockPush }),
+  useIsFocused: () => true,
 }));
 
 jest.mock("@/lib/time/useNow", () => ({
