@@ -9,6 +9,7 @@ import {
   dayCardLine,
   dayCardTitle,
   dayCounts,
+  daysOff,
   daySummary,
   dayTitle,
   monthTitle,
@@ -184,5 +185,55 @@ describe("dayCardLine", () => {
 
   it("is null for an empty day", () => {
     expect(dayCardLine([], true, TZ)).toBeNull();
+  });
+});
+
+describe("days off logic", () => {
+  const period = (start: string, end: string) => ({
+    id: "t",
+    start: new Date(start),
+    end: new Date(end),
+  });
+  const days = weekDays("2026-11-02");
+
+  it("a whole local day closes only that day", () => {
+    const off = daysOff([period("2026-11-08T00:00:00+05:00", "2026-11-09T00:00:00+05:00")], days, TZ);
+    expect([...off.closed]).toEqual(["2026-11-08"]);
+    expect([...off.partial]).toEqual([]);
+  });
+
+  it("a three day vacation closes three days", () => {
+    const off = daysOff([period("2026-11-03T00:00:00+05:00", "2026-11-06T00:00:00+05:00")], days, TZ);
+    expect([...off.closed]).toEqual(["2026-11-03", "2026-11-04", "2026-11-05"]);
+  });
+
+  it("some hours make the day partial, not closed", () => {
+    const off = daysOff([period("2026-11-05T14:00:00+05:00", "2026-11-05T18:00:00+05:00")], days, TZ);
+    expect(off.closed.size).toBe(0);
+    expect([...off.partial]).toEqual(["2026-11-05"]);
+  });
+
+  it("a period across midnight closes the middle day and touches the edges", () => {
+    const off = daysOff([period("2026-11-07T23:00:00+05:00", "2026-11-09T01:00:00+05:00")], [...days, "2026-11-09"], TZ);
+    expect([...off.closed]).toEqual(["2026-11-08"]);
+    expect([...off.partial].sort()).toEqual(["2026-11-07", "2026-11-09"]);
+  });
+
+  it("an end exactly at midnight does not touch the next day", () => {
+    const off = daysOff([period("2026-11-08T12:00:00+05:00", "2026-11-09T00:00:00+05:00")], [...days, "2026-11-09"], TZ);
+    expect([...off.partial]).toEqual(["2026-11-08"]);
+  });
+
+  it("ignores days outside the list", () => {
+    const off = daysOff([period("2026-12-01T00:00:00+05:00", "2026-12-02T00:00:00+05:00")], days, TZ);
+    expect(off.closed.size).toBe(0);
+    expect(off.partial.size).toBe(0);
+  });
+
+  it("writes off days in summaries and titles", () => {
+    expect(daySummary(0, false, true)).toBe("Выходной");
+    expect(daySummary(2, false, true)).toBe("Выходной · 2 записи");
+    expect(dayCellLabel("2026-11-08", 0, false, true)).toBe("Воскресенье, 8 ноября, Выходной");
+    expect(dayCardTitle("2026-11-08", 0, false, true)).toBe("Вс, 8 ноября · Выходной");
   });
 });
