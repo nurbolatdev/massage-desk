@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { BrandMark } from "@/components/BrandLogo";
+import { PressableSurface } from "@/components/Surface";
 import { EMPTY_TEXT, tomorrowText } from "@/lib/data/todayState";
 import { formatTimeShort } from "@/lib/format";
 import { colors, radii, size, space, typography } from "@/theme";
@@ -24,12 +25,12 @@ export function EmptyToday({ title, showBotText, tomorrow, timeZone, onTomorrowP
       <Text style={styles.title}>{title}</Text>
       {showBotText && <Text style={styles.text}>{EMPTY_TEXT}</Text>}
       {tomorrow !== null && (
-        <Pressable accessibilityRole="button" onPress={onTomorrowPress} style={styles.link}>
+        <PressableSurface accessibilityRole="button" onPress={onTomorrowPress} style={styles.link}>
           <Feather name="calendar" size={ICON_SIZE} color={colors.primary} accessible={false} />
           <Text style={styles.linkText}>
             {tomorrowText(tomorrow.count, formatTimeShort(tomorrow.first, timeZone))}
           </Text>
-        </Pressable>
+        </PressableSurface>
       )}
     </View>
   );
@@ -48,8 +49,6 @@ const styles = StyleSheet.create({
     paddingVertical: space[14],
     paddingHorizontal: space[20],
     borderRadius: radii[16],
-    backgroundColor: colors.surface,
-    boxShadow: `0 1px 0 ${colors.line}`,
   },
   linkText: { ...typography.body, fontWeight: "600", color: colors.ink, flexShrink: 1, textAlign: "center" },
 });

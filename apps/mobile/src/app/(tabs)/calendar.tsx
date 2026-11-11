@@ -14,6 +14,7 @@ import { MonthGrid } from "@/components/MonthGrid";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { RefreshFailedBanner } from "@/components/RefreshFailedBanner";
 import { SegmentedControl } from "@/components/SegmentedControl";
+import { Surface } from "@/components/Surface";
 import { WeekStrip } from "@/components/WeekStrip";
 import { appointmentRouteParams } from "@/lib/data/appointmentCard";
 import { BOOK_CLIENT_LABEL, clearBookingNotice } from "@/lib/data/bookingNotice";
@@ -151,9 +152,9 @@ export default function CalendarScreen() {
           closedDay ? null : off !== undefined && selected >= today && !partialDay ? (
             <FreeDayRow />
           ) : (
-            <View style={styles.emptyCard}>
+            <Surface style={styles.emptyCard}>
               <Text style={styles.emptyText}>{EMPTY_DAY_TEXT}</Text>
-            </View>
+            </Surface>
           )
         ) : (
           <View style={styles.rows}>
@@ -259,7 +260,7 @@ const styles = StyleSheet.create({
   summary: { ...typography.secondary, color: colors.muted },
   errorBox: { gap: space[12] },
   rows: { gap: space[8] },
-  emptyCard: { backgroundColor: colors.surface, borderRadius: radii[16], padding: space[20], alignItems: "center" },
+  emptyCard: { borderRadius: radii[16], padding: space[20], alignItems: "center" },
   offCard: { backgroundColor: colors.neutralSoft, borderRadius: radii[18], paddingVertical: space[28], paddingHorizontal: space[20], alignItems: "center" },
   offText: { ...typography.body, fontWeight: "600", color: colors.neutralStrong, textAlign: "center" },
   emptyText: { ...typography.body, color: colors.muted, textAlign: "center" },
