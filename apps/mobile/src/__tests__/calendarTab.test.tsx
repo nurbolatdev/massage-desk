@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import type { components } from "@massage-desk/api-types";
 import { onlineManager, QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen, userEvent, waitFor } from "@testing-library/react-native";
+import { act, cleanup, render, screen, userEvent, waitFor } from "@testing-library/react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import CalendarScreen from "@/app/(tabs)/calendar";
@@ -20,9 +20,15 @@ const mockGet = jest.fn<Call>();
 const mockPost = jest.fn<Call>();
 const mockPush = jest.fn();
 
+const mockFocus: { effect: (() => void | (() => void)) | null; tab: string } = { effect: null, tab: "calendar" };
+
 jest.mock("expo-router", () => ({
   useRouter: () => ({ canGoBack: () => true, back: jest.fn(), replace: jest.fn(), push: mockPush }),
   useIsFocused: () => true,
+  useNavigation: () => ({ getState: () => ({ index: 0, routes: [{ key: "t", name: mockFocus.tab }] }) }),
+  useFocusEffect: (effect: () => void | (() => void)) => {
+    mockFocus.effect = effect;
+  },
 }));
 
 jest.mock("@/lib/time/useNow", () => ({
@@ -67,6 +73,15 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false, gcTime: Infinity }, mutations: { retry: false, gcTime: Infinity } },
 });
 
+// Focus then blur of the calendar tab while the tabs show `tab`.
+async function leave(tab: string) {
+  mockFocus.tab = tab;
+  await act(async () => {
+    const cleanupEffect = mockFocus.effect?.();
+    if (typeof cleanupEffect === "function") cleanupEffect();
+  });
+}
+
 function renderScreen() {
   return render(
     <SafeAreaProvider
@@ -82,6 +97,8 @@ function renderScreen() {
 describe("calendar tab", () => {
   beforeEach(() => {
     onlineManager.setOnline(true);
+    mockFocus.effect = null;
+    mockFocus.tab = "calendar";
     mockGet.mockReset();
     mockPost.mockReset();
     mockPush.mockReset();
@@ -143,5 +160,44 @@ describe("calendar tab", () => {
 
     expect(getBookingNotice()).toBeNull();
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/new-appointment", params: { day: "2026-11-04" } });
+  });
+
+  it("opens on today after another tab", async () => {
+    const user = userEvent.setup();
+    await renderScreen();
+
+    await user.press(await screen.findByLabelText("Следующая неделя"));
+    expect(await screen.findByText("Среда, 11 ноября")).toBeTruthy();
+    await leave("index");
+
+    expect(await screen.findByText("Среда, 4 ноября")).toBeTruthy();
+    expect(screen.getByText("2–8 ноября")).toBeTruthy();
+    expect((await screen.findByLabelText(/^Среда, 4 ноября/)).props.accessibilityState).toMatchObject({
+      selected: true,
+    });
+  });
+
+  it("keeps the picked day when a card is opened on top", async () => {
+    const user = userEvent.setup();
+    await renderScreen();
+
+    await user.press(await screen.findByLabelText("Следующая неделя"));
+    expect(await screen.findByText("Среда, 11 ноября")).toBeTruthy();
+    await leave("calendar");
+
+    expect(screen.getByText("Среда, 11 ноября")).toBeTruthy();
+  });
+
+  it("keeps the month view and opens on the current month", async () => {
+    const user = userEvent.setup();
+    await renderScreen();
+
+    await user.press(await screen.findByText("Месяц"));
+    await user.press(await screen.findByLabelText("Следующий месяц"));
+    expect(await screen.findByText("1–31 декабря")).toBeTruthy();
+    await leave("settings");
+
+    expect(await screen.findByText("1–30 ноября")).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Месяц" }).props.accessibilityState).toMatchObject({ selected: true });
   });
 });

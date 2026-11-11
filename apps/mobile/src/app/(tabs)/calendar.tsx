@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useNavigation, useRouter } from "expo-router";
 import { AppointmentRow } from "@/components/AppointmentRow";
 import { BookingNoticeBar } from "@/components/BookingNoticeBar";
 import { Button } from "@/components/Button";
@@ -52,6 +52,7 @@ import { colors, radii, space, typography } from "@/theme";
 import type { Appointment } from "@/types";
 
 const WEEK = 7;
+const CALENDAR_ROUTE = "calendar"; // the file name in (tabs)
 
 type Mode = "week" | "month";
 
@@ -62,10 +63,22 @@ const VIEW_OPTIONS: readonly { value: Mode; label: string }[] = [
 
 export default function CalendarScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
   const now = useNow();
   const online = useOnline();
   const [picked, setPicked] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>("week");
+
+  useFocusEffect(
+    useCallback(
+      () => () => {
+        // Back from another tab the calendar opens on today; a card opened on top keeps the day.
+        const tabs = navigation.getState();
+        if (tabs?.routes[tabs.index]?.name !== CALENDAR_ROUTE) setPicked(null);
+      },
+      [navigation],
+    ),
+  );
 
   // The zone is unknown until the settings load; the week then comes from the UTC date.
   const settingsZone = useSettings().data?.timeZone;
