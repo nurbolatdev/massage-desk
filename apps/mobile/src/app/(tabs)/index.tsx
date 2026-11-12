@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import { AppointmentRow } from "@/components/AppointmentRow";
 import { BookingNoticeBar } from "@/components/BookingNoticeBar";
 import { BotOffBanner } from "@/components/BotOffBanner";
+import { BreakRow } from "@/components/BreakRow";
 import { Button } from "@/components/Button";
 import { EmptyToday } from "@/components/EmptyToday";
 import { ErrorBanner } from "@/components/ErrorBanner";
@@ -31,7 +32,7 @@ export default function TodayScreen() {
   const today = useTodayAppointments(now);
   const hasData = today.appointments !== undefined;
   const state = todayState({ online, hasData, error: today.error, appointmentsError: today.refreshError });
-  const schedule = todaySchedule(today.appointments ?? [], now);
+  const schedule = todaySchedule(today.appointments ?? [], now, today.workingWindows);
   const timeZone = today.timeZone;
   const tomorrow = useTomorrowAppointments(now, schedule.kind !== "schedule" && state.view === "list");
   const savedAt =
@@ -83,6 +84,8 @@ export default function TodayScreen() {
                       {schedule.rows.map((row) =>
                         row.kind === "appointment" ? (
                           <AppointmentRow key={row.appointment.id} appointment={row.appointment} timeZone={timeZone} onPress={() => open(row.appointment)} />
+                        ) : row.kind === "break" ? (
+                          <BreakRow key={`break-${row.start.getTime()}`} start={row.start} end={row.end} timeZone={timeZone} />
                         ) : (
                           <FreeTimeRow key={`free-${row.start.getTime()}`} start={row.start} end={row.end} timeZone={timeZone} />
                         ),

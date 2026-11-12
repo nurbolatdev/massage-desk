@@ -1,5 +1,7 @@
 import type { Appointment } from "@/types";
 
+import type { WorkingWindow } from "./workingHours";
+
 /** A gap between two appointments becomes a free row from this length. */
 export const FREE_GAP_MIN_MINUTES = 30;
 
@@ -7,10 +9,13 @@ export type TodayRow =
   | { kind: "appointment"; appointment: Appointment }
   | { kind: "free"; start: Date; end: Date };
 
+/** The master's own pause between two working blocks of the day. */
+export type BreakRow = { kind: "break"; start: Date; end: Date };
+
 export interface TodaySchedule {
   kind: "schedule" | "empty" | "finished";
   next: Appointment | null;
-  rows: TodayRow[];
+  rows: (TodayRow | BreakRow)[];
   laterCount: number;
 }
 
@@ -35,7 +40,39 @@ export function selectNextClient(
   return upcoming(appointments, now)[0] ?? null;
 }
 
-export function todaySchedule(appointments: readonly Appointment[], now: Date): TodaySchedule {
+/**
+ * Free and break rows of the gap [from, to]: free time only inside working windows,
+ * a break only between two neighbouring windows. Unknown or empty windows give nothing.
+ */
+function gapRows(
+  from: Date,
+  to: Date,
+  windows: readonly WorkingWindow[] | undefined,
+): (TodayRow | BreakRow)[] {
+  const rows: (TodayRow | BreakRow)[] = [];
+  if (windows === undefined) return rows;
+  windows.forEach((w, i) => {
+    const freeStart = new Date(Math.max(from.getTime(), w.start.getTime()));
+    const freeEnd = new Date(Math.min(to.getTime(), w.end.getTime()));
+    if (minutesBetween(freeStart, freeEnd) >= FREE_GAP_MIN_MINUTES) {
+      rows.push({ kind: "free", start: freeStart, end: freeEnd });
+    }
+    const following = windows[i + 1];
+    if (following === undefined) return;
+    const breakStart = new Date(Math.max(from.getTime(), w.end.getTime()));
+    const breakEnd = new Date(Math.min(to.getTime(), following.start.getTime()));
+    if (breakEnd.getTime() > breakStart.getTime()) {
+      rows.push({ kind: "break", start: breakStart, end: breakEnd });
+    }
+  });
+  return rows;
+}
+
+export function todaySchedule(
+  appointments: readonly Appointment[],
+  now: Date,
+  windows: readonly WorkingWindow[] | undefined,
+): TodaySchedule {
   const candidates = upcoming(appointments, now);
   const next = candidates[0] ?? null;
   if (next === null) {
@@ -43,13 +80,10 @@ export function todaySchedule(appointments: readonly Appointment[], now: Date): 
     return { kind: hadActive ? "finished" : "empty", next: null, rows: [], laterCount: 0 };
   }
   const later = candidates.slice(1);
-  const rows: TodayRow[] = [];
+  const rows: (TodayRow | BreakRow)[] = [];
   let previous = next;
   for (const appointment of later) {
-    const gap = minutesBetween(previous.end, appointment.start);
-    if (gap >= FREE_GAP_MIN_MINUTES) {
-      rows.push({ kind: "free", start: previous.end, end: appointment.start });
-    }
+    rows.push(...gapRows(previous.end, appointment.start, windows));
     rows.push({ kind: "appointment", appointment });
     previous = appointment;
   }
