@@ -62,6 +62,10 @@ const week: Schemas["AppointmentListItem"][] = [
   item("w2", "Марат Каримов", "2026-11-04T16:00:00+05:00", "2026-11-04T17:00:00+05:00"),
 ];
 
+const hours: Schemas["WorkingHoursResponse"] = {
+  blocks: [1, 2, 3, 4, 5, 6, 7].map((weekday) => ({ weekday, start: "09:00", end: "19:00" })),
+};
+
 function ok(data: unknown) {
   return { data, response: new Response(null, { status: 200 }) };
 }
@@ -86,6 +90,10 @@ function appointmentCalls() {
   return mockGet.mock.calls.filter(([path]) => path === "/appointments").map(([, init]) => init);
 }
 
+function workingHoursCalls() {
+  return mockGet.mock.calls.filter(([path]) => path === "/working-hours");
+}
+
 describe("calendar screen", () => {
   beforeEach(() => {
     onlineManager.setOnline(true);
@@ -98,6 +106,7 @@ describe("calendar screen", () => {
         return ok(query.from === "2026-11-02" || query.from === "2026-11-01" ? week : []);
       }
       if (path === "/time-off") return ok([]);
+      if (path === "/working-hours") return ok(hours);
       throw new Error(`unexpected GET ${path}`);
     });
   });
@@ -246,6 +255,7 @@ describe("calendar screen", () => {
 
     await waitFor(() => expect(mockGet.mock.calls.filter(([path]) => path === "/settings")).toHaveLength(2));
     expect(appointmentCalls()).toHaveLength(0);
+    expect(workingHoursCalls()).toHaveLength(0);
   });
 
   it("requests appointments again on refresh when the dates are known", async () => {
@@ -261,6 +271,7 @@ describe("calendar screen", () => {
 
     await waitFor(() => expect(appointmentCalls()).toHaveLength(2));
     expect(appointmentCalls()[1]).toEqual({ params: { query: { from: "2026-11-02", to: "2026-11-08" } } });
+    await waitFor(() => expect(workingHoursCalls()).toHaveLength(2));
   });
 
   it("shows the offline message when there is no saved schedule", async () => {

@@ -14,7 +14,7 @@ import { isDay, localDay, nextDay } from "./days";
 import { queryKeys } from "./queryKeys";
 import { fetchTimeOff, toTimeOffPeriods } from "./timeOff";
 import { fetchWorkingHours, workingWindowsOfDay } from "./workingHours";
-import type { WorkingWindow } from "./workingHours";
+import type { WorkingBlock, WorkingWindow } from "./workingHours";
 
 const SETTINGS_STALE_TIME = 5 * 60 * 1000;
 // Slots and search results go stale fast, so they must not outlive the session cache.
@@ -97,17 +97,22 @@ export function useScheduleRange(from: string | undefined, to: string | undefine
   const known = from !== undefined && to !== undefined;
   const appointments = useAppointments(from ?? "", to ?? "", known);
   const timeOff = useTimeOff(from ?? "", to ?? "", known);
+  const hours = useWorkingHours(known);
 
   const refetch = () => {
     void settings.refetch();
     if (known) {
       void appointments.refetch();
       void timeOff.refetch();
+      void hours.refetch();
     }
   };
 
+  // Working hours never block the screen: their error is not part of `error` / `refreshError`.
+  const workingBlocks: WorkingBlock[] | undefined = hours.data?.blocks;
   return {
     timeZone: settings.data?.timeZone,
+    workingBlocks,
     appointments: appointments.data,
     timeOff: timeOff.data,
     dataUpdatedAt: appointments.dataUpdatedAt,

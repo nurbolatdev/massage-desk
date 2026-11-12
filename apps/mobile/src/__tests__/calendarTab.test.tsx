@@ -105,6 +105,7 @@ describe("calendar tab", () => {
     mockGet.mockImplementation(async (path) => {
       if (path === "/settings") return ok(settings);
       if (path === "/appointments" || path === "/time-off") return ok([]);
+      if (path === "/working-hours") return ok({ blocks: [] });
       throw new Error(`unexpected GET ${path}`);
     });
     mockPost.mockResolvedValue(ok(cancelled));
