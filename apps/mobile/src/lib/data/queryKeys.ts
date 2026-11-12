@@ -6,6 +6,7 @@ export const queryKeys = {
     search: (q: string) => ["clients", "search", q] as const,
   },
   services: ["services"] as const,
+  workingHours: ["workingHours"] as const,
   slots: {
     all: ["slots"] as const,
     one: (serviceId: string, day: string) => ["slots", serviceId, day] as const,

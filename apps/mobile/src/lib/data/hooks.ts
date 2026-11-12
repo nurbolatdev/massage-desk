@@ -12,6 +12,8 @@ import { bookAppointment, fetchServices, fetchSlots, searchClients } from "./boo
 import { isDay, localDay, nextDay } from "./days";
 import { queryKeys } from "./queryKeys";
 import { fetchTimeOff, toTimeOffPeriods } from "./timeOff";
+import { fetchWorkingHours, workingWindowsOfDay } from "./workingHours";
+import type { WorkingWindow } from "./workingHours";
 
 const SETTINGS_STALE_TIME = 5 * 60 * 1000;
 // Slots and search results go stale fast, so they must not outlive the session cache.
@@ -45,19 +47,38 @@ export function useTimeOff(from: string, to: string, enabled = true) {
   });
 }
 
+export function useWorkingHours(enabled: boolean) {
+  return useQuery({
+    queryKey: queryKeys.workingHours,
+    queryFn: () => fetchWorkingHours(api),
+    staleTime: SETTINGS_STALE_TIME,
+    enabled,
+  });
+}
+
 export function useTodayAppointments(now: Date) {
   const settings = useSettings();
   const timeZone = settings.data?.timeZone;
   const day = timeZone === undefined ? undefined : localDay(now, timeZone);
   const appointments = useAppointments(day ?? "", day ?? "", day !== undefined);
+  const hours = useWorkingHours(day !== undefined);
+  const workingWindows: WorkingWindow[] | undefined =
+    hours.data !== undefined && day !== undefined && timeZone !== undefined
+      ? workingWindowsOfDay(hours.data.blocks, day, timeZone)
+      : undefined;
 
   const refetch = () => {
     void settings.refetch();
-    if (day !== undefined) void appointments.refetch();
+    if (day !== undefined) {
+      void appointments.refetch();
+      void hours.refetch();
+    }
   };
 
+  // Working hours never block the screen: their error is not part of `error` / `refreshError`.
   return {
     timeZone,
+    workingWindows,
     botEnabled: settings.data?.botEnabled,
     appointments: appointments.data,
     dataUpdatedAt: appointments.dataUpdatedAt,

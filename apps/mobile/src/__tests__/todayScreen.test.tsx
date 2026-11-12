@@ -75,6 +75,7 @@ describe("today screen", () => {
 
     await waitFor(() => expect(mockGet.mock.calls.filter(([path]) => path === "/settings")).toHaveLength(2));
     expect(mockGet.mock.calls.filter(([path]) => path === "/appointments")).toHaveLength(0);
+    expect(mockGet.mock.calls.filter(([path]) => path === "/working-hours")).toHaveLength(0);
   });
 
   describe("booking notice", () => {
@@ -84,6 +85,7 @@ describe("today screen", () => {
       mockGet.mockImplementation(async (path) => {
         if (path === "/settings") return ok({ timeZone: "Asia/Tashkent", botEnabled: true, address: null });
         if (path === "/appointments") return ok([]);
+        if (path === "/working-hours") return ok({ blocks: [] });
         throw new Error(`unexpected GET ${path}`);
       });
     });

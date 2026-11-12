@@ -72,3 +72,45 @@ export function isDay(value: string): boolean {
   const parsed = new Date(Date.UTC(year, month - 1, date));
   return parsed.toISOString().slice(0, 10) === value;
 }
+
+const offsetFormats = new Map<string, Intl.DateTimeFormat>();
+
+function offsetFormat(timeZone: string): Intl.DateTimeFormat {
+  let format = offsetFormats.get(timeZone);
+  if (format === undefined) {
+    format = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      hour12: false,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+    offsetFormats.set(timeZone, format);
+  }
+  return format;
+}
+
+/** Offset of `timeZone` from UTC at the instant `at`, in milliseconds. */
+function zoneOffsetMs(at: Date, timeZone: string): number {
+  const parts = offsetFormat(timeZone).formatToParts(at);
+  const part = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? "0");
+  const wall = Date.UTC(
+    part("year"),
+    part("month") - 1,
+    part("day"),
+    part("hour") % 24,
+    part("minute"),
+    part("second"),
+  );
+  return wall - Math.floor(at.getTime() / 1000) * 1000;
+}
+
+/** The instant of the local time `HH:mm` on `day` (YYYY-MM-DD) in `timeZone`. */
+export function zonedTime(day: string, time: string, timeZone: string): Date {
+  const wall = new Date(`${day}T${time}:00Z`).getTime();
+  const guess = wall - zoneOffsetMs(new Date(wall), timeZone);
+  return new Date(wall - zoneOffsetMs(new Date(guess), timeZone));
+}

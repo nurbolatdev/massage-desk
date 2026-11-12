@@ -11,6 +11,7 @@ import {
   monthGrid,
   nextDay,
   weekDays,
+  zonedTime,
 } from "./days";
 
 describe("localDay", () => {
@@ -133,5 +134,22 @@ describe("monthGrid", () => {
 
   it("uses six rows for a month starting on Sunday", () => {
     expect(monthGrid("2026-03-05")).toHaveLength(42);
+  });
+});
+
+describe("zonedTime", () => {
+  it("converts a local time to an instant", () => {
+    expect(zonedTime("2026-11-04", "13:00", "Asia/Tashkent").toISOString()).toBe("2026-11-04T08:00:00.000Z");
+    expect(zonedTime("2026-11-04", "09:00", "America/New_York").toISOString()).toBe("2026-11-04T14:00:00.000Z");
+  });
+
+  it("handles DST changes", () => {
+    expect(zonedTime("2026-03-28", "10:00", "Europe/Berlin").toISOString()).toBe("2026-03-28T09:00:00.000Z");
+    expect(zonedTime("2026-03-29", "10:00", "Europe/Berlin").toISOString()).toBe("2026-03-29T08:00:00.000Z");
+    expect(zonedTime("2026-10-25", "10:00", "Europe/Berlin").toISOString()).toBe("2026-10-25T09:00:00.000Z");
+  });
+
+  it("gives the local midnight of the day", () => {
+    expect(zonedTime("2026-11-04", "00:00", "Asia/Tashkent").toISOString()).toBe("2026-11-03T19:00:00.000Z");
   });
 });
