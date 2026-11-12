@@ -15,10 +15,10 @@ describe("workingWindowsOfDay", () => {
       ["2026-11-04T04:00:00.000Z", "2026-11-04T08:00:00.000Z"],
       ["2026-11-04T09:00:00.000Z", "2026-11-04T14:00:00.000Z"],
     ]);
+    expect(workingWindowsOfDay(blocks, "2026-11-05", "Asia/Tashkent")).toHaveLength(1);
   });
 
   it("is empty for a weekday without blocks", () => {
-    expect(workingWindowsOfDay(blocks, "2026-11-05", "Asia/Tashkent")).toHaveLength(1);
     expect(workingWindowsOfDay(blocks, "2026-11-03", "Asia/Tashkent")).toEqual([]);
   });
 });
