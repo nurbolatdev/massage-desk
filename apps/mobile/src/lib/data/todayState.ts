@@ -51,6 +51,10 @@ export function freeTimeText(endTime: string, minutes: number): string {
   return `Свободно до ${endTime} · ${formatSpan(minutes)}`;
 }
 
+export function breakText(endTime: string): string {
+  return `Перерыв до ${endTime}`;
+}
+
 export function offlineSavedText(savedAt: string): string {
   return `Показано расписание, сохранённое в ${savedAt}. Изменения недоступны.`;
 }
