@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
 
 import { api, unwrap } from "@/lib/api";
 
@@ -62,10 +63,13 @@ export function useTodayAppointments(now: Date) {
   const day = timeZone === undefined ? undefined : localDay(now, timeZone);
   const appointments = useAppointments(day ?? "", day ?? "", day !== undefined);
   const hours = useWorkingHours(day !== undefined);
-  const workingWindows: WorkingWindow[] | undefined =
-    hours.data !== undefined && day !== undefined && timeZone !== undefined
-      ? workingWindowsOfDay(hours.data.blocks, day, timeZone)
-      : undefined;
+  const workingWindows = useMemo<WorkingWindow[] | undefined>(
+    () =>
+      hours.data !== undefined && day !== undefined && timeZone !== undefined
+        ? workingWindowsOfDay(hours.data.blocks, day, timeZone)
+        : undefined,
+    [hours.data, day, timeZone],
+  );
 
   const refetch = () => {
     void settings.refetch();

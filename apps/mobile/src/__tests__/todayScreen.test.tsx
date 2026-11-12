@@ -6,6 +6,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import TodayScreen from "@/app/(tabs)/index";
 import { NOTICE_MS, clearBookingNotice, getBookingNotice, noticeText, showBookingNotice } from "@/lib/data/bookingNotice";
+import { queryKeys } from "@/lib/data/queryKeys";
 import { EMPTY_TITLE, breakText, freeTimeText } from "@/lib/data/todayState";
 
 type Call = (path: string, init?: unknown) => Promise<unknown>;
@@ -210,7 +211,7 @@ describe("today screen", () => {
 
       expect(await screen.findByText("Айгуль Сапарова")).toBeOnTheScreen();
       expect(screen.getByText("Ержан Бекенов")).toBeOnTheScreen();
-      await waitFor(() => expect(mockGet.mock.calls.filter(([path]) => path === "/working-hours")).toHaveLength(1));
+      await waitFor(() => expect(queryClient.getQueryState(queryKeys.workingHours)?.status).toBe("error"));
       expect(screen.queryByText(/^Свободно/)).toBeNull();
       expect(screen.queryByText(/^Перерыв/)).toBeNull();
       expect(screen.queryByText("Не получилось обновить расписание")).toBeNull();
@@ -222,7 +223,7 @@ describe("today screen", () => {
 
       expect(await screen.findByText("Айгуль Сапарова")).toBeOnTheScreen();
       expect(screen.getByText("Ержан Бекенов")).toBeOnTheScreen();
-      await waitFor(() => expect(mockGet.mock.calls.filter(([path]) => path === "/working-hours")).toHaveLength(1));
+      await waitFor(() => expect(queryClient.getQueryState(queryKeys.workingHours)?.status).toBe("success"));
       expect(screen.queryByText(/^Свободно/)).toBeNull();
       expect(screen.queryByText(/^Перерыв/)).toBeNull();
     });
