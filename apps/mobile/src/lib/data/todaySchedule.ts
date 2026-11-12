@@ -44,7 +44,7 @@ export function selectNextClient(
  * Free and break rows of the gap [from, to]: free time only inside working windows,
  * a break only between two neighbouring windows. Unknown or empty windows give nothing.
  */
-function gapRows(
+export function gapRows(
   from: Date,
   to: Date,
   windows: readonly WorkingWindow[] | undefined,
