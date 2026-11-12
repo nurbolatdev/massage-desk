@@ -32,12 +32,14 @@ Done (part 3 of M1-14): a day fully covered by time off is grey and signed «В�
 
 Done (part 4 of M1-14): after a booking made from the calendar the «Записано» notice with «Отменить» is shown there, as on Today (only on the tab that is open). Coming back to the Calendar tab from another tab opens today; returning from an appointment card keeps the picked day, and the week or month view is kept. The loading skeleton shows only the rows.
 
+Done (#79): the calendar reads the working hours of the picked day. Breaks between working blocks are shown as «Перерыв до …», free time is shown only inside the working hours (none while the hours are unknown), and the month card names only real free time. An empty future day still says «Свободно весь день» without a time.
+
 Later:
 
 - marking days off and vacations in the app ([M1-15](roadmap.md#m1-15--days-off-and-vacation))
 - partial time off is not drawn yet and free gaps do not subtract it
 - weekly days off are not used: the master works every day
-- breaks in the working hours are still shown as free time
+- «Свободно весь день» does not use the working hours yet (no start time)
 
 ## Appointment card
 
