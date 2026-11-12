@@ -5,6 +5,7 @@ import { ApiError } from "@/lib/api/errors";
 import {
   FORBIDDEN_TEXT,
   LOAD_ERROR_TEXT,
+  breakText,
   freeTimeText,
   moreClientsTitle,
   nextClientLabel,
@@ -136,6 +137,10 @@ describe("text builders", () => {
 
   it("freeTimeText", () => {
     expect(freeTimeText("14:30", 90)).toBe("Свободно до 14:30 · 1,5\u00a0часа");
+  });
+
+  it("breakText", () => {
+    expect(breakText("14:00")).toBe("Перерыв до 14:00");
   });
 
   it("serviceLine", () => {

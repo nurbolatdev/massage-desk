@@ -479,8 +479,10 @@ Today shows a break between working blocks as free time; read the working hours 
 - **Issue:** #55
 - **Commits:**
   1. `feat(mobile): working hours of the master's day`
+  1. `feat(mobile): break row`
   1. `fix(mobile): show a break instead of free time on today`
   1. `test(mobile): a break is not shown as free time`
+  1. `docs: breaks on today`
 
 ## M2 · Button bot <a id="m2"></a>
 

@@ -1,11 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
+import type { components } from "@massage-desk/api-types";
 import { onlineManager, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, render, screen, userEvent, waitFor } from "@testing-library/react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import TodayScreen from "@/app/(tabs)/index";
 import { NOTICE_MS, clearBookingNotice, getBookingNotice, noticeText, showBookingNotice } from "@/lib/data/bookingNotice";
-import { EMPTY_TITLE } from "@/lib/data/todayState";
+import { EMPTY_TITLE, breakText, freeTimeText } from "@/lib/data/todayState";
 
 type Call = (path: string, init?: unknown) => Promise<unknown>;
 
@@ -27,6 +28,23 @@ jest.mock("@/lib/api", () => ({
   unwrap: jest.requireActual<typeof import("@/lib/api/client")>("@/lib/api/client").unwrap,
   ApiError: jest.requireActual<typeof import("@/lib/api/errors")>("@/lib/api/errors").ApiError,
 }));
+
+type Schemas = components["schemas"];
+
+function item(id: string, name: string, start: string, end: string): Schemas["AppointmentListItem"] {
+  return {
+    id,
+    clientId: `c-${id}`,
+    clientName: name,
+    clientPhone: "+998901234567",
+    serviceId: "s1",
+    serviceName: "Массаж спины",
+    start,
+    end,
+    status: "confirmed",
+    source: "bot",
+  };
+}
 
 function ok(data: unknown) {
   return { data, response: new Response(null, { status: 200 }) };
@@ -75,6 +93,7 @@ describe("today screen", () => {
 
     await waitFor(() => expect(mockGet.mock.calls.filter(([path]) => path === "/settings")).toHaveLength(2));
     expect(mockGet.mock.calls.filter(([path]) => path === "/appointments")).toHaveLength(0);
+    expect(mockGet.mock.calls.filter(([path]) => path === "/working-hours")).toHaveLength(0);
   });
 
   describe("booking notice", () => {
@@ -84,6 +103,7 @@ describe("today screen", () => {
       mockGet.mockImplementation(async (path) => {
         if (path === "/settings") return ok({ timeZone: "Asia/Tashkent", botEnabled: true, address: null });
         if (path === "/appointments") return ok([]);
+        if (path === "/working-hours") return ok({ blocks: [] });
         throw new Error(`unexpected GET ${path}`);
       });
     });
@@ -148,6 +168,63 @@ describe("today screen", () => {
 
       expect(getBookingNotice()).toBeNull();
       expect(mockPush).toHaveBeenCalledWith("/new-appointment");
+    });
+  });
+
+  describe("working hours", () => {
+    const appointments = [
+      item("a1", "Айгуль Сапарова", "2026-11-04T10:30:00+05:00", "2026-11-04T11:30:00+05:00"),
+      item("a2", "Ержан Бекенов", "2026-11-04T15:00:00+05:00", "2026-11-04T16:00:00+05:00"),
+    ];
+
+    function mockDay(blocks: unknown[] | "fail") {
+      const { ApiError } = jest.requireActual<typeof import("@/lib/api/errors")>("@/lib/api/errors");
+      mockGet.mockImplementation(async (path) => {
+        if (path === "/settings") return ok({ timeZone: "Asia/Tashkent", botEnabled: true, address: null });
+        if (path === "/appointments") return ok(appointments);
+        if (path === "/working-hours") {
+          if (blocks === "fail") throw new ApiError("server", { status: 500 });
+          return ok({ blocks });
+        }
+        throw new Error(`unexpected GET ${path}`);
+      });
+    }
+
+    it("shows a break between two working blocks instead of free time", async () => {
+      mockDay([
+        { weekday: 3, start: "09:00", end: "13:00" },
+        { weekday: 3, start: "14:00", end: "19:00" },
+        { weekday: 4, start: "09:00", end: "18:00" },
+      ]);
+      await renderScreen();
+
+      expect(await screen.findByText(breakText("14:00"))).toBeOnTheScreen();
+      expect(screen.getByText(freeTimeText("13:00", 90))).toBeOnTheScreen();
+      expect(screen.getByText(freeTimeText("15:00", 60))).toBeOnTheScreen();
+      expect(screen.queryByText(freeTimeText("14:00", 60))).toBeNull();
+    });
+
+    it("lists the clients without gap rows or errors when working hours fail", async () => {
+      mockDay("fail");
+      await renderScreen();
+
+      expect(await screen.findByText("Айгуль Сапарова")).toBeOnTheScreen();
+      expect(screen.getByText("Ержан Бекенов")).toBeOnTheScreen();
+      await waitFor(() => expect(mockGet.mock.calls.filter(([path]) => path === "/working-hours")).toHaveLength(1));
+      expect(screen.queryByText(/^Свободно/)).toBeNull();
+      expect(screen.queryByText(/^Перерыв/)).toBeNull();
+      expect(screen.queryByText("Не получилось обновить расписание")).toBeNull();
+    });
+
+    it("shows no gap rows on a weekday without working hours", async () => {
+      mockDay([{ weekday: 4, start: "09:00", end: "18:00" }]);
+      await renderScreen();
+
+      expect(await screen.findByText("Айгуль Сапарова")).toBeOnTheScreen();
+      expect(screen.getByText("Ержан Бекенов")).toBeOnTheScreen();
+      await waitFor(() => expect(mockGet.mock.calls.filter(([path]) => path === "/working-hours")).toHaveLength(1));
+      expect(screen.queryByText(/^Свободно/)).toBeNull();
+      expect(screen.queryByText(/^Перерыв/)).toBeNull();
     });
   });
 });
