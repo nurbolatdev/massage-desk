@@ -15,12 +15,12 @@ Expo SDK 58, Expo Router (`apps/mobile/src/app`), installed as an APK via EAS Bu
 
 ## Today
 
-Done: next client in large type with call and WhatsApp buttons; the rest of the day with free time; empty, bot-off, loading, offline and error states; a warning with «Обновить» when a refresh fails; the «Записать клиента» button and the «Записано» notice with «Отменить» after a booking (M1-13).
+Done: next client in large type with call and WhatsApp buttons; the rest of the day with free time; empty, bot-off, loading, offline and error states; a warning with «Обновить» when a refresh fails; the «Записать клиента» button and the «Записано» notice with «Отменить» after a booking (M1-13). Breaks between working blocks are shown as «Перерыв до …», and free time is shown only inside the working hours (none while the hours are unknown or on a day without hours) (M1-23).
 
 Later:
 
 - the «ждут вашего ответа» banner and the badge on Chats ([M2-5](roadmap.md#m2))
-- breaks in the working hours are still shown as free time ([M1-23](roadmap.md#m1))
+- free time on Today does not subtract partial time off yet
 
 ## Calendar
 
@@ -37,6 +37,7 @@ Later:
 - marking days off and vacations in the app ([M1-15](roadmap.md#m1-15--days-off-and-vacation))
 - partial time off is not drawn yet and free gaps do not subtract it
 - weekly days off are not used: the master works every day
+- breaks in the working hours are still shown as free time
 
 ## Appointment card
 
