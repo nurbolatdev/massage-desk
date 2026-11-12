@@ -19,8 +19,14 @@ import {
   rangeLabel,
 } from "./calendar";
 import { weekDays } from "./days";
+import type { WorkingWindow } from "./workingHours";
 
 const TZ = "Asia/Tashkent";
+
+const win = (start: string, end: string): WorkingWindow => ({ start: new Date(start), end: new Date(end) });
+const WHOLE_DAY = [win("2026-11-02T00:00:00Z", "2026-11-03T00:00:00Z")];
+// 09:00-13:00 and 14:00-19:00 local (UTC+5)
+const WITH_BREAK = [win("2026-11-02T04:00:00Z", "2026-11-02T08:00:00Z"), win("2026-11-02T09:00:00Z", "2026-11-02T14:00:00Z")];
 
 function appt(
   id: string,
@@ -81,12 +87,12 @@ describe("calendarRows", () => {
   const first = appt("a", "2026-11-02T05:00:00Z", "2026-11-02T06:00:00Z");
 
   it("adds a free row for a 30 minute gap", () => {
-    const rows = calendarRows([first, appt("b", "2026-11-02T06:30:00Z", "2026-11-02T07:30:00Z")], true);
+    const rows = calendarRows([first, appt("b", "2026-11-02T06:30:00Z", "2026-11-02T07:30:00Z")], WHOLE_DAY);
     expect(rows.map((r) => r.kind)).toEqual(["appointment", "free", "appointment"]);
   });
 
   it("adds no free row for a 25 minute gap", () => {
-    const rows = calendarRows([first, appt("b", "2026-11-02T06:25:00Z", "2026-11-02T07:25:00Z")], true);
+    const rows = calendarRows([first, appt("b", "2026-11-02T06:25:00Z", "2026-11-02T07:25:00Z")], WHOLE_DAY);
     expect(rows.map((r) => r.kind)).toEqual(["appointment", "appointment"]);
   });
 
@@ -94,13 +100,69 @@ describe("calendarRows", () => {
     const long = appt("a", "2026-11-02T05:00:00Z", "2026-11-02T08:00:00Z");
     const inside = appt("b", "2026-11-02T05:30:00Z", "2026-11-02T06:00:00Z");
     const after = appt("c", "2026-11-02T08:10:00Z", "2026-11-02T09:00:00Z");
-    const rows = calendarRows([long, inside, after], true);
+    const rows = calendarRows([long, inside, after], WHOLE_DAY);
     expect(rows.map((r) => r.kind)).toEqual(["appointment", "appointment", "appointment"]);
   });
 
   it("gives only appointments when free rows are off", () => {
-    const rows = calendarRows([first, appt("b", "2026-11-02T09:00:00Z", "2026-11-02T10:00:00Z")], false);
+    const rows = calendarRows([first, appt("b", "2026-11-02T09:00:00Z", "2026-11-02T10:00:00Z")], undefined);
     expect(rows.map((r) => r.kind)).toEqual(["appointment", "appointment"]);
+  });
+
+  it("shows a break after the free time before it", () => {
+    const rows = calendarRows(
+      [
+        appt("a", "2026-11-02T06:00:00Z", "2026-11-02T07:00:00Z"),
+        appt("b", "2026-11-02T09:00:00Z", "2026-11-02T10:00:00Z"),
+      ],
+      WITH_BREAK,
+    );
+    expect(rows.map((r) => r.kind)).toEqual(["appointment", "free", "break", "appointment"]);
+    expect(rows[1]).toMatchObject({ start: new Date("2026-11-02T07:00:00Z"), end: new Date("2026-11-02T08:00:00Z") });
+    expect(rows[2]).toMatchObject({ start: new Date("2026-11-02T08:00:00Z"), end: new Date("2026-11-02T09:00:00Z") });
+  });
+
+  it("shows only a break when appointments touch the break", () => {
+    const rows = calendarRows(
+      [
+        appt("a", "2026-11-02T07:00:00Z", "2026-11-02T08:00:00Z"),
+        appt("b", "2026-11-02T09:00:00Z", "2026-11-02T10:00:00Z"),
+      ],
+      WITH_BREAK,
+    );
+    expect(rows.map((r) => r.kind)).toEqual(["appointment", "break", "appointment"]);
+  });
+
+  it("adds no free row for 20 minutes before a break", () => {
+    const rows = calendarRows(
+      [
+        appt("a", "2026-11-02T06:40:00Z", "2026-11-02T07:40:00Z"),
+        appt("b", "2026-11-02T09:00:00Z", "2026-11-02T10:00:00Z"),
+      ],
+      WITH_BREAK,
+    );
+    expect(rows.map((r) => r.kind)).toEqual(["appointment", "break", "appointment"]);
+  });
+
+  it("adds nothing after the last working window", () => {
+    const rows = calendarRows(
+      [
+        appt("a", "2026-11-02T12:00:00Z", "2026-11-02T13:00:00Z"),
+        appt("b", "2026-11-02T14:30:00Z", "2026-11-02T15:30:00Z"),
+      ],
+      WITH_BREAK,
+    );
+    expect(rows.map((r) => r.kind)).toEqual(["appointment", "free", "appointment"]);
+    expect(rows[1]).toMatchObject({ start: new Date("2026-11-02T13:00:00Z"), end: new Date("2026-11-02T14:00:00Z") });
+  });
+
+  it("gives only appointments for empty or unknown windows", () => {
+    const list = [
+      appt("a", "2026-11-02T05:00:00Z", "2026-11-02T06:00:00Z"),
+      appt("b", "2026-11-02T09:00:00Z", "2026-11-02T10:00:00Z"),
+    ];
+    expect(calendarRows(list, []).map((r) => r.kind)).toEqual(["appointment", "appointment"]);
+    expect(calendarRows(list, undefined).map((r) => r.kind)).toEqual(["appointment", "appointment"]);
   });
 });
 
@@ -168,12 +230,12 @@ describe("dayCardLine", () => {
 
   it("names the first appointment and the first free gap", () => {
     const list = appointmentsOfDay(all, "2026-11-02", TZ);
-    expect(dayCardLine(list, true, TZ)).toBe("Первая в 10:00, свободно 13:00–14:30");
+    expect(dayCardLine(list, WHOLE_DAY, TZ)).toBe("Первая в 10:00, свободно 13:00–14:30");
   });
 
   it("omits the free gap when free time is off", () => {
     const list = appointmentsOfDay(all, "2026-11-02", TZ);
-    expect(dayCardLine(list, false, TZ)).toBe("Первая в 10:00");
+    expect(dayCardLine(list, undefined, TZ)).toBe("Первая в 10:00");
   });
 
   it("ignores a cancelled first appointment", () => {
@@ -182,11 +244,25 @@ describe("dayCardLine", () => {
       "2026-11-02",
       TZ,
     );
-    expect(dayCardLine(list, true, TZ)).toBe("Первая в 10:00, свободно 13:00–14:30");
+    expect(dayCardLine(list, WHOLE_DAY, TZ)).toBe("Первая в 10:00, свободно 13:00–14:30");
+  });
+
+  it("names free time only inside the working hours and never a break", () => {
+    const list = [
+      appt("x", "2026-11-02T05:00:00Z", "2026-11-02T06:00:00Z"),
+      appt("y", "2026-11-02T06:00:00Z", "2026-11-02T07:00:00Z"),
+      appt("z", "2026-11-02T09:00:00Z", "2026-11-02T10:00:00Z"),
+    ];
+    expect(dayCardLine(list, WITH_BREAK, TZ)).toBe("Первая в 10:00, свободно 12:00–13:00");
+    const touching = [
+      appt("x", "2026-11-02T07:00:00Z", "2026-11-02T08:00:00Z"),
+      appt("z", "2026-11-02T09:00:00Z", "2026-11-02T10:00:00Z"),
+    ];
+    expect(dayCardLine(touching, WITH_BREAK, TZ)).toBe("Первая в 12:00");
   });
 
   it("is null for an empty day", () => {
-    expect(dayCardLine([], true, TZ)).toBeNull();
+    expect(dayCardLine([], WHOLE_DAY, TZ)).toBeNull();
   });
 });
 

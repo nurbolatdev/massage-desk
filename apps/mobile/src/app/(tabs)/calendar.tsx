@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation, useRouter } from "expo-router";
 import { AppointmentRow } from "@/components/AppointmentRow";
 import { BookingNoticeBar } from "@/components/BookingNoticeBar";
+import { BreakRow } from "@/components/BreakRow";
 import { Button } from "@/components/Button";
 import { CalendarHeader } from "@/components/CalendarHeader";
 import { CalendarSkeleton } from "@/components/CalendarSkeleton";
@@ -46,6 +47,7 @@ import {
 import { addDays, addMonths, localDay, monthDays, monthGrid, weekDays } from "@/lib/data/days";
 import { useScheduleRange, useSettings } from "@/lib/data/hooks";
 import { RETRY_LABEL, todayState } from "@/lib/data/todayState";
+import { workingWindowsOfDay } from "@/lib/data/workingHours";
 import { formatTime } from "@/lib/format";
 import { useOnline } from "@/lib/query/online";
 import { useNow } from "@/lib/time/useNow";
@@ -112,7 +114,11 @@ export default function CalendarScreen() {
   const bookDay = bookingDay(selected, today);
   const partialDay = off?.partial.has(selected) ?? false;
   const withFree = selected >= today && !closedDay;
-  const rows = calendarRows(dayList, withFree);
+  const dayWindows =
+    withFree && range.workingBlocks !== undefined && timeZone !== undefined
+      ? workingWindowsOfDay(range.workingBlocks, selected, timeZone)
+      : undefined;
+  const rows = calendarRows(dayList, dayWindows);
 
   const open = (a: Appointment) => {
     if (timeZone === undefined) return;
@@ -166,6 +172,8 @@ export default function CalendarScreen() {
                   timeZone={timeZone}
                   onPress={() => open(row.appointment)}
                 />
+              ) : row.kind === "break" ? (
+                <BreakRow key={`break-${row.start.getTime()}`} start={row.start} end={row.end} timeZone={timeZone} />
               ) : (
                 <FreeTimeRow key={`free-${row.start.getTime()}`} start={row.start} end={row.end} timeZone={timeZone} />
               ),
@@ -218,7 +226,7 @@ export default function CalendarScreen() {
             />
             <DayCard
               title={dayCardTitle(selected, hasData ? dayList.length : undefined, selected < today, closedDay, partialDay)}
-              line={hasData && timeZone !== undefined ? dayCardLine(dayList, withFree, timeZone) : null}
+              line={hasData && timeZone !== undefined ? dayCardLine(dayList, dayWindows, timeZone) : null}
               onPress={() => setMode("week")}
               accessibilityHint={OPEN_WEEK_HINT}
             />

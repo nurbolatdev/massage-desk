@@ -4,7 +4,8 @@ import type { Appointment } from "@/types";
 import { addDays, dayDate, isoWeekday, localDay } from "./days";
 import { BOOKING_DAYS } from "./newBooking";
 import type { TimeOffPeriod } from "./timeOff";
-import { FREE_GAP_MIN_MINUTES, minutesBetween, type TodayRow } from "./todaySchedule";
+import { gapRows, type BreakRow, type TodayRow } from "./todaySchedule";
+import type { WorkingWindow } from "./workingHours";
 
 export const MONTHS = [
   "Январь",
@@ -97,21 +98,18 @@ export function appointmentsOfDay(
     .sort((a, b) => a.start.getTime() - b.start.getTime());
 }
 
-/** Appointment rows with a free row for every long enough gap (when `withFree`). */
+/**
+ * Appointment rows with a free row or a break row in the gaps between them, as the working windows
+ * of the day say; no gap rows when the windows are unknown (`undefined`) or empty.
+ */
 export function calendarRows(
   dayAppointments: readonly Appointment[],
-  withFree: boolean,
-): TodayRow[] {
-  const rows: TodayRow[] = [];
+  windows: readonly WorkingWindow[] | undefined,
+): (TodayRow | BreakRow)[] {
+  const rows: (TodayRow | BreakRow)[] = [];
   let latestEnd: Date | null = null;
   for (const appointment of dayAppointments) {
-    if (
-      withFree &&
-      latestEnd !== null &&
-      minutesBetween(latestEnd, appointment.start) >= FREE_GAP_MIN_MINUTES
-    ) {
-      rows.push({ kind: "free", start: latestEnd, end: appointment.start });
-    }
+    if (latestEnd !== null) rows.push(...gapRows(latestEnd, appointment.start, windows));
     rows.push({ kind: "appointment", appointment });
     if (latestEnd === null || appointment.end.getTime() > latestEnd.getTime()) {
       latestEnd = appointment.end;
@@ -193,16 +191,16 @@ export function dayCardTitle(
   return count === undefined ? title : `${title} · ${daySummary(count, past, off, partial)}`;
 }
 
-/** "Первая в 10:00, свободно 13:00–14:30"; the free part only when a free row exists; null for an empty day. */
+/** "Первая в 10:00, свободно 13:00–14:30"; the free part only when a free row exists (a break is never named); null for an empty day. */
 export function dayCardLine(
   dayAppointments: readonly Appointment[],
-  withFree: boolean,
+  windows: readonly WorkingWindow[] | undefined,
   timeZone: string,
 ): string | null {
   const first = dayAppointments[0];
   if (first === undefined) return null;
   const line = `Первая в ${formatTime(first.start, timeZone)}`;
-  const free = calendarRows(dayAppointments, withFree).find((row) => row.kind === "free");
+  const free = calendarRows(dayAppointments, windows).find((row) => row.kind === "free");
   if (free?.kind !== "free") return line;
   return `${line}, свободно ${formatTime(free.start, timeZone)}–${formatTime(free.end, timeZone)}`;
 }

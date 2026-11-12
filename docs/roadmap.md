@@ -483,6 +483,14 @@ Today shows a break between working blocks as free time; read the working hours 
   1. `fix(mobile): show a break instead of free time on today`
   1. `test(mobile): a break is not shown as free time`
   1. `docs: breaks on today`
+- **Follow-up ([#79](https://github.com/nurbolatdev/massage-desk/issues/79)):**
+  - **Branch:** `feature/mobile-calendar-breaks`
+  - **Pull request:** `fix(mobile): show breaks in the calendar`
+  - **Commits:**
+    1. `feat(mobile): working hours for the calendar`
+    1. `fix(mobile): show a break instead of free time in the calendar`
+    1. `test(mobile): a break is not free time in the calendar`
+    1. `docs: breaks in the calendar`
 
 ## M2 · Button bot <a id="m2"></a>
 
