@@ -11,10 +11,14 @@ const LEGEND = [
 
 export function AppointmentPanel({ appointment, timeZone, empty }: Props) {
   const rows = appointment && [
-    ["Когда", whenText(appointment, timeZone)],
-    ["Услуга", serviceText(appointment)],
-    ["Источник", SOURCE_TEXT[appointment.source]],
-    ["Статус", STATUS_TEXT[appointment.status]],
+    { term: "Когда", value: whenText(appointment, timeZone) },
+    { term: "Услуга", value: serviceText(appointment) },
+    { term: "Источник", value: SOURCE_TEXT[appointment.source] },
+    {
+      term: "Статус",
+      value: STATUS_TEXT[appointment.status],
+      className: appointment.status === "confirmed" ? "text-primary-strong" : "text-muted",
+    },
   ];
   return (
     <aside aria-label="Выбранная запись" className="flex basis-panel-basis grow flex-col gap-14 rounded-16 border border-line bg-surface p-20">
@@ -29,14 +33,14 @@ export function AppointmentPanel({ appointment, timeZone, empty }: Props) {
           {appointment && rows ? (
             <>
               <div className="flex flex-col gap-4">
-                <strong className="text-title-s">{appointment.clientName}</strong>
+                <strong className="text-title-s font-bold">{appointment.clientName}</strong>
                 <span className="text-body text-muted">{appointment.clientPhone}</span>
               </div>
               <dl className="flex flex-col gap-8 text-body">
-                {rows.map(([term, value]) => (
+                {rows.map(({ term, value, className }) => (
                   <div key={term} className="flex justify-between gap-8">
                     <dt className="text-muted">{term}</dt>
-                    <dd className={`font-bold ${term === "Статус" && appointment.status === "confirmed" ? "text-primary-strong" : ""}`}>{value}</dd>
+                    <dd className={`font-bold ${className ?? ""}`}>{value}</dd>
                   </div>
                 ))}
               </dl>
@@ -44,7 +48,7 @@ export function AppointmentPanel({ appointment, timeZone, empty }: Props) {
           ) : (
             <p className="text-body text-muted">Нажмите на запись в календаре — здесь появятся подробности.</p>
           )}
-          <ul className="flex flex-col gap-6 text-label font-normal text-muted">
+          <ul className="flex flex-col gap-6 text-secondary font-normal text-muted">
             {LEGEND.map(({ label, color }) => (
               <li key={label} className="flex items-center gap-8">
                 <span aria-hidden="true" className={`size-12 rounded-4 border-appointment ${color}`} />

@@ -29,7 +29,19 @@ export function minutesOfDay(date: Date, day: string, timeZone: string): number 
   const localDate = localDay(date, timeZone);
   if (localDate < day) return 0;
   if (localDate > day) return 1440;
-  return Math.round((date.getTime() - zonedTime(day, "00:00", timeZone).getTime()) / 60000);
+  const parts = clockFormat(timeZone).formatToParts(date);
+  const part = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? 0);
+  return part("hour") * 60 + part("minute");
+}
+
+const clockFormats = new Map<string, Intl.DateTimeFormat>();
+function clockFormat(timeZone: string): Intl.DateTimeFormat {
+  let format = clockFormats.get(timeZone);
+  if (!format) {
+    format = new Intl.DateTimeFormat("en-GB", { timeZone, hourCycle: "h23", hour: "2-digit", minute: "2-digit" });
+    clockFormats.set(timeZone, format);
+  }
+  return format;
 }
 
 /** Whole hours that contain every span (in minutes of the day); the default hours when there are none. */
@@ -40,10 +52,11 @@ export function hourRange(spans: Span[]): Span {
   return { start, end: Math.max(end, start + 1) };
 }
 
-/** Grid rows of a span of minutes: 1-based first row and the row count, clipped to `range` (hours). */
-export function rowsOf(startMin: number, endMin: number, range: Span): { start: number; span: number } {
+/** Grid rows of a span of minutes: 1-based first row and the row count, clipped to `range` (hours); null when it lies outside. */
+export function rowsOf(startMin: number, endMin: number, range: Span): { start: number; span: number } | null {
   const total = (range.end - range.start) * (60 / SLOT_MINUTES);
   const from = range.start * 60;
+  if (endMin <= from || startMin >= range.end * 60) return null;
   const first = Math.min(Math.max(Math.floor((startMin - from) / SLOT_MINUTES) + 1, 1), total);
   const last = Math.min(Math.max(Math.ceil((endMin - from) / SLOT_MINUTES) + 1, first + 1), total + 1);
   return { start: first, span: last - first };

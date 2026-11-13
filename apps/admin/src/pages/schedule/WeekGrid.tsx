@@ -45,7 +45,10 @@ export function WeekGrid({ days, today, timeZone, appointments, timeOff, working
   ];
   const range = hourRange(spans);
   const hours = Array.from({ length: range.end - range.start }, (_, i) => range.start + i);
-  const place = (from: Date, to: Date, day: string) => rowClass(rowsOf(minutesOfDay(from, day, timeZone), minutesOfDay(to, day, timeZone), range));
+  const place = (from: Date, to: Date, day: string): string | null => {
+    const rows = rowsOf(minutesOfDay(from, day, timeZone), minutesOfDay(to, day, timeZone), range);
+    return rows && rowClass(rows);
+  };
 
   const columns = days.map((day) => {
     const windows = windowsOf(day);
@@ -84,23 +87,35 @@ export function WeekGrid({ days, today, timeZone, appointments, timeOff, working
                   <div key={h} className={`col-start-1 border-t border-divider ${rowClass({ start: i * 4 + 1, span: 4 })}`} />
                 ))}
                 {!off &&
-                  breaksOf(windows ?? []).map((gap) => (
-                    <div key={gap.start.getTime()} className={`hatch col-start-1 flex items-center justify-center text-label font-semibold text-neutral-fg ${place(gap.start, gap.end, day)}`}>
-                      Перерыв
-                    </div>
-                  ))}
+                  breaksOf(windows ?? []).map((gap) => {
+                    const rows = place(gap.start, gap.end, day);
+                    return (
+                      rows && (
+                        <div key={gap.start.getTime()} className={`hatch col-start-1 flex items-center justify-center text-label font-semibold text-neutral-fg ${rows}`}>
+                          Перерыв
+                        </div>
+                      )
+                    );
+                  })}
                 {!off &&
                   timeOff
                     .filter((p) => minutesOfDay(p.start, day, timeZone) < minutesOfDay(p.end, day, timeZone))
-                    .map((p) => (
-                    <div key={p.id} className={`col-start-1 flex items-center justify-center bg-segment-bg text-label font-semibold text-neutral-fg ${place(p.start, p.end, day)}`}>
-                      Запись закрыта
-                    </div>
-                  ))}
+                    .map((p) => {
+                      const rows = place(p.start, p.end, day);
+                      return (
+                        rows && (
+                          <div key={p.id} className={`col-start-1 flex items-center justify-center bg-segment-bg text-label font-semibold text-neutral-fg ${rows}`}>
+                            Запись закрыта
+                          </div>
+                        )
+                      );
+                    })}
                 {list.map((a) => {
                   const minutes = Math.round((a.end.getTime() - a.start.getTime()) / 60000);
                   const time = `${formatTime(a.start, timeZone)}–${formatTime(a.end, timeZone)}`;
                   const selected = a.id === selectedId;
+                  const rows = place(a.start, a.end, day);
+                  if (!rows) return null;
                   const color = selected ? BLOCK_COLORS.selected : a.status === "cancelled" ? BLOCK_COLORS.cancelled : BLOCK_COLORS[a.source];
                   return (
                     <button
@@ -109,9 +124,9 @@ export function WeekGrid({ days, today, timeZone, appointments, timeOff, working
                       aria-pressed={selected}
                       aria-label={`${a.clientName}, ${time}, ${a.serviceName}${a.status === "cancelled" ? ", отменена" : ""}`}
                       onClick={() => onSelect(a.id)}
-                      className={`col-start-1 mx-4 my-2 overflow-hidden rounded-8 border-appointment px-6 py-4 text-left ${color} ${place(a.start, a.end, day)}`}
+                      className={`col-start-1 mx-4 my-2 overflow-hidden rounded-8 border-appointment px-6 py-4 text-left ${color} ${rows}`}
                     >
-                      {minutes <= 30 ? (
+                      {minutes < 60 ? (
                         <span className="block truncate text-label">{`${formatTime(a.start, timeZone)} ${a.clientName}`}</span>
                       ) : (
                         <>

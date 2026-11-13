@@ -55,6 +55,10 @@ describe("minutesOfDay", () => {
     expect(minutesOfDay(new Date("2026-11-01T10:00:00Z"), DAY, TZ)).toBe(0);
     expect(minutesOfDay(new Date("2026-11-02T19:00:00Z"), DAY, TZ)).toBe(1440);
   });
+  it("stays on the wall clock across daylight saving changes", () => {
+    expect(minutesOfDay(new Date("2026-03-29T08:00:00Z"), "2026-03-29", "Europe/Berlin")).toBe(600);
+    expect(minutesOfDay(new Date("2026-10-25T09:00:00Z"), "2026-10-25", "Europe/Berlin")).toBe(600);
+  });
 });
 
 describe("hourRange", () => {
@@ -75,7 +79,11 @@ describe("rowsOf", () => {
   });
   it("clips to the range", () => {
     expect(rowsOf(0, 1440, range)).toEqual({ start: 1, span: 40 });
-    expect(rowsOf(1200, 1300, range)).toEqual({ start: 40, span: 1 });
+    expect(rowsOf(1100, 1300, range)).toEqual({ start: 38, span: 3 });
+  });
+  it("returns null outside the range", () => {
+    expect(rowsOf(1200, 1300, range)).toBeNull();
+    expect(rowsOf(0, 540, range)).toBeNull();
   });
 });
 

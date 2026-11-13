@@ -92,4 +92,17 @@ describe("WeekGrid", () => {
     expect(screen.queryByText("выходной")).toBeNull();
     expect(screen.getByRole("region", { name: "Неделя" })).toBeTruthy();
   });
+
+  it("does not draw time off outside the visible hours", () => {
+    const evening = { id: "t1", start: new Date("2026-11-04T19:00:00+05:00"), end: new Date("2026-11-04T22:00:00+05:00") };
+    const morning = { id: "t2", start: new Date("2026-11-05T06:00:00+05:00"), end: new Date("2026-11-05T09:00:00+05:00") };
+    setup({ timeOff: [evening, morning] });
+    expect(screen.queryByText("Запись закрыта")).toBeNull();
+  });
+
+  it("draws time off inside the visible hours", () => {
+    const midday = { id: "t3", start: new Date("2026-11-04T15:00:00+05:00"), end: new Date("2026-11-04T17:00:00+05:00") };
+    setup({ timeOff: [midday] });
+    expect(screen.getByText("Запись закрыта")).toBeTruthy();
+  });
 });

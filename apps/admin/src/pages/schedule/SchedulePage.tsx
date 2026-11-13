@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, CircleAlert, RotateCw } from "lucide-react";
+import { ChevronLeft, ChevronRight, CircleAlert, RefreshCw } from "lucide-react";
 import { localDay, addDays, weekDays } from "@massage-desk/shared";
 
 import { PageMain } from "@/components/PageMain";
@@ -62,7 +62,7 @@ export function SchedulePage() {
           text={loadErrorText(error)}
           action={
             <Button variant="secondary" onClick={schedule.refetch}>
-              <RotateCw size={icon.button} strokeWidth={icon.stroke} aria-hidden="true" />
+              <RefreshCw size={icon.button} strokeWidth={icon.stroke} aria-hidden="true" />
               Повторить
             </Button>
           }
