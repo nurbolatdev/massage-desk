@@ -434,15 +434,41 @@ Split into two pull requests. Weekly days off belong to the working-hours editor
 
 ### M1-17 · Admin: schedule
 
+Split into four pull requests.
+
+**Pull request 1 of 4**
+
 - **Branch:** `feature/admin-schedule`
-- **Pull request:** `feat(admin): schedule`
+- **Pull request:** `feat(admin): schedule data layer and api cors`
 - **Depends on:** M1-7, M1-16
 - **Commits:**
   1. `feat(api): cors for the admin origin`
+  1. `refactor(shared): day helpers for mobile and admin`
+  1. `feat(admin): schedule data layer`
+  1. `docs: admin schedule split into four pull requests`
+- **Also (from M1-16):** CORS allows only the admin origin from an environment variable, never "*". Done in this pull request.
+
+**Pull request 2 of 4**
+
+- **Branch:** `feature/admin-schedule-calendar`
+- **Pull request:** `feat(admin): schedule calendar for week and day`
+- **Commits:**
+  1. `feat(admin): schedule calendar for week and day`
+
+**Pull request 3 of 4**
+
+- **Branch:** `feature/admin-schedule-reschedule`
+- **Pull request:** `feat(admin): calendar with drag-and-drop reschedule`
+- **Commits:**
   1. `feat(admin): calendar with drag-and-drop reschedule`
-  1. `feat(admin): working hours editor`
   1. `test(admin): reschedule conflict is shown`
-- **Also (from M1-16):** CORS allows only the admin origin from an environment variable, never "*".
+
+**Pull request 4 of 4**
+
+- **Branch:** `feature/admin-working-hours`
+- **Pull request:** `feat(admin): working hours editor`
+- **Commits:**
+  1. `feat(admin): working hours editor`
 
 ### M1-18 · Admin: clients
 

@@ -14,13 +14,15 @@ Web app `apps/admin` (React, Vite, TanStack Router and Query, shadcn/ui, Rechart
 
 ## Status
 
-M1-16 skeleton is done. The sections are placeholders, filled by M1-17…M1-19 and later milestones.
+M1-16 skeleton is done. M1-17 (schedule) is in progress: the API accepts the admin origin and the schedule data layer is ready; the calendar, rescheduling and the working hours editor come in the next pull requests. The other sections are placeholders, filled by M1-18, M1-19 and later milestones.
 
 ## Run locally
 
 1. `npm install`
 2. Copy `apps/admin/.env.example` to `apps/admin/.env` and fill the three variables: `VITE_API_URL`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`.
 3. `npm run dev:admin`
+
+The API must run with `ADMIN_ORIGIN` equal to the admin address (default `http://localhost:5173`), otherwise the browser blocks every request.
 
 Tests: `npm test -w @massage-desk/admin`.
 
@@ -36,5 +38,4 @@ Tokens in `apps/admin/src/styles/index.css` follow `docs/design.md`. A test bloc
 
 ## Known gaps
 
-- CORS for the admin origin is added in M1-17.
 - The design guard does not catch shadows (`drop-shadow-*`, `inset-shadow-*`, `text-shadow-*`), `aspect-*`, `z-N`, `opacity-N`, `duration-N`/`delay-N`, `h-px`/`w-px` or underline offsets; extend it in a separate commit.

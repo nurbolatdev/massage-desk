@@ -16,6 +16,8 @@ Every staff request sends `Authorization: Bearer <Supabase access token>`. The t
 - `401`: token missing, invalid, expired, or issued for another audience or issuer.
 - `403`: valid token, but the user is not staff or the role is not enough.
 
+Browser access (CORS): only the origin set in `ADMIN_ORIGIN` (default `http://localhost:5173`, the admin dev server) may call the API. It is one origin in the form `https://host[:port]`; a wildcard `*`, an empty value, a path or a trailing slash make the API fail at startup. Allowed methods are GET, POST, PUT, PATCH and DELETE, allowed headers are `Authorization` and `Content-Type`, and credentials are not allowed. Preflight requests need no token, and `401`/`403` answers carry the same origin header, so the browser can show them.
+
 Errors from the endpoints below use RFC 9457 problem details (`application/problem+json`).
 
 ### Errors
