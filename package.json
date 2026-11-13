@@ -1,6 +1,7 @@
 {
   "name": "massage-desk",
   "private": true,
+  "license": "MIT",
   "workspaces": [
     "packages/shared",
     "packages/api-types",
