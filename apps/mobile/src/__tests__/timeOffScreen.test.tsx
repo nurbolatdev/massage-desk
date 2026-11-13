@@ -96,7 +96,7 @@ describe("new time off screen", () => {
   it("starts empty: hint shown, save disabled", async () => {
     await renderScreen();
 
-    expect(await screen.findByText("Нажмите на день, чтобы отметить выходной.")).toBeTruthy();
+    expect(await screen.findByText("Нажмите на первый и последний день отпуска. Один день — выходной.")).toBeTruthy();
     expect(await screen.findByText("Ноябрь")).toBeTruthy();
     expect(saveButton().props.accessibilityState).toMatchObject({ disabled: true });
   });
@@ -118,6 +118,39 @@ describe("new time off screen", () => {
     expect(mockPost).toHaveBeenCalledWith("/time-off", {
       body: { start: "2026-11-14T19:00:00.000Z", end: "2026-11-15T19:00:00.000Z" },
     });
+  });
+
+  it("saves a vacation as one period from the first to the last day", async () => {
+    const user = userEvent.setup();
+    await renderScreen();
+
+    await user.press(await screen.findByLabelText(/^Понедельник, 16 ноября/));
+    await user.press(screen.getByLabelText(/^Понедельник, 23 ноября/));
+
+    expect(screen.getByText("16 – 23 ноября")).toBeTruthy();
+    expect(screen.getByText("Отпуск · 8 дней")).toBeTruthy();
+    expect(screen.getByLabelText(/^Среда, 18 ноября/).props.accessibilityState).toMatchObject({ selected: true });
+    expect(screen.getByLabelText(/^Вторник, 24 ноября/).props.accessibilityState).toMatchObject({ selected: false });
+
+    await user.press(saveButton());
+
+    await waitFor(() => expect(mockBack).toHaveBeenCalledTimes(1));
+    expect(mockPost).toHaveBeenCalledWith("/time-off", {
+      body: { start: "2026-11-15T19:00:00.000Z", end: "2026-11-23T19:00:00.000Z" },
+    });
+  });
+
+  it("picks a vacation across a month boundary", async () => {
+    const user = userEvent.setup();
+    await renderScreen();
+
+    await user.press(await screen.findByLabelText(/^Понедельник, 30 ноября/));
+    await user.press(screen.getByLabelText("Следующий месяц"));
+    await user.press(await screen.findByLabelText(/^Четверг, 3 декабря/));
+
+    expect(screen.getByText("30 ноября – 3 декабря")).toBeTruthy();
+    expect(screen.getByText("Отпуск · 4 дня")).toBeTruthy();
+    expect(screen.getByLabelText(/^Среда, 2 декабря/).props.accessibilityState).toMatchObject({ selected: true });
   });
 
   it("moves between months", async () => {

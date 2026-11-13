@@ -37,9 +37,30 @@ describe("pickDay", () => {
     expect(pickDay(one, "2026-12-15", today)).toEqual(EMPTY_PICK);
   });
 
-  it("replaces the pick with another day and clears the error", () => {
+  it("clears the error when another valid day is picked", () => {
     const pick = { from: "2026-12-15", to: "2026-12-15", error: "past" as const };
-    expect(pickDay(pick, "2026-12-20", today)).toEqual({ from: "2026-12-20", to: "2026-12-20", error: null });
+    expect(pickDay(pick, "2026-12-20", today)).toEqual({ from: "2026-12-15", to: "2026-12-20", error: null });
+  });
+
+  it("makes a range from a later day, also across months and years", () => {
+    const one = pickDay(EMPTY_PICK, "2026-12-15", today);
+    expect(pickDay(one, "2026-12-22", today)).toEqual({ from: "2026-12-15", to: "2026-12-22", error: null });
+    const late = pickDay(EMPTY_PICK, "2026-12-30", today);
+    expect(pickDay(late, "2027-01-05", today)).toEqual({ from: "2026-12-30", to: "2027-01-05", error: null });
+  });
+
+  it("restarts from an earlier day or after a finished range", () => {
+    const one = pickDay(EMPTY_PICK, "2026-12-15", today);
+    expect(pickDay(one, "2026-12-10", today)).toEqual({ from: "2026-12-10", to: "2026-12-10", error: null });
+    const range = { from: "2026-12-15", to: "2026-12-22", error: null };
+    expect(pickDay(range, "2026-12-30", today)).toEqual({ from: "2026-12-30", to: "2026-12-30", error: null });
+    expect(pickDay(range, "2026-12-15", today)).toEqual({ from: "2026-12-15", to: "2026-12-15", error: null });
+  });
+
+  it("allows 365 days and rejects 366 keeping the first day", () => {
+    const one = pickDay(EMPTY_PICK, "2026-11-14", today);
+    expect(pickDay(one, "2027-11-13", today)).toEqual({ from: "2026-11-14", to: "2027-11-13", error: null });
+    expect(pickDay(one, "2027-11-14", today)).toEqual({ ...one, error: "tooLong" });
   });
 });
 

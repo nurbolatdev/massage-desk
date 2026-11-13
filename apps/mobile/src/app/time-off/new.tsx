@@ -142,6 +142,7 @@ export default function NewTimeOffScreen() {
             counts={counts}
             closed={off?.closed}
             partial={off?.partial}
+            range={pick.from !== null && pick.to !== null && pick.to !== pick.from ? { from: pick.from, to: pick.to } : undefined}
             onPick={choose}
           />
         )}

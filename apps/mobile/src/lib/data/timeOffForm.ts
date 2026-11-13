@@ -6,7 +6,7 @@ import { addDays, dayDate, localDay } from "./days";
 
 export const TIME_OFF_SETTINGS_TITLE = "Выходные и отпуск";
 export const TIME_OFF_TITLE = "Выходной или отпуск";
-export const TIME_OFF_HINT = "Нажмите на день, чтобы отметить выходной.";
+export const TIME_OFF_HINT = "Нажмите на первый и последний день отпуска. Один день — выходной.";
 export const SAVE_LABEL = "Сохранить";
 export const TIME_OFF_OFFLINE_TEXT = "Отметить выходной можно, когда телефон подключится к интернету.";
 export const PAST_DAY_TEXT = "Этот день уже прошёл. Выберите сегодня или день позже.";
@@ -32,6 +32,10 @@ export function pickDay(pick: TimeOffPick, day: string, today: string): TimeOffP
   if (day < today) return { ...pick, error: "past" };
   if (day > addDays(today, MAX_AHEAD_DAYS)) return { ...pick, error: "tooFar" };
   if (pick.from === day && pick.to === day) return EMPTY_PICK;
+  if (pick.from !== null && pick.from === pick.to && day > pick.from) {
+    if (dayCount(pick.from, day) > MAX_TIME_OFF_DAYS) return { ...pick, error: "tooLong" };
+    return { from: pick.from, to: day, error: null };
+  }
   return { from: day, to: day, error: null };
 }
 
