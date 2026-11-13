@@ -434,9 +434,9 @@ Split into two pull requests. Weekly days off belong to the working-hours editor
 
 ### M1-17 · Admin: schedule
 
-Split into four pull requests.
+Split into five pull requests.
 
-**Pull request 1 of 4**
+**Pull request 1 of 5**
 
 - **Branch:** `feature/admin-schedule`
 - **Pull request:** `feat(admin): schedule data layer and api cors`
@@ -448,14 +448,25 @@ Split into four pull requests.
   1. `docs: admin schedule split into four pull requests`
 - **Also (from M1-16):** CORS allows only the admin origin from an environment variable, never "*". Done in this pull request.
 
-**Pull request 2 of 4**
+**Pull request 2 of 5**
 
 - **Branch:** `feature/admin-schedule-calendar`
-- **Pull request:** `feat(admin): schedule calendar for week and day`
+- **Pull request:** `feat(admin): schedule week calendar`
 - **Commits:**
-  1. `feat(admin): schedule calendar for week and day`
+  1. `test(admin): component tests with jsdom`
+  1. `feat(admin): schedule calendar logic`
+  1. `feat(admin): week grid of the schedule`
+  1. `feat(admin): schedule page with week calendar`
+  1. `docs: admin week calendar and schedule split`
 
-**Pull request 3 of 4**
+**Pull request 3 of 5**
+
+- **Branch:** `feature/admin-schedule-day`
+- **Pull request:** `feat(admin): schedule day view`
+- **Commits:**
+  1. `feat(admin): schedule day view`
+
+**Pull request 4 of 5**
 
 - **Branch:** `feature/admin-schedule-reschedule`
 - **Pull request:** `feat(admin): calendar with drag-and-drop reschedule`
@@ -463,7 +474,7 @@ Split into four pull requests.
   1. `feat(admin): calendar with drag-and-drop reschedule`
   1. `test(admin): reschedule conflict is shown`
 
-**Pull request 4 of 4**
+**Pull request 5 of 5**
 
 - **Branch:** `feature/admin-working-hours`
 - **Pull request:** `feat(admin): working hours editor`

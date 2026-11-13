@@ -22,6 +22,11 @@ export function useSettings() {
   });
 }
 
+/** The master's time zone; undefined until the settings arrive. */
+export function useTimeZone(): string | undefined {
+  return useSettings().data?.timeZone;
+}
+
 /**
  * Appointments, time off and working hours of `from`..`to` (inclusive days).
  * The API accepts a window of at most 62 days: call it with `weekRange` or a single day.

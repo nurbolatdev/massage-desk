@@ -123,6 +123,11 @@
   --spacing-aside-basis: 380px;
   --spacing-main-basis: 480px;
   --spacing-aside-text: 420px;
+  /* Schedule mockup: grid row (15 min, in rem so it grows with the system font), grid minimum width, flex bases. */
+  --spacing-slot-week: 0.875rem;
+  --spacing-calendar-min: 760px;
+  --spacing-calendar-basis: 640px;
+  --spacing-panel-basis: 280px;
 
   /* DESIGN.md section 5: radius scale. */
   --radius-*: initial;
@@ -149,6 +154,27 @@
   /* DESIGN.md section 8: the only breakpoint, sidebar 240 + content 560. */
   --breakpoint-*: initial;
   --breakpoint-md: 800px;
+}
+
+/* Grid positions are built by rowClass() in lib/data/calendar.ts; its range is MAX_ROWS. */
+@source inline("row-start-{1..96} row-span-{1..96}");
+
+@utility rows-slot-week {
+  grid-auto-rows: var(--spacing-slot-week);
+}
+
+/* Break stripes from the schedule mockup. */
+@utility hatch {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--color-segment-bg) 0 var(--spacing-6),
+    var(--color-bg-page) var(--spacing-6) var(--spacing-12)
+  );
+}
+
+/* Appointment block outline, 2 px. */
+@utility border-appointment {
+  border-width: var(--spacing-2);
 }
 
 @layer base {
