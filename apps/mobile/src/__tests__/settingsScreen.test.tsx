@@ -42,7 +42,7 @@ describe("settings screen", () => {
     expect(screen.getByText("Настройки")).toBeTruthy();
     await user.press(screen.getByRole("button", { name: "Выходные и отпуск" }));
 
-    expect(mockPush).toHaveBeenCalledWith("/time-off/new");
+    expect(mockPush).toHaveBeenCalledWith("/time-off");
   });
 
   it("still asks before signing out", async () => {

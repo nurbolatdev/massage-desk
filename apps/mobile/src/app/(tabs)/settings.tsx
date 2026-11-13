@@ -52,7 +52,7 @@ export default function SettingsScreen() {
           <PressableSurface
             accessibilityRole="button"
             accessibilityLabel={TIME_OFF_SETTINGS_TITLE}
-            onPress={() => router.push("/time-off/new")}
+            onPress={() => router.push("/time-off")}
             style={styles.row}
           >
             <View style={styles.tile}>

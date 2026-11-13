@@ -73,7 +73,7 @@ export default function NewTimeOffScreen() {
 
   const goBack = () => {
     if (router.canGoBack()) router.back();
-    else router.replace("/(tabs)/settings");
+    else router.replace("/time-off");
   };
 
   const choose = (day: string) => {
