@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640"><defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FAF6EF"/><stop offset="1" stop-color="#ECE0CE"/></linearGradient>
+<linearGradient id="s1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1E8A72"/><stop offset="1" stop-color="#0E4F45"/></linearGradient>
+<linearGradient id="s2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#34A88C"/><stop offset="1" stop-color="#1F6F5C"/></linearGradient>
+<linearGradient id="s3" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7FD6BE"/><stop offset="1" stop-color="#46B095"/></linearGradient>
+<linearGradient id="dot" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFB25B"/><stop offset="1" stop-color="#F0603C"/></linearGradient>
+<linearGradient id="dark" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#14362F"/><stop offset="1" stop-color="#0D221E"/></linearGradient>
+</defs><rect width="1280" height="640" fill="#FAF6EF"/>
+<circle cx="1060" cy="120" r="340" fill="#DDF0E9" opacity="0.6"/>
+<g transform="translate(80,80) scale(0.0703)"><rect width="1024" height="1024" rx="232" fill="url(#bg)"/><g transform="translate(0,-10)"><ellipse cx="512" cy="742" rx="292" ry="104" fill="url(#s1)"/>
+<ellipse cx="512" cy="566" rx="214" ry="86" fill="url(#s2)"/>
+<ellipse cx="512" cy="414" rx="140" ry="64" fill="url(#s3)"/>
+<circle cx="512" cy="282" r="58" fill="url(#dot)"/></g></g>
+<text x="172" y="130" font-family="Inter, 'SF Pro Display', Helvetica, Arial, sans-serif" font-weight="700" font-size="40" fill="#14332E" letter-spacing="-0.8">massage<tspan dx="11" fill="#1F8A72" font-weight="500">desk</tspan></text>
+<text font-family="Inter, 'SF Pro Display', Helvetica, Arial, sans-serif" font-weight="700" font-size="56" fill="#14332E" letter-spacing="-1.1"><tspan x="80" y="250">Bookings that</tspan><tspan x="80" y="322">answer themselves.</tspan></text>
+<text font-family="Inter, 'SF Pro Display', Helvetica, Arial, sans-serif" font-weight="500" font-size="26" fill="#4F615B"><tspan x="80" y="390">An AI assistant books clients in WhatsApp.</tspan><tspan x="80" y="426">The master sees the day in an Android app.</tspan></text>
+<rect x="80" y="480" width="200" height="48" rx="24" fill="#FFFFFF" stroke="#E6DCCB" stroke-width="1.5"/><text x="180" y="511" font-family="Inter, 'SF Pro Display', Helvetica, Arial, sans-serif" font-weight="600" font-size="20" fill="#14332E" text-anchor="middle">WhatsApp AI bot</text><rect x="292" y="480" width="160" height="48" rx="24" fill="#FFFFFF" stroke="#E6DCCB" stroke-width="1.5"/><text x="372" y="511" font-family="Inter, 'SF Pro Display', Helvetica, Arial, sans-serif" font-weight="600" font-size="20" fill="#14332E" text-anchor="middle">Android app</text><rect x="464" y="480" width="160" height="48" rx="24" fill="#FFFFFF" stroke="#E6DCCB" stroke-width="1.5"/><text x="544" y="511" font-family="Inter, 'SF Pro Display', Helvetica, Arial, sans-serif" font-weight="600" font-size="20" fill="#14332E" text-anchor="middle">Admin panel</text>
+<rect x="840" y="60" width="340" height="520" rx="44" fill="#14332E"/>
+<rect x="852" y="72" width="316" height="496" rx="34" fill="#FFFFFF"/>
+<text x="876" y="124" font-family="Inter, 'SF Pro Display', Helvetica, Arial, sans-serif" font-weight="700" font-size="30" fill="#14332E">Today</text>
+<text x="1144" y="122" font-family="Inter, 'SF Pro Display', Helvetica, Arial, sans-serif" font-weight="500" font-size="18" fill="#4F615B" text-anchor="end">3 visits</text>
+<rect x="872" y="148" width="276" height="70" rx="16" fill="#FAF6EF"/><text x="890" y="191" font-family="Inter, 'SF Pro Display', Helvetica, Arial, sans-serif" font-weight="700" font-size="22" fill="#1F6F5C">10:00</text><text x="966" y="190" font-family="Inter, 'SF Pro Display', Helvetica, Arial, sans-serif" font-weight="500" font-size="18" fill="#14332E">Back · 60 min</text><rect x="872" y="230" width="276" height="70" rx="16" fill="#FAF6EF"/><text x="890" y="273" font-family="Inter, 'SF Pro Display', Helvetica, Arial, sans-serif" font-weight="700" font-size="22" fill="#1F6F5C">13:30</text><text x="966" y="272" font-family="Inter, 'SF Pro Display', Helvetica, Arial, sans-serif" font-weight="500" font-size="18" fill="#14332E">Full body · 90 min</text>
+<rect x="872" y="312" width="276" height="96" rx="16" fill="#FDE3D6" stroke="#F0603C" stroke-width="1.5"/>
+<text x="890" y="350" font-family="Inter, 'SF Pro Display', Helvetica, Arial, sans-serif" font-weight="700" font-size="22" fill="#8A2E12">16:00</text>
+<text x="966" y="349" font-family="Inter, 'SF Pro Display', Helvetica, Arial, sans-serif" font-weight="500" font-size="18" fill="#14332E">Neck · 30 min</text>
+<text x="890" y="385" font-family="Inter, 'SF Pro Display', Helvetica, Arial, sans-serif" font-weight="700" font-size="16" fill="#8A2E12">Asks to reschedule</text>
+<rect x="872" y="484" width="276" height="60" rx="16" fill="#1F6F5C"/>
+<text x="1010" y="521" font-family="Inter, 'SF Pro Display', Helvetica, Arial, sans-serif" font-weight="600" font-size="20" fill="#FFFFFF" text-anchor="middle">New booking</text>
+<path d="M658 330 H852 a18 18 0 0 1 18 18 V364 a18 18 0 0 1 -18 18 H644 a4 4 0 0 1 -4 -4 V348 a18 18 0 0 1 18 -18 Z" fill="#FFFFFF" stroke="#E6DCCB" stroke-width="1.5"/>
+<text x="658" y="362" font-family="Inter, 'SF Pro Display', Helvetica, Arial, sans-serif" font-weight="500" font-size="17" fill="#14332E">Tomorrow at 6 free?</text>
+<path d="M658 396 H852 a18 18 0 0 1 18 18 V472 a4 4 0 0 1 -4 4 H658 a18 18 0 0 1 -18 -18 V414 a18 18 0 0 1 18 -18 Z" fill="#DDF0E9"/>
+<text font-family="Inter, 'SF Pro Display', Helvetica, Arial, sans-serif" font-weight="600" font-size="17" fill="#155445"><tspan x="658" y="429">18:00 is free.</tspan><tspan x="658" y="455">Shall I book it?</tspan></text></svg>

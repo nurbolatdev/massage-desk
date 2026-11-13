@@ -2,6 +2,7 @@
   "name": "@massage-desk/api-types",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "types": "./src/index.ts",
   "exports": {

@@ -46,6 +46,7 @@
     "test": "jest --ci"
   },
   "private": true,
+  "license": "MIT",
   "jest": {
     "preset": "jest-expo",
     "moduleNameMapper": {
