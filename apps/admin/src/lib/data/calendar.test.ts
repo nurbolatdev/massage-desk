@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
 
 import { ApiError } from "@/lib/api/errors";
@@ -8,6 +10,7 @@ import {
   gridAppointments,
   hourRange,
   isDayOff,
+  MAX_ROWS,
   loadErrorText,
   minutesOfDay,
   rowClass,
@@ -160,5 +163,13 @@ describe("loadErrorText", () => {
     expect(loadErrorText(new ApiError("network"))).toBe("Нет связи с сервером. Проверьте интернет и нажмите «Повторить».");
     expect(loadErrorText(new ApiError("server", { status: 503 }))).toBe("Сервер ответил с ошибкой. Код: 503.");
     expect(loadErrorText(new Error())).toBe("Попробуйте ещё раз через минуту.");
+  });
+});
+
+describe("grid class safelist", () => {
+  it("covers the same range as rowClass", () => {
+    const css = readFileSync(new URL("../../styles/index.css", import.meta.url), "utf8");
+    expect(MAX_ROWS).toBe(96);
+    expect(css).toContain(`@source inline("row-start-{1..${MAX_ROWS}} row-span-{1..${MAX_ROWS}}");`);
   });
 });
