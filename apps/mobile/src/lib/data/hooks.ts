@@ -13,7 +13,9 @@ import { bookAppointment, fetchServices, fetchSlots, searchClients } from "./boo
 import { isDay, localDay, nextDay } from "./days";
 import { queryKeys } from "./queryKeys";
 import type { CreateTimeOffInput } from "./timeOff";
-import { createTimeOff, fetchTimeOff, toTimeOffPeriods } from "./timeOff";
+import type { TimeOffItem } from "./timeOff";
+import { createTimeOff, deleteTimeOff, fetchTimeOff, toTimeOffPeriods, withoutTimeOff } from "./timeOff";
+import { periodView, upcomingPeriods, upcomingWindows } from "./timeOffList";
 import { fetchWorkingHours, workingWindowsOfDay } from "./workingHours";
 import type { WorkingBlock, WorkingWindow } from "./workingHours";
 
@@ -183,6 +185,55 @@ export function useCreateTimeOff() {
         queryClient.invalidateQueries({ queryKey: queryKeys.slots.all }),
       ]),
   });
+}
+
+export function useDeleteTimeOff() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteTimeOff(api, id),
+    networkMode: "always",
+    onSuccess: (_, id) => {
+      queryClient.setQueriesData<TimeOffItem[]>({ queryKey: queryKeys.timeOff.all }, (items) =>
+        withoutTimeOff(items, id),
+      );
+    },
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.timeOff.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.slots.all }),
+      ]),
+  });
+}
+
+/** Current and future time off, as row views; covers everything the server can hold. */
+export function useUpcomingTimeOff(now: Date) {
+  const settings = useSettings();
+  const timeZone = settings.data?.timeZone;
+  const today = timeZone === undefined ? undefined : localDay(now, timeZone);
+  const [first, second] = today === undefined ? [undefined, undefined] : upcomingWindows(today);
+  const a = useTimeOff(first?.from ?? "", first?.to ?? "", today !== undefined);
+  const b = useTimeOff(second?.from ?? "", second?.to ?? "", today !== undefined);
+  const periods = useMemo(() => {
+    const upcoming = upcomingPeriods([a.data, b.data], now);
+    return timeZone === undefined ? undefined : upcoming?.map((p) => periodView(p, timeZone));
+  }, [a.data, b.data, now, timeZone]);
+
+  const refetch = () => {
+    void settings.refetch();
+    if (today !== undefined) {
+      void a.refetch();
+      void b.refetch();
+    }
+  };
+
+  return {
+    timeZone,
+    periods,
+    dataUpdatedAt: Math.min(a.dataUpdatedAt, b.dataUpdatedAt),
+    error: settings.error ?? a.error ?? b.error,
+    refreshError: a.error ?? b.error,
+    refetch,
+  };
 }
 
 export function useAppointment(id: string, day: string | undefined) {

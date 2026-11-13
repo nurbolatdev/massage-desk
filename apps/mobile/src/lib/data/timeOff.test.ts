@@ -1,9 +1,17 @@
 import { describe, expect, it, jest } from "@jest/globals";
 
 import { createApi } from "@/lib/api/client";
+import { ApiError } from "@/lib/api/errors";
 
 import type { TimeOffItem } from "./timeOff";
-import { createTimeOff, dayRangePeriod, fetchTimeOff, toTimeOffPeriods } from "./timeOff";
+import {
+  createTimeOff,
+  dayRangePeriod,
+  deleteTimeOff,
+  fetchTimeOff,
+  toTimeOffPeriods,
+  withoutTimeOff,
+} from "./timeOff";
 
 const item: TimeOffItem = {
   id: "t1",
@@ -86,5 +94,50 @@ describe("dayRangePeriod", () => {
     const { start, end } = dayRangePeriod("2026-03-28", "2026-03-29", "Europe/Berlin");
     expect(start).toBe("2026-03-27T23:00:00.000Z");
     expect(end).toBe("2026-03-29T22:00:00.000Z");
+  });
+});
+
+describe("deleteTimeOff", () => {
+  const apiAnswering = (response: () => Response) => {
+    const fetch = jest.fn<(input: Request) => Promise<Response>>(async () => response());
+    const api = createApi({
+      baseUrl: "https://api.test",
+      getAccessToken: async () => "tok",
+      onUnauthorized: jest.fn(),
+      fetch,
+    });
+    return { api, fetch };
+  };
+  const problem = (status: number, code: string) =>
+    new Response(JSON.stringify({ code }), {
+      status,
+      headers: { "Content-Type": "application/problem+json" },
+    });
+
+  it("sends DELETE /time-off/{id} and resolves on 204", async () => {
+    const { api, fetch } = apiAnswering(() => new Response(null, { status: 204 }));
+    await expect(deleteTimeOff(api, "t1")).resolves.toBeUndefined();
+    expect(fetch.mock.calls[0]?.[0].method).toBe("DELETE");
+    expect(fetch.mock.calls[0]?.[0].url).toBe("https://api.test/time-off/t1");
+  });
+
+  it("treats an already removed period as removed", async () => {
+    const { api } = apiAnswering(() => problem(404, "TIME_OFF_NOT_FOUND"));
+    await expect(deleteTimeOff(api, "t1")).resolves.toBeUndefined();
+  });
+
+  it("rejects on a server error and on a 404 with another code", async () => {
+    const server = apiAnswering(() => new Response("{}", { status: 500 }));
+    await expect(deleteTimeOff(server.api, "t1")).rejects.toBeInstanceOf(ApiError);
+    const other = apiAnswering(() => problem(404, "NOT_FOUND"));
+    await expect(deleteTimeOff(other.api, "t1")).rejects.toBeInstanceOf(ApiError);
+  });
+});
+
+describe("withoutTimeOff", () => {
+  it("removes only the given id and keeps undefined", () => {
+    const other: TimeOffItem = { ...item, id: "t2" };
+    expect(withoutTimeOff([item, other], "t1")).toEqual([other]);
+    expect(withoutTimeOff(undefined, "t1")).toBeUndefined();
   });
 });

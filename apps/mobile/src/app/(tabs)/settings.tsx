@@ -7,8 +7,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Button } from "@/components/Button";
 import { ConfirmSheet } from "@/components/ConfirmSheet";
 import { PressableSurface, Surface } from "@/components/Surface";
-import { TIME_OFF_SETTINGS_TITLE } from "@/lib/data/timeOffForm";
 import { useSession } from "@/lib/auth/session";
+import { useUpcomingTimeOff } from "@/lib/data/hooks";
+import { TIME_OFF_SETTINGS_TITLE } from "@/lib/data/timeOffForm";
+import { timeOffSummary } from "@/lib/data/timeOffList";
+import { useNow } from "@/lib/time/useNow";
 import { colors, radii, space, typography } from "@/theme";
 
 // from the Settings mockup
@@ -25,6 +28,7 @@ export default function SettingsScreen() {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>(undefined);
+  const summary = timeOffSummary(useUpcomingTimeOff(useNow()).periods);
 
   const close = () => {
     setOpen(false);
@@ -51,14 +55,17 @@ export default function SettingsScreen() {
         <Surface style={styles.card}>
           <PressableSurface
             accessibilityRole="button"
-            accessibilityLabel={TIME_OFF_SETTINGS_TITLE}
-            onPress={() => router.push("/time-off/new")}
+            accessibilityLabel={summary === undefined ? TIME_OFF_SETTINGS_TITLE : `${TIME_OFF_SETTINGS_TITLE}, ${summary}`}
+            onPress={() => router.push("/time-off")}
             style={styles.row}
           >
             <View style={styles.tile}>
               <Feather name="calendar" size={ROW_ICON_SIZE} color={colors.primaryStrong} accessible={false} />
             </View>
-            <Text style={styles.rowTitle}>{TIME_OFF_SETTINGS_TITLE}</Text>
+            <View style={styles.rowText}>
+              <Text style={styles.rowTitle}>{TIME_OFF_SETTINGS_TITLE}</Text>
+              {summary === undefined ? null : <Text style={styles.rowValue}>{summary}</Text>}
+            </View>
             <Feather name="chevron-right" size={CHEVRON_SIZE} color={colors.muted} accessible={false} />
           </PressableSurface>
         </Surface>
@@ -101,6 +108,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  rowTitle: { ...typography.body, fontWeight: "700", color: colors.ink, flex: 1 },
+  rowText: { flex: 1, gap: space[2] },
+  rowTitle: { ...typography.body, fontWeight: "700", color: colors.ink },
+  rowValue: { ...typography.secondary, color: colors.muted },
   footer: { padding: space[16] },
 });
