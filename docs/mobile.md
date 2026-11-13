@@ -7,7 +7,7 @@ Expo SDK 58, Expo Router (`apps/mobile/src/app`), installed as an APK via EAS Bu
 | Today | Next client in large type, call and WhatsApp buttons, day list | Done in M1-11; see [Today](#today) |
 | Calendar | Week and month | Week and month views, days off done in M1-14; see [Calendar](#calendar) |
 | Chats | Conversations and "I'll answer" take-over | M2 |
-| Settings | Days off and vacation | Marking days off done in M1-15 (part 1); see [Days off and vacation](#days-off-and-vacation) |
+| Settings | Days off and vacation | Done in M1-15; see [Days off and vacation](#days-off-and-vacation) |
 
 **UX for an elderly user:** text 18–34, touch targets ≥ 56dp, high contrast, verbs on buttons, confirmation for destructive actions, plain wording. Tokens only from `src/theme`.
 
@@ -69,14 +69,17 @@ Done in M1-13. Opened from «Записать клиента» on Today. Three s
 
 ## Days off and vacation
 
-Done in M1-15 (part 1). Opened from the row «Выходные и отпуск» in Settings. The master taps one day (a day off) or a first and a last day (a vacation) on a month grid and presses «Сохранить».
+Done in M1-15. Opened from the row «Выходные и отпуск» in Settings. The row shows the nearest period (for example «Отпуск · 15 – 22 декабря и ещё 2») or «Отпуск не задан».
 
+- The list «Выходные и отпуск» shows current and future days off, vacations and part-day time off, ordered by start. It covers everything that can be stored (two years ahead).
+- «Добавить даты» opens the picker: the master taps one day (a day off) or a first and a last day (a vacation) on a month grid and presses «Сохранить». After saving the master returns to the list.
 - A vacation is up to 365 days, from today up to two years ahead. Past days cannot be picked.
 - The grid shows the number of appointments per day, so busy days are visible before closing them.
 - The time off is stored from local midnight of the first day to the next local midnight after the last day, in the master's time zone. Free times for those days disappear from the bot and from booking.
 - If confirmed appointments fall inside, the master sees who and when and must confirm. The appointments are kept: the master moves or cancels them. Nothing is closed without the confirmation.
-- Offline, a banner explains that saving needs the internet, and the button is disabled.
-- Known gaps: no list of stored days off and no removal yet, no weekly days off (they belong to working hours), partial time off made by the admin is not drawn.
+- Removal asks for confirmation, removes the whole period and reopens the time for the bot and booking.
+- Offline, the list is shown from the saved copy; saving and removal are disabled and a banner explains why.
+- Known gaps: no weekly days off (they belong to working hours), part-day time off is not drawn in the calendar, no warning under a stored period that still has appointments.
 
 ## Data
 

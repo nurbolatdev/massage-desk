@@ -402,9 +402,11 @@ Split into two pull requests. Weekly days off belong to the working-hours editor
 - **Pull request:** `feat(mobile): list and remove days off`
 - **Depends on:** part 1
 - **Commits:**
+  1. `feat(mobile): upcoming time off query`
   1. `feat(mobile): upcoming days off list`
   1. `feat(mobile): remove a day off`
   1. `feat(mobile): days off summary in settings`
+  1. `docs: days off list and removal`
 
 ### M1-16 · Admin panel skeleton
 
