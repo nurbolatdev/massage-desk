@@ -21,6 +21,8 @@ interface Props {
   closed: ReadonlySet<string> | undefined;
   /** Days only partly covered by time off; undefined while loading. */
   partial: ReadonlySet<string> | undefined;
+  /** A picked period: days inside get a soft fill, both ends look selected. */
+  range?: { from: string; to: string };
   onPick: (day: string) => void;
 }
 
@@ -34,7 +36,7 @@ function chunk<T>(items: readonly T[], size: number): T[][] {
   return rows;
 }
 
-export function MonthGrid({ cells, selected, today, counts, closed, partial, onPick }: Props) {
+export function MonthGrid({ cells, selected, today, counts, closed, partial, range, onPick }: Props) {
   const hasClosed = cells.some((day) => day !== null && (closed?.has(day) ?? false));
   return (
     <View style={styles.root}>
@@ -53,18 +55,20 @@ export function MonthGrid({ cells, selected, today, counts, closed, partial, onP
         <View key={rowIndex} style={styles.row}>
           {week.map((day, columnIndex) => {
             if (day === null) return <View key={`empty-${columnIndex}`} style={styles.empty} />;
-            const isSelected = day === selected;
+            const isEnd = range !== undefined && (day === range.from || day === range.to);
+            const isInside = range !== undefined && day > range.from && day < range.to;
+            const isSelected = day === selected || isEnd;
             const count = counts === undefined ? undefined : (counts[day] ?? 0);
-            const isClosed = !isSelected && (closed?.has(day) ?? false);
+            const isClosed = !isSelected && !isInside && (closed?.has(day) ?? false);
             return (
               <Pressable
                 key={day}
                 accessibilityRole="button"
-                accessibilityState={{ selected: isSelected }}
+                accessibilityState={{ selected: isSelected || isInside }}
                 accessibilityLabel={dayCellLabel(day, count, day < today, closed?.has(day) ?? false, partial?.has(day) ?? false)}
                 hitSlop={{ left: space[2], right: space[2] }}
                 onPress={() => onPick(day)}
-                style={[styles.cell, isSelected && styles.cellSelected, isClosed && styles.cellClosed]}
+                style={[styles.cell, isSelected && styles.cellSelected, isInside && styles.cellInside, isClosed && styles.cellClosed]}
               >
                 <Text style={[styles.number, isSelected ? styles.onSelected : isClosed ? styles.closedFg : styles.ink]}>
                   {Number(day.slice(8))}
@@ -113,6 +117,7 @@ const styles = StyleSheet.create({
     gap: space[2],
   },
   cellSelected: { backgroundColor: colors.primary },
+  cellInside: { backgroundColor: colors.primarySoft },
   cellClosed: { backgroundColor: colors.neutralSoft },
   number: { ...typography.body, fontWeight: "700" },
   count: { ...typography.label, fontWeight: "800" },

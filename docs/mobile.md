@@ -7,7 +7,7 @@ Expo SDK 58, Expo Router (`apps/mobile/src/app`), installed as an APK via EAS Bu
 | Today | Next client in large type, call and WhatsApp buttons, day list | Done in M1-11; see [Today](#today) |
 | Calendar | Week and month | Week and month views, days off done in M1-14; see [Calendar](#calendar) |
 | Chats | Conversations and "I'll answer" take-over | M2 |
-| Settings | Days off and vacation | M1 |
+| Settings | Days off and vacation | Marking days off done in M1-15 (part 1); see [Days off and vacation](#days-off-and-vacation) |
 
 **UX for an elderly user:** text 18–34, touch targets ≥ 56dp, high contrast, verbs on buttons, confirmation for destructive actions, plain wording. Tokens only from `src/theme`.
 
@@ -66,6 +66,17 @@ Done in M1-13. Opened from «Записать клиента» on Today. Three s
 - If the time was taken meanwhile (409), the master sees an alert and the list of free times is refreshed.
 - Offline, a banner explains that booking needs the internet, and the button is disabled.
 - The client gets no message about the booking yet.
+
+## Days off and vacation
+
+Done in M1-15 (part 1). Opened from the row «Выходные и отпуск» in Settings. The master taps one day (a day off) or a first and a last day (a vacation) on a month grid and presses «Сохранить».
+
+- A vacation is up to 365 days, from today up to two years ahead. Past days cannot be picked.
+- The grid shows the number of appointments per day, so busy days are visible before closing them.
+- The time off is stored from local midnight of the first day to the next local midnight after the last day, in the master's time zone. Free times for those days disappear from the bot and from booking.
+- If confirmed appointments fall inside, the master sees who and when and must confirm. The appointments are kept: the master moves or cancels them. Nothing is closed without the confirmation.
+- Offline, a banner explains that saving needs the internet, and the button is disabled.
+- Known gaps: no list of stored days off and no removal yet, no weekly days off (they belong to working hours), partial time off made by the admin is not drawn.
 
 ## Data
 
