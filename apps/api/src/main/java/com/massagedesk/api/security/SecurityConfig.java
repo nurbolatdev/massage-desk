@@ -2,6 +2,7 @@ package com.massagedesk.api.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -16,7 +17,9 @@ import org.springframework.security.web.SecurityFilterChain;
  * needs the admin role; everything else needs a staff role (master or admin), so new
  * endpoints are closed by default. The role comes from {@code profiles}, not from the token.
  * No or invalid token gives 401; a valid token without a profile or with the wrong role
- * gives 403. CSRF is off: tokens travel in a header, there are no cookies.
+ * gives 403. CSRF is off: tokens travel in a header, there are no cookies. CORS runs before
+ * the token check (see {@link CorsConfig}), so preflight requests pass and 401/403 answers
+ * carry the allowed origin.
  */
 @Configuration(proxyBeanMethods = false)
 public class SecurityConfig {
@@ -25,6 +28,7 @@ public class SecurityConfig {
     SecurityFilterChain securityFilterChain(HttpSecurity http, StaffProfileRepository profiles)
             throws Exception {
         http
+                .cors(Customizer.withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .oauth2ResourceServer(o -> o.jwt(

@@ -55,6 +55,9 @@ app:
   supabase:
     # default is the local Supabase CLI address; dev and prod set SUPABASE_URL
     url: ${SUPABASE_URL:http://127.0.0.1:54321}
+  cors:
+    # the only origin allowed to call the API from a browser; default is the Vite dev server, prod sets ADMIN_ORIGIN
+    admin-origin: ${ADMIN_ORIGIN:http://localhost:5173}
   whatsapp:
     verify-token: ${WHATSAPP_VERIFY_TOKEN:}
   phone:
