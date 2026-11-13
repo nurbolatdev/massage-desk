@@ -7,17 +7,24 @@ import { AppointmentHeader } from "@/components/AppointmentHeader";
 import { Button } from "@/components/Button";
 import { CalendarHeader } from "@/components/CalendarHeader";
 import { CalendarSkeleton } from "@/components/CalendarSkeleton";
+import { ConfirmSheet } from "@/components/ConfirmSheet";
 import { ErrorBanner } from "@/components/ErrorBanner";
 import { MonthGrid } from "@/components/MonthGrid";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { RefreshFailedBanner } from "@/components/RefreshFailedBanner";
 import { Surface } from "@/components/Surface";
+import { TimeOffConflictAlert } from "@/components/TimeOffConflictAlert";
+import { ApiError } from "@/lib/api";
 import { ACTION_FAILED } from "@/lib/data/appointmentCard";
 import { NEXT_MONTH_LABEL, PREV_MONTH_LABEL, dayCounts, daysOff, monthTitle, rangeLabel } from "@/lib/data/calendar";
 import { addMonths, localDay, monthDays, monthGrid } from "@/lib/data/days";
+import { useDestructiveFlow } from "@/lib/data/useDestructiveFlow";
 import { useCreateTimeOff, useScheduleRange, useSettings } from "@/lib/data/hooks";
 import { dayRangePeriod } from "@/lib/data/timeOff";
 import {
+  CONFLICT_CONFIRM_TEXT,
+  CONFLICT_CONFIRM_TITLE,
+  CONFLICT_CONFIRM_YES,
   EMPTY_PICK,
   INVALID_TIME_OFF_TEXT,
   SAVE_LABEL,
@@ -26,6 +33,7 @@ import {
   TIME_OFF_TITLE,
   pickDay,
   pickErrorText,
+  conflictMessage,
   timeOffErrorKind,
   timeOffKind,
   timeOffTitle,
@@ -44,6 +52,7 @@ export default function NewTimeOffScreen() {
   const [shown, setShown] = useState<string | null>(null);
   const [pick, setPick] = useState(EMPTY_PICK);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [conflict, setConflict] = useState<{ day: string; rest: string } | null>(null);
 
   const zone = useSettings().data?.timeZone;
   const today = localDay(now, zone ?? "UTC");
@@ -68,7 +77,17 @@ export default function NewTimeOffScreen() {
   const choose = (day: string) => {
     setPick(pickDay(pick, day, today));
     setSaveError(null);
+    setConflict(null);
   };
+
+  const flow = useDestructiveFlow<"force">(
+    async () => {
+      if (pick.from === null || pick.to === null || timeZone === undefined) return;
+      await create.mutateAsync({ ...dayRangePeriod(pick.from, pick.to, timeZone), force: true });
+      goBack();
+    },
+    (e) => (timeOffErrorKind(e) === "invalid" ? INVALID_TIME_OFF_TEXT : ACTION_FAILED),
+  );
 
   const save = async () => {
     if (pick.from === null || pick.to === null || timeZone === undefined) return;
@@ -77,8 +96,13 @@ export default function NewTimeOffScreen() {
       await create.mutateAsync(dayRangePeriod(pick.from, pick.to, timeZone));
       goBack();
     } catch (error) {
-      // a conflict gets its own confirmation in the next step
-      setSaveError(timeOffErrorKind(error) === "invalid" ? INVALID_TIME_OFF_TEXT : ACTION_FAILED);
+      const kind = timeOffErrorKind(error);
+      if (kind === "conflict" && error instanceof ApiError && error.conflicts !== undefined) {
+        setConflict(conflictMessage(error.conflicts, timeZone));
+        flow.ask("force");
+      } else {
+        setSaveError(kind === "invalid" ? INVALID_TIME_OFF_TEXT : ACTION_FAILED);
+      }
     }
   };
 
@@ -128,11 +152,24 @@ export default function NewTimeOffScreen() {
             <Text style={styles.cardKind}>{timeOffKind(pick.from, pick.to)}</Text>
           </Surface>
         )}
+        {conflict !== null && <TimeOffConflictAlert day={conflict.day} rest={conflict.rest} />}
         {saveError !== null && <ErrorBanner message={saveError} />}
       </ScrollView>
       <View style={styles.footer}>
         <Button label={SAVE_LABEL} onPress={() => void save()} disabled={!canSave} />
       </View>
+      <ConfirmSheet
+        visible={flow.state.asking !== null}
+        title={CONFLICT_CONFIRM_TITLE}
+        text={CONFLICT_CONFIRM_TEXT}
+        confirmLabel={CONFLICT_CONFIRM_YES}
+        confirmVariant="primary"
+        confirmDisabled={!online}
+        onConfirm={() => void flow.confirm()}
+        onCancel={flow.dismiss}
+        busy={flow.state.busy}
+        error={flow.state.error ?? undefined}
+      />
     </SafeAreaView>
   );
 }

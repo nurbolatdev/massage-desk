@@ -184,4 +184,92 @@ describe("new time off screen", () => {
     expect(await screen.findByText(/Не получилось сохранить/)).toBeTruthy();
     expect(mockBack).not.toHaveBeenCalled();
   });
+
+  describe("appointments inside the days", () => {
+    const conflictBody = {
+      error: {
+        code: "APPOINTMENT_CONFLICT",
+        status: 409,
+        title: "Conflict",
+        detail: "",
+        instance: "/time-off",
+        conflicts: [
+          { appointmentId: "a1", clientName: "Ержан Бекенов", start: "2026-11-15T11:00:00+05:00", end: "2026-11-15T12:00:00+05:00" },
+        ],
+      },
+      response: new Response(null, { status: 409 }),
+    };
+
+    async function pickAndSave(user: ReturnType<typeof userEvent.setup>) {
+      await user.press(await screen.findByLabelText(/^Воскресенье, 15 ноября/));
+      await user.press(saveButton());
+      await screen.findByText("Закрыть дни с записями?");
+    }
+
+    beforeEach(() => {
+      mockPost.mockResolvedValueOnce(conflictBody);
+    });
+
+    it("shows who is booked and closes the days only after confirmation", async () => {
+      const user = userEvent.setup();
+      await renderScreen();
+
+      await pickAndSave(user);
+
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        /На 15 ноября уже есть 1 запись \(Ержан Бекенов, 11:00\)\. Перенесите её или отмените\./,
+      );
+      expect(mockPost).toHaveBeenCalledTimes(1);
+      expect(mockPost.mock.calls[0]?.[1]).toEqual({
+        body: { start: "2026-11-14T19:00:00.000Z", end: "2026-11-15T19:00:00.000Z" },
+      });
+
+      await user.press(screen.getByRole("button", { name: "Да, закрыть дни" }));
+
+      await waitFor(() => expect(mockBack).toHaveBeenCalledTimes(1));
+      expect(mockPost).toHaveBeenCalledTimes(2);
+      expect(mockPost.mock.calls[1]?.[1]).toEqual({
+        body: { start: "2026-11-14T19:00:00.000Z", end: "2026-11-15T19:00:00.000Z", force: true },
+      });
+    });
+
+    it("keeps the alert and the days when the master declines", async () => {
+      const user = userEvent.setup();
+      await renderScreen();
+
+      await pickAndSave(user);
+      await user.press(screen.getAllByRole("button", { name: "Нет, оставить" })[0]!);
+
+      expect(mockPost).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole("alert")).toBeTruthy();
+      expect(screen.getByText("Выходной")).toBeTruthy();
+      expect(mockBack).not.toHaveBeenCalled();
+    });
+
+    it("hides the alert when other days are picked", async () => {
+      const user = userEvent.setup();
+      await renderScreen();
+
+      await pickAndSave(user);
+      await user.press(screen.getAllByRole("button", { name: "Нет, оставить" })[0]!);
+      await user.press(screen.getByLabelText(/^Понедельник, 16 ноября/));
+
+      expect(screen.queryByRole("alert")).toBeNull();
+    });
+
+    it("shows an error inside the sheet when the forced save fails", async () => {
+      mockPost.mockResolvedValueOnce({
+        error: { code: "INTERNAL", status: 500, title: "Error", detail: "", instance: "/time-off" },
+        response: new Response(null, { status: 500 }),
+      });
+      const user = userEvent.setup();
+      await renderScreen();
+
+      await pickAndSave(user);
+      await user.press(screen.getByRole("button", { name: "Да, закрыть дни" }));
+
+      expect(await screen.findByText(/Не получилось сохранить/)).toBeTruthy();
+      expect(mockBack).not.toHaveBeenCalled();
+    });
+  });
 });
