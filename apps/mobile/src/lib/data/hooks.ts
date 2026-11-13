@@ -12,7 +12,8 @@ import type { BookInput } from "./booking";
 import { bookAppointment, fetchServices, fetchSlots, searchClients } from "./booking";
 import { isDay, localDay, nextDay } from "./days";
 import { queryKeys } from "./queryKeys";
-import { fetchTimeOff, toTimeOffPeriods } from "./timeOff";
+import type { CreateTimeOffInput } from "./timeOff";
+import { createTimeOff, fetchTimeOff, toTimeOffPeriods } from "./timeOff";
 import { fetchWorkingHours, workingWindowsOfDay } from "./workingHours";
 import type { WorkingBlock, WorkingWindow } from "./workingHours";
 
@@ -166,6 +167,19 @@ export function useRescheduleAppointment() {
     onSettled: () =>
       Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.slots.all }),
+      ]),
+  });
+}
+
+export function useCreateTimeOff() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateTimeOffInput) => createTimeOff(api, input),
+    networkMode: "always",
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.timeOff.all }),
         queryClient.invalidateQueries({ queryKey: queryKeys.slots.all }),
       ]),
   });

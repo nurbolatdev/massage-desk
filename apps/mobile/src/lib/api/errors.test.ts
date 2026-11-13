@@ -26,6 +26,22 @@ describe("toApiError", () => {
     expect(toApiError(500, { code: "TIME_TAKEN" }).kind).toBe("server");
   });
 
+  it("keeps valid conflicts in order and drops malformed ones", () => {
+    const a = { appointmentId: "a1", clientName: "Ержан", start: "2026-12-15T11:00:00+05:00", end: "2026-12-15T12:00:00+05:00" };
+    const b = { appointmentId: "a2", clientName: null, start: "2026-12-16T11:00:00+05:00", end: "2026-12-16T12:00:00+05:00" };
+    const error = toApiError(409, {
+      code: "APPOINTMENT_CONFLICT",
+      conflicts: [a, { appointmentId: 5 }, "x", b],
+    });
+    expect(error.conflicts).toEqual([a, b]);
+    expect(error.message).toBe("problem");
+  });
+
+  it("has no conflicts without the field", () => {
+    expect(toApiError(409, { code: "APPOINTMENT_CONFLICT" }).conflicts).toBeUndefined();
+    expect(toApiError(409, { code: "APPOINTMENT_CONFLICT", conflicts: "x" }).conflicts).toBeUndefined();
+  });
+
   it("is an Error with the kind", () => {
     expect(new ApiError("network")).toBeInstanceOf(Error);
   });
