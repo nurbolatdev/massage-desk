@@ -19,6 +19,7 @@ function RootNavigator() {
           <Stack.Screen name="appointment/[id]" />
           <Stack.Screen name="new-appointment" />
           <Stack.Screen name="reschedule/[id]" />
+          <Stack.Screen name="time-off/new" />
         </Stack.Protected>
         <Stack.Protected guard={status === "signedOut"}>
           <Stack.Screen name="login" />
