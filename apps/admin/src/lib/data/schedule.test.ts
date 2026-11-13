@@ -3,9 +3,9 @@ import { describe, expect, it, vi } from "vitest";
 import { createApi } from "@/lib/api/client";
 
 import { fetchAppointments, toAppointments, toTimeOffPeriods, weekRange } from "./schedule";
-import type { AppointmentListItem } from "./schedule";
+import type { AppointmentListItem, TimeOffItem } from "./schedule";
 
-function item(over: Partial<AppointmentListItem>): AppointmentListItem {
+function item(over: Partial<AppointmentListItem> = {}): AppointmentListItem {
   return {
     id: "a1",
     clientId: "c1",
@@ -15,10 +15,10 @@ function item(over: Partial<AppointmentListItem>): AppointmentListItem {
     serviceName: "Массаж спины",
     start: "2026-11-03T05:00:00Z",
     end: "2026-11-03T06:00:00Z",
-    status: "CONFIRMED",
-    source: "BOT",
+    status: "confirmed",
+    source: "bot",
     ...over,
-  } as AppointmentListItem;
+  };
 }
 
 describe("toAppointments", () => {
@@ -35,10 +35,11 @@ describe("toAppointments", () => {
 
 describe("toTimeOffPeriods", () => {
   it("makes dates and sorts by start", () => {
-    const result = toTimeOffPeriods([
-      { id: "b", start: "2026-11-10T00:00:00Z", end: "2026-11-11T00:00:00Z" },
-      { id: "a", start: "2026-11-05T00:00:00Z", end: "2026-11-06T00:00:00Z" },
-    ] as never);
+    const items: TimeOffItem[] = [
+      { id: "b", start: "2026-11-10T00:00:00Z", end: "2026-11-11T00:00:00Z", reason: null },
+      { id: "a", start: "2026-11-05T00:00:00Z", end: "2026-11-06T00:00:00Z", reason: "Отпуск" },
+    ];
+    const result = toTimeOffPeriods(items);
     expect(result.map((p) => p.id)).toEqual(["a", "b"]);
     expect(result[0]?.end).toEqual(new Date("2026-11-06T00:00:00Z"));
   });

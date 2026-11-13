@@ -21,7 +21,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @Configuration(proxyBeanMethods = false)
 class CorsConfig {
 
-    private static final String ORIGIN_PATTERN = "^https?://[^/\\s*]+$";
+    private static final String ORIGIN_PATTERN = "^https?://[A-Za-z0-9.-]+(:\\d{1,5})?$";
 
     @Bean
     CorsConfigurationSource corsConfigurationSource(@Value("${app.cors.admin-origin}") String origin) {

@@ -15,7 +15,7 @@ class CorsConfigTests {
             .withUserConfiguration(CorsConfig.class);
 
     @ParameterizedTest
-    @ValueSource(strings = {"https://admin.example", "http://localhost:5173"})
+    @ValueSource(strings = {"https://admin.example.com", "http://localhost:5173"})
     void startsWithAValidOrigin(String origin) {
         runner.withPropertyValues("app.cors.admin-origin=" + origin)
                 .run(context -> assertThat(context).hasNotFailed());
@@ -23,7 +23,8 @@ class CorsConfigTests {
 
     @ParameterizedTest
     @ValueSource(strings = {"*", "", "https://a.example/", "https://a.example/path", "a.example",
-            "https://*.example"})
+            "https://*.example", "https://a.example?x", "https://user@a.example", "https://a.example:",
+            "https://a.example:abc"})
     void failsOnAnInvalidOrigin(String origin) {
         runner.withPropertyValues("app.cors.admin-origin=" + origin)
                 .run(context -> assertThat(context).hasFailed());
