@@ -218,6 +218,103 @@ describe("new time off screen", () => {
     expect(mockBack).not.toHaveBeenCalled();
   });
 
+  describe("validation", () => {
+    async function goForward(user: ReturnType<typeof userEvent.setup>, months: number) {
+      for (let i = 0; i < months; i += 1) {
+        await user.press(screen.getByLabelText("Следующий месяц"));
+      }
+    }
+
+    it("rejects a past day and keeps save disabled, then clears the message", async () => {
+      const user = userEvent.setup();
+      await renderScreen();
+
+      await user.press(await screen.findByLabelText(/^Вторник, 3 ноября/));
+
+      expect(screen.getByText("Этот день уже прошёл. Выберите сегодня или день позже.")).toBeTruthy();
+      expect(saveButton().props.accessibilityState).toMatchObject({ disabled: true });
+
+      await user.press(screen.getByLabelText(/^Воскресенье, 15 ноября/));
+
+      expect(screen.queryByText("Этот день уже прошёл. Выберите сегодня или день позже.")).toBeNull();
+      expect(saveButton().props.accessibilityState).toMatchObject({ disabled: false });
+    });
+
+    it("rejects a day more than 729 days ahead but accepts the last allowed one", async () => {
+      const user = userEvent.setup();
+      await renderScreen();
+
+      await screen.findByText("Ноябрь");
+      await goForward(user, 24);
+      await user.press(await screen.findByLabelText(/^Пятница, 3 ноября/));
+
+      expect(screen.getByText("Так далеко отметить нельзя. Выберите день в ближайшие два года.")).toBeTruthy();
+      expect(saveButton().props.accessibilityState).toMatchObject({ disabled: true });
+
+      await user.press(screen.getByLabelText(/^Четверг, 2 ноября/));
+
+      expect(screen.queryByText("Так далеко отметить нельзя. Выберите день в ближайшие два года.")).toBeNull();
+      expect(saveButton().props.accessibilityState).toMatchObject({ disabled: false });
+    });
+
+    it("rejects a vacation longer than 365 days and keeps the first day", async () => {
+      const user = userEvent.setup();
+      await renderScreen();
+
+      await user.press(await screen.findByLabelText(/^Среда, 4 ноября/));
+      await goForward(user, 12);
+      await user.press(await screen.findByLabelText(/^Четверг, 4 ноября/));
+
+      expect(screen.getByText("Отпуск — не больше 365 дней. Выберите последний день раньше.")).toBeTruthy();
+      expect(screen.getByText("4 ноября")).toBeTruthy();
+
+      await user.press(screen.getByLabelText(/^Среда, 3 ноября/));
+
+      expect(screen.queryByText("Отпуск — не больше 365 дней. Выберите последний день раньше.")).toBeNull();
+      expect(screen.getByText("Отпуск · 365 дней")).toBeTruthy();
+    });
+
+    it("shows a message when the server refuses the days", async () => {
+      mockPost.mockResolvedValue({
+        error: { code: "INVALID_TIME_OFF", status: 422, title: "Invalid", detail: "", instance: "/time-off" },
+        response: new Response(null, { status: 422 }),
+      });
+      const user = userEvent.setup();
+      await renderScreen();
+
+      await user.press(await screen.findByLabelText(/^Воскресенье, 15 ноября/));
+      await user.press(saveButton());
+
+      expect(await screen.findByText("Эти дни отметить нельзя. Выберите другие.")).toBeTruthy();
+      expect(mockBack).not.toHaveBeenCalled();
+    });
+
+    it("lets the master close today", async () => {
+      const user = userEvent.setup();
+      await renderScreen();
+
+      await user.press(await screen.findByLabelText(/^Среда, 4 ноября/));
+      await user.press(saveButton());
+
+      await waitFor(() => expect(mockBack).toHaveBeenCalledTimes(1));
+      expect(mockPost).toHaveBeenCalledWith("/time-off", {
+        body: { start: "2026-11-03T19:00:00.000Z", end: "2026-11-04T19:00:00.000Z" },
+      });
+    });
+
+    it("sends one request when save is pressed twice", async () => {
+      mockPost.mockImplementation(() => new Promise(() => {}));
+      const user = userEvent.setup();
+      await renderScreen();
+
+      await user.press(await screen.findByLabelText(/^Воскресенье, 15 ноября/));
+      await user.press(saveButton());
+      await user.press(saveButton());
+
+      expect(mockPost).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe("appointments inside the days", () => {
     const conflictBody = {
       error: {
