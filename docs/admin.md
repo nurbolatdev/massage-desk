@@ -14,7 +14,7 @@ Web app `apps/admin` (React, Vite, TanStack Router and Query, shadcn/ui, Rechart
 
 ## Status
 
-M1-16 skeleton is done. The sections are placeholders, filled by M1-17…M1-19 and later milestones.
+M1-16 skeleton is done. M1-17 (schedule) is in progress: the API accepts the admin origin and the schedule data layer is ready; the calendar, rescheduling and the working hours editor come in the next pull requests. The other sections are placeholders, filled by M1-18, M1-19 and later milestones.
 
 ## Run locally
 
