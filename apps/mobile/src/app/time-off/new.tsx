@@ -26,6 +26,7 @@ import {
   CONFLICT_CONFIRM_TITLE,
   CONFLICT_CONFIRM_YES,
   EMPTY_PICK,
+  isPicked,
   INVALID_TIME_OFF_TEXT,
   SAVE_LABEL,
   TIME_OFF_HINT,
@@ -33,6 +34,7 @@ import {
   TIME_OFF_TITLE,
   pickDay,
   pickErrorText,
+  pickRange,
   conflictMessage,
   timeOffErrorKind,
   timeOffKind,
@@ -80,20 +82,22 @@ export default function NewTimeOffScreen() {
     setConflict(null);
   };
 
+  const picked = pickRange(pick);
+
   const flow = useDestructiveFlow<"force">(
     async () => {
-      if (pick.from === null || pick.to === null || timeZone === undefined) return;
-      await create.mutateAsync({ ...dayRangePeriod(pick.from, pick.to, timeZone), force: true });
+      if (picked === undefined || timeZone === undefined) return;
+      await create.mutateAsync({ ...dayRangePeriod(picked.from, picked.to, timeZone), force: true });
       goBack();
     },
     (e) => (timeOffErrorKind(e) === "invalid" ? INVALID_TIME_OFF_TEXT : ACTION_FAILED),
   );
 
   const save = async () => {
-    if (pick.from === null || pick.to === null || timeZone === undefined) return;
+    if (picked === undefined || timeZone === undefined) return;
     setSaveError(null);
     try {
-      await create.mutateAsync(dayRangePeriod(pick.from, pick.to, timeZone));
+      await create.mutateAsync(dayRangePeriod(picked.from, picked.to, timeZone));
       goBack();
     } catch (error) {
       const kind = timeOffErrorKind(error);
@@ -106,7 +110,7 @@ export default function NewTimeOffScreen() {
     }
   };
 
-  const canSave = pick.from !== null && timeZone !== undefined && online && !create.isPending;
+  const canSave = isPicked(pick) && timeZone !== undefined && online && !create.isPending;
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
@@ -142,15 +146,15 @@ export default function NewTimeOffScreen() {
             counts={counts}
             closed={off?.closed}
             partial={off?.partial}
-            range={pick.from !== null && pick.to !== null && pick.to !== pick.from ? { from: pick.from, to: pick.to } : undefined}
+            range={picked !== undefined && picked.to !== picked.from ? picked : undefined}
             onPick={choose}
           />
         )}
         {pick.error !== null && <ErrorBanner message={pickErrorText(pick.error)} />}
-        {pick.from !== null && pick.to !== null && (
+        {picked !== undefined && (
           <Surface style={styles.card}>
-            <Text style={styles.cardTitle}>{timeOffTitle(pick.from, pick.to)}</Text>
-            <Text style={styles.cardKind}>{timeOffKind(pick.from, pick.to)}</Text>
+            <Text style={styles.cardTitle}>{timeOffTitle(picked.from, picked.to)}</Text>
+            <Text style={styles.cardKind}>{timeOffKind(picked.from, picked.to)}</Text>
           </Surface>
         )}
         {conflict !== null && <TimeOffConflictAlert day={conflict.day} rest={conflict.rest} />}
@@ -182,7 +186,7 @@ const styles = StyleSheet.create({
   hint: { ...typography.body, color: colors.muted, paddingHorizontal: space[6] },
   errorBox: { gap: space[12] },
   // from the SettingsTimeOff mockup: period card
-  card: { borderRadius: radii[18], paddingVertical: space[14], paddingHorizontal: space[16] },
+  card: { gap: space[2], borderRadius: radii[18], paddingVertical: space[14], paddingHorizontal: space[16] },
   cardTitle: { ...typography.body, fontWeight: "700", color: colors.ink },
   cardKind: { ...typography.secondary, color: colors.muted },
   footer: { paddingTop: space[12], paddingHorizontal: space[16], paddingBottom: space[20] },

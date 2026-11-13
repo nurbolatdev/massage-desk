@@ -6,6 +6,8 @@ import type { AppointmentConflict } from "@/lib/api/errors";
 import {
   conflictMessage,
   EMPTY_PICK,
+  isPicked,
+  pickRange,
   pickDay,
   pickErrorText,
   PAST_DAY_TEXT,
@@ -161,5 +163,22 @@ describe("conflictMessage", () => {
     const result = conflictMessage([conflict("А", "2026-12-15T22:30:00Z")], zone);
     expect(result.day).toBe("16 декабря");
     expect(result.rest).toContain("03:30");
+  });
+});
+
+describe("pickRange and isPicked", () => {
+  it("is empty before a pick", () => {
+    expect(pickRange(EMPTY_PICK)).toBeUndefined();
+    expect(isPicked(EMPTY_PICK)).toBe(false);
+  });
+
+  it("returns the picked days", () => {
+    const pick = pickDay(pickDay(EMPTY_PICK, "2026-11-14", today), "2026-11-16", today);
+    expect(pickRange(pick)).toEqual({ from: "2026-11-14", to: "2026-11-16" });
+    expect(isPicked(pick)).toBe(true);
+  });
+
+  it("is empty after a rejected tap on a clean pick", () => {
+    expect(isPicked(pickDay(EMPTY_PICK, "2026-11-01", today))).toBe(false);
   });
 });

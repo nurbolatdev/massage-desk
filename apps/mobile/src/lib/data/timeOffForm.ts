@@ -39,6 +39,15 @@ export function pickDay(pick: TimeOffPick, day: string, today: string): TimeOffP
   return { from: day, to: day, error: null };
 }
 
+/** The picked days, or undefined while nothing is picked. */
+export function pickRange(pick: TimeOffPick): { from: string; to: string } | undefined {
+  return pick.from !== null && pick.to !== null ? { from: pick.from, to: pick.to } : undefined;
+}
+
+export function isPicked(pick: TimeOffPick): boolean {
+  return pickRange(pick) !== undefined;
+}
+
 export function pickErrorText(error: TimeOffPickError): string {
   if (error === "past") return PAST_DAY_TEXT;
   if (error === "tooFar") return TOO_FAR_TEXT;

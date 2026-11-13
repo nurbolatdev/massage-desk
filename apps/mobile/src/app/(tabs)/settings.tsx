@@ -82,7 +82,7 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
-  content: { flex: 1, paddingTop: space[24], paddingHorizontal: space[16], gap: space[16] },
+  content: { flex: 1, paddingTop: space[24], paddingHorizontal: space[16], gap: space[12] },
   title: { ...typography.title, letterSpacing: -0.5, color: colors.ink, paddingHorizontal: space[4] },
   card: { borderRadius: radii[22], overflow: "hidden" },
   row: {

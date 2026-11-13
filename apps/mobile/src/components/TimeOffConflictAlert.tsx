@@ -23,7 +23,7 @@ export function TimeOffConflictAlert({ day, rest }: Props) {
 const styles = StyleSheet.create({
   box: {
     flexDirection: "row",
-    gap: space[12],
+    gap: space[10],
     backgroundColor: colors.accentSoft,
     borderRadius: radii[16],
     paddingVertical: space[12],

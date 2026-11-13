@@ -203,6 +203,45 @@ describe("new time off screen", () => {
     expect(saveButton().props.accessibilityState).toMatchObject({ disabled: true });
   });
 
+  it("says so when offline and nothing is saved", async () => {
+    onlineManager.setOnline(false);
+    await renderScreen();
+
+    expect(await screen.findByText("Отметить выходной можно, когда телефон подключится к интернету.")).toBeTruthy();
+    expect(screen.queryByLabelText(/запис/)).toBeNull();
+    expect(saveButton().props.accessibilityState).toMatchObject({ disabled: true });
+  });
+
+  it("keeps the grid and offers a retry when a refresh fails", async () => {
+    const user = userEvent.setup();
+    await renderScreen();
+    await screen.findByLabelText("Воскресенье, 15 ноября, 1 запись");
+    const before = mockGet.mock.calls.filter(([path]) => path === "/appointments").length;
+    mockGet.mockImplementation(async (path) => {
+      if (path === "/settings") return ok(settings);
+      if (path === "/appointments") {
+        return {
+          error: { code: "INTERNAL", status: 500, title: "Error", detail: "", instance: "/" },
+          response: new Response(null, { status: 500 }),
+        };
+      }
+      if (path === "/time-off") return ok([]);
+      return ok({ blocks: [] });
+    });
+    await queryClient.invalidateQueries();
+
+    expect(await screen.findByText("Не получилось обновить расписание")).toBeTruthy();
+    expect(screen.getByLabelText("Воскресенье, 15 ноября, 1 запись")).toBeTruthy();
+    const failed = mockGet.mock.calls.filter(([path]) => path === "/appointments").length;
+    expect(failed).toBeGreaterThan(before);
+
+    await user.press(screen.getByRole("button", { name: "Обновить" }));
+
+    await waitFor(() =>
+      expect(mockGet.mock.calls.filter(([path]) => path === "/appointments").length).toBeGreaterThan(failed),
+    );
+  });
+
   it("shows an error and stays when saving fails", async () => {
     mockPost.mockResolvedValue({
       error: { code: "INTERNAL", status: 500, title: "Error", detail: "", instance: "/time-off" },
