@@ -9,6 +9,7 @@ import TimeOffListScreen from "@/app/time-off/index";
 type Call = (path: string, init?: unknown) => Promise<unknown>;
 
 const mockGet = jest.fn<Call>();
+const mockDelete = jest.fn<Call>();
 const mockBack = jest.fn();
 const mockPush = jest.fn();
 
@@ -24,6 +25,7 @@ jest.mock("@/lib/time/useNow", () => ({
 jest.mock("@/lib/api", () => ({
   api: {
     GET: (path: string, init?: unknown) => mockGet(path, init),
+    DELETE: (path: string, init?: unknown) => mockDelete(path, init),
   },
   unwrap: jest.requireActual<typeof import("@/lib/api/client")>("@/lib/api/client").unwrap,
   ApiError: jest.requireActual<typeof import("@/lib/api/errors")>("@/lib/api/errors").ApiError,
@@ -82,6 +84,7 @@ describe("time off list screen", () => {
   beforeEach(() => {
     onlineManager.setOnline(true);
     mockGet.mockReset();
+    mockDelete.mockReset();
     mockBack.mockReset();
     mockPush.mockReset();
     answer([]);
@@ -208,5 +211,100 @@ describe("time off list screen", () => {
     const before = timeOffCalls().length;
     await user.press(screen.getByRole("button", { name: "Обновить" }));
     await waitFor(() => expect(timeOffCalls().length).toBeGreaterThan(before));
+  });
+
+  describe("removing", () => {
+    const noContent = () => ({ data: undefined, response: new Response(null, { status: 204 }) });
+
+    it("asks first and sends nothing until confirmed", async () => {
+      answer([vacation]);
+      const user = userEvent.setup();
+      await renderScreen();
+      await screen.findByText("15 – 22 декабря");
+
+      await user.press(screen.getByRole("button", { name: "Удалить 15 – 22 декабря" }));
+      expect(await screen.findByText("Удалить отпуск?")).toBeTruthy();
+      expect(screen.getByText("На 15 – 22 декабря снова можно будет записаться.")).toBeTruthy();
+      expect(mockDelete).not.toHaveBeenCalled();
+
+      const [, cancel] = screen.getAllByRole("button", { name: "Нет, оставить" });
+      expect(cancel).toBeTruthy();
+      if (cancel !== undefined) await user.press(cancel);
+      await waitFor(() => expect(screen.queryByText("Удалить отпуск?")).toBeNull());
+      expect(mockDelete).not.toHaveBeenCalled();
+    });
+
+    it("removes the period, refreshes the list and reopens the time", async () => {
+      answer([vacation, dayOff]);
+      mockDelete.mockResolvedValue(noContent());
+      const user = userEvent.setup();
+      await renderScreen();
+      await screen.findByText("15 – 22 декабря");
+      queryClient.setQueryData(["slots", "s1", "2026-12-15"], []);
+
+      answer([dayOff]);
+      await user.press(screen.getByRole("button", { name: "Удалить 15 – 22 декабря" }));
+      await user.press(await screen.findByRole("button", { name: "Да, удалить" }));
+
+      await waitFor(() => expect(screen.queryByText("15 – 22 декабря")).toBeNull());
+      expect(mockDelete).toHaveBeenCalledWith("/time-off/{id}", { params: { path: { id: "t1" } } });
+      expect(screen.getByText("31 декабря")).toBeTruthy();
+      expect(queryClient.getQueryState(["slots", "s1", "2026-12-15"])?.isInvalidated).toBe(true);
+    });
+
+    it("treats an already removed period as removed", async () => {
+      answer([vacation]);
+      mockDelete.mockResolvedValue({
+        error: { code: "TIME_OFF_NOT_FOUND" },
+        response: new Response(null, { status: 404 }),
+      });
+      const user = userEvent.setup();
+      await renderScreen();
+      await screen.findByText("15 – 22 декабря");
+
+      answer([]);
+      await user.press(screen.getByRole("button", { name: "Удалить 15 – 22 декабря" }));
+      await user.press(await screen.findByRole("button", { name: "Да, удалить" }));
+
+      await waitFor(() => expect(screen.queryByText("Удалить отпуск?")).toBeNull());
+      expect(await screen.findByText(/Пока ничего не задано/)).toBeTruthy();
+    });
+
+    it("keeps the sheet and the row when removing fails", async () => {
+      answer([vacation]);
+      mockDelete.mockResolvedValue(failure(500));
+      const user = userEvent.setup();
+      await renderScreen();
+      await screen.findByText("15 – 22 декабря");
+
+      await user.press(screen.getByRole("button", { name: "Удалить 15 – 22 декабря" }));
+      await user.press(await screen.findByRole("button", { name: "Да, удалить" }));
+
+      expect(await screen.findByText("Не получилось удалить. Проверьте интернет и попробуйте ещё раз.")).toBeTruthy();
+      expect(screen.getByText("Удалить отпуск?")).toBeTruthy();
+      expect(screen.getAllByText("15 – 22 декабря").length).toBeGreaterThan(0);
+    });
+
+    it("disables removal offline", async () => {
+      answer([vacation]);
+      await renderScreen();
+      await screen.findByText("15 – 22 декабря");
+
+      onlineManager.setOnline(false);
+      await screen.findByText("Удалить или добавить дни можно, когда телефон подключится к интернету.");
+
+      expect(screen.getByRole("button", { name: "Удалить 15 – 22 декабря" })).toBeDisabled();
+    });
+
+    it("words a day off as a day off", async () => {
+      answer([dayOff]);
+      const user = userEvent.setup();
+      await renderScreen();
+      await screen.findByText("31 декабря");
+
+      await user.press(screen.getByRole("button", { name: "Удалить 31 декабря" }));
+
+      expect(await screen.findByText("Удалить выходной?")).toBeTruthy();
+    });
   });
 });

@@ -72,3 +72,10 @@ export function timeOffSummary(views: PeriodView[] | undefined): string | undefi
   const more = views.length > 1 ? ` и ещё ${views.length - 1}` : "";
   return `${nearest.word} · ${nearest.title}${more}`;
 }
+
+export const REMOVE_CONFIRM_YES = "Да, удалить";
+export const REMOVE_FAILED = "Не получилось удалить. Проверьте интернет и попробуйте ещё раз.";
+
+export const removeLabel = (view: PeriodView) => `Удалить ${view.title}`;
+export const removeConfirmTitle = (view: PeriodView) => `Удалить ${view.word.toLowerCase()}?`;
+export const removeConfirmText = (view: PeriodView) => `На ${view.title} снова можно будет записаться.`;

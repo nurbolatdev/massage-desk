@@ -5,13 +5,14 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AppointmentHeader } from "@/components/AppointmentHeader";
 import { Button } from "@/components/Button";
+import { ConfirmSheet } from "@/components/ConfirmSheet";
 import { ErrorBanner } from "@/components/ErrorBanner";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { RefreshFailedBanner } from "@/components/RefreshFailedBanner";
 import { PRESSED_OPACITY } from "@/components/pressed";
 import { TimeOffPeriodRow } from "@/components/TimeOffPeriodRow";
 import { LOADING_LABEL } from "@/lib/data/appointmentCard";
-import { useUpcomingTimeOff } from "@/lib/data/hooks";
+import { useDeleteTimeOff, useUpcomingTimeOff } from "@/lib/data/hooks";
 import { TIME_OFF_SETTINGS_TITLE } from "@/lib/data/timeOffForm";
 import {
   ADD_DATES_LABEL,
@@ -19,8 +20,13 @@ import {
   TIME_OFF_LIST_OFFLINE_EMPTY_TEXT,
   TIME_OFF_LIST_OFFLINE_TEXT,
   TIME_OFF_LIST_TITLE,
+  REMOVE_CONFIRM_YES,
+  REMOVE_FAILED,
+  removeConfirmText,
+  removeConfirmTitle,
 } from "@/lib/data/timeOffList";
 import { RETRY_LABEL, todayState } from "@/lib/data/todayState";
+import { useDestructiveFlow } from "@/lib/data/useDestructiveFlow";
 import { formatTime } from "@/lib/format";
 import { useOnline } from "@/lib/query/online";
 import { useNow } from "@/lib/time/useNow";
@@ -36,6 +42,13 @@ export default function TimeOffListScreen() {
   const { timeZone, periods, dataUpdatedAt, error, refreshError, refetch } = useUpcomingTimeOff(now);
   const state = todayState({ online, hasData: periods !== undefined, error, appointmentsError: refreshError });
   const savedAt = timeZone !== undefined && dataUpdatedAt > 0 ? formatTime(new Date(dataUpdatedAt), timeZone) : null;
+
+  const remove = useDeleteTimeOff();
+  const flow = useDestructiveFlow<string>(
+    (id) => remove.mutateAsync(id),
+    () => REMOVE_FAILED,
+  );
+  const asked = periods?.find((p) => p.id === flow.state.asking);
 
   const goBack = () => {
     if (router.canGoBack()) router.back();
@@ -70,7 +83,9 @@ export default function TimeOffListScreen() {
             </View>
           )}
           {state.view === "list" && periods?.length === 0 && <Text style={styles.empty}>{TIME_OFF_EMPTY_TEXT}</Text>}
-          {state.view === "list" && periods?.map((view) => <TimeOffPeriodRow key={view.id} view={view} />)}
+          {state.view === "list" && periods?.map((view) => (
+            <TimeOffPeriodRow key={view.id} view={view} onRemove={() => flow.ask(view.id)} removeDisabled={!online} />
+          ))}
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={ADD_DATES_LABEL}
@@ -82,6 +97,20 @@ export default function TimeOffListScreen() {
           </Pressable>
         </View>
       </ScrollView>
+      {asked !== undefined && (
+        <ConfirmSheet
+          visible
+          title={removeConfirmTitle(asked)}
+          text={removeConfirmText(asked)}
+          confirmLabel={REMOVE_CONFIRM_YES}
+          confirmVariant="danger"
+          confirmDisabled={!online}
+          busy={flow.state.busy}
+          error={flow.state.error ?? undefined}
+          onConfirm={() => void flow.confirm()}
+          onCancel={flow.dismiss}
+        />
+      )}
     </SafeAreaView>
   );
 }

@@ -2,7 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 
 import { addDays, dayDate } from "./days";
 import type { TimeOffPeriod } from "./timeOff";
-import { periodView, timeOffSummary, upcomingPeriods, upcomingWindows } from "./timeOffList";
+import { periodView, removeConfirmText, removeConfirmTitle, removeLabel, timeOffSummary, upcomingPeriods, upcomingWindows } from "./timeOffList";
 import type { PeriodView } from "./timeOffList";
 
 const ALMATY = "Asia/Almaty";
@@ -97,5 +97,19 @@ describe("timeOffSummary", () => {
         view("c", "9 января", "Выходной"),
       ]),
     ).toBe("Выходной · 31 декабря и ещё 2");
+  });
+});
+
+describe("remove texts", () => {
+  const cases: [PeriodView, string, string, string][] = [
+    [{ id: "a", title: "15 – 22 декабря", kind: "", word: "Отпуск" }, "Удалить 15 – 22 декабря", "Удалить отпуск?", "На 15 – 22 декабря снова можно будет записаться."],
+    [{ id: "b", title: "31 декабря", kind: "", word: "Выходной" }, "Удалить 31 декабря", "Удалить выходной?", "На 31 декабря снова можно будет записаться."],
+    [{ id: "c", title: "15 декабря", kind: "", word: "Отгул" }, "Удалить 15 декабря", "Удалить отгул?", "На 15 декабря снова можно будет записаться."],
+  ];
+
+  it.each(cases)("words %#", (view, label, title, text) => {
+    expect(removeLabel(view)).toBe(label);
+    expect(removeConfirmTitle(view)).toBe(title);
+    expect(removeConfirmText(view)).toBe(text);
   });
 });
