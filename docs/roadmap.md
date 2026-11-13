@@ -381,13 +381,30 @@ Split into four pull requests (about 1200 lines in total) and a follow-up for ca
 
 ### M1-15 · Days off and vacation
 
+Split into two pull requests. Weekly days off belong to the working-hours editor, not to this task.
+
+**Part 1**
+
 - **Branch:** `feature/mobile-time-off`
 - **Pull request:** `feat(mobile): days off and vacation`
 - **Depends on:** M1-8, M1-10
 - **Commits:**
+  1. `feat(mobile): time off request with conflict details`
   1. `feat(mobile): mark a day off`
+  1. `feat(mobile): confirm closing days with appointments`
   1. `feat(mobile): vacation range`
   1. `test(mobile): time off form validation`
+  1. `docs: days off and vacation`
+
+**Part 2**
+
+- **Branch:** `feature/mobile-time-off-list`
+- **Pull request:** `feat(mobile): list and remove days off`
+- **Depends on:** part 1
+- **Commits:**
+  1. `feat(mobile): upcoming days off list`
+  1. `feat(mobile): remove a day off`
+  1. `feat(mobile): days off summary in settings`
 
 ### M1-16 · Admin panel skeleton
 
