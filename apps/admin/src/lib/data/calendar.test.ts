@@ -5,18 +5,28 @@ import { describe, expect, it } from "vitest";
 import { ApiError } from "@/lib/api/errors";
 
 import {
+  blockDetail,
   breaksOf,
   dayNote,
+  daySchedule,
+  dayShortTitle,
+  dayTitle,
+  freeSpans,
+  freeText,
   gridAppointments,
+  gridHours,
   hourRange,
   isDayOff,
   MAX_ROWS,
   loadErrorText,
   minutesOfDay,
+  nowMark,
   rowClass,
   rowsOf,
   scheduleView,
   serviceText,
+  spanClass,
+  spanText,
   weekLabel,
   whenText,
 } from "./calendar";
@@ -179,5 +189,182 @@ describe("grid class safelist", () => {
     const css = readFileSync(new URL("../../styles/index.css", import.meta.url), "utf8");
     expect(MAX_ROWS).toBe(96);
     expect(css).toContain(`@source inline("row-start-{1..${MAX_ROWS}} row-span-{1..${MAX_ROWS}}");`);
+  });
+});
+
+describe("freeSpans", () => {
+  const windows = [window("09:00", "13:00"), window("14:00", "19:00")];
+  const off = (from: string, to: string): TimeOffPeriod => ({ id: `t-${from}`, start: at(from), end: at(to) });
+  const span = (from: string, to: string, status: Appointment["status"] = "confirmed") =>
+    appointment({ id: `${from}-${to}`, start: at(from), end: at(to), status });
+  const pairs = (list: ReturnType<typeof freeSpans>) => list.map((w) => spanText(w, TZ));
+
+  it("handles empty windows, empty appointments, and edges of a window", () => {
+    expect(freeSpans([], [], [], at("08:00"))).toEqual([]);
+    expect(pairs(freeSpans(windows, [], [], at("08:00")))).toEqual(["9:00–13:00", "14:00–19:00"]);
+    expect(pairs(freeSpans([window("09:00", "13:00")], [span("09:00", "10:00"), span("12:00", "13:00")], [], at("08:00")))).toEqual([
+      "10:00–12:00",
+    ]);
+  });
+
+  it("ignores back-to-back zero gaps, appointments outside windows, and cancelled ones; keeps done/no_show busy", () => {
+    const list = [
+      span("07:00", "08:00"),
+      span("10:00", "11:00", "done"),
+      span("11:00", "12:00", "no_show"),
+      span("12:00", "12:30", "cancelled"),
+      span("13:15", "13:45"),
+      span("20:00", "21:00"),
+    ];
+    expect(pairs(freeSpans(windows, list, [], at("08:00")))).toEqual(["9:00–10:00", "12:00–13:00", "14:00–19:00"]);
+  });
+
+  it("handles an appointment spanning the break, overlapping appointments, and unsorted inputs", () => {
+    const list = [
+      span("12:30", "14:30"),
+      span("15:30", "17:00"),
+      span("15:00", "16:00"),
+    ];
+    expect(pairs(freeSpans([windows[1]!, windows[0]!], list, [], at("08:00")))).toEqual(["9:00–12:30", "14:30–15:00", "17:00–19:00"]);
+  });
+
+  it("subtracts partial and full time off", () => {
+    expect(pairs(freeSpans(windows, [], [off("10:00", "11:00")], at("08:00")))).toEqual(["9:00–10:00", "11:00–13:00", "14:00–19:00"]);
+    expect(freeSpans(windows, [], [off("08:00", "20:00")], at("08:00"))).toEqual([]);
+  });
+
+  it("clips by notBefore rounded up to 15 min and enforces the 30-minute threshold", () => {
+    expect(pairs(freeSpans([window("09:00", "13:00")], [span("10:15", "11:00")], [], at("09:35")))).toEqual([
+      "9:45–10:15",
+      "11:00–13:00",
+    ]);
+    expect(pairs(freeSpans([window("09:00", "13:00")], [span("10:14", "11:00")], [], at("09:35")))).toEqual(["11:00–13:00"]);
+    expect(freeSpans(windows, [], [], at("19:00"))).toEqual([]);
+  });
+
+  it("matches the mockup day schedule at 9:35", () => {
+    const mockup = [
+      span("10:00", "11:00"),
+      span("11:30", "13:00"),
+      span("14:30", "15:00"),
+      span("16:00", "17:00"),
+      span("17:30", "19:00"),
+    ];
+    expect(pairs(freeSpans(windows, mockup, [], at("09:35")))).toEqual(["11:00–11:30", "14:00–14:30", "15:00–16:00", "17:00–17:30"]);
+  });
+});
+
+describe("daySchedule", () => {
+  const blocks = [1].flatMap((weekday) => [
+    { weekday, start: "09:00", end: "13:00" },
+    { weekday, start: "14:00", end: "19:00" },
+  ]);
+
+  it("leaves free undefined when working hours are unknown", () => {
+    const res = daySchedule({ day: DAY, timeZone: TZ, appointments: [appointment()], timeOff: [], workingBlocks: undefined, now: at("09:35") });
+    expect(res.windows).toBeUndefined();
+    expect(res.off).toBe(false);
+    expect(res.count).toBe(1);
+    expect(res.free).toBeUndefined();
+  });
+
+  it("marks a day off with empty free spans", () => {
+    const res = daySchedule({ day: "2026-11-08", timeZone: TZ, appointments: [], timeOff: [], workingBlocks: blocks, now: at("09:35") });
+    expect(res.off).toBe(true);
+    expect(res.free).toEqual([]);
+  });
+
+  it("excludes cancelled from count and other days from list", () => {
+    const otherDay = appointment({ id: "other", start: new Date("2026-11-03T05:00:00Z"), end: new Date("2026-11-03T06:00:00Z") });
+    const cancelled = appointment({ id: "canc", status: "cancelled", start: at("13:00"), end: at("13:30") });
+    const active = appointment({ id: "act", start: at("10:00"), end: at("11:00") });
+    const res = daySchedule({
+      day: DAY,
+      timeZone: TZ,
+      appointments: [otherDay, cancelled, active],
+      timeOff: [],
+      workingBlocks: blocks,
+      now: at("09:35"),
+    });
+    expect(res.list.map((a) => a.id)).toEqual(["act", "canc"]);
+    expect(res.count).toBe(1);
+  });
+
+  it("drops cancelled appointments overlapping free spans from list but keeps them outside free or on day off", () => {
+    const cancelledFree = appointment({ id: "canc-free", status: "cancelled", start: at("15:00"), end: at("16:00") });
+    const cancelledPast = appointment({ id: "canc-past", status: "cancelled", start: at("09:00"), end: at("09:30") });
+    const active = appointment({ id: "act", start: at("14:00"), end: at("15:00") });
+    const active2 = appointment({ id: "act2", start: at("16:00"), end: at("19:00") });
+    const afternoon = [{ weekday: 1, start: "14:00", end: "19:00" }];
+    const res = daySchedule({
+      day: DAY,
+      timeZone: TZ,
+      appointments: [cancelledPast, active, cancelledFree, active2],
+      timeOff: [],
+      workingBlocks: afternoon,
+      now: at("09:35"),
+    });
+    expect(res.free?.map((w) => spanText(w, TZ))).toEqual(["15:00–16:00"]);
+    expect(res.list.map((a) => a.id)).toEqual(["canc-past", "act", "act2"]);
+    expect(res.count).toBe(2);
+
+    const dayOffRes = daySchedule({
+      day: "2026-11-08",
+      timeZone: TZ,
+      appointments: [
+        appointment({
+          id: "canc-off",
+          status: "cancelled",
+          start: new Date("2026-11-08T10:00:00+05:00"),
+          end: new Date("2026-11-08T11:00:00+05:00"),
+        }),
+      ],
+      timeOff: [],
+      workingBlocks: blocks,
+      now: at("09:35"),
+    });
+    expect(dayOffRes.off).toBe(true);
+    expect(dayOffRes.list.map((a) => a.id)).toEqual(["canc-off"]);
+    expect(dayOffRes.count).toBe(0);
+  });
+});
+
+describe("gridHours and spanClass", () => {
+  it("computes the hour range from windows and appointments", () => {
+    expect(gridHours([DAY], () => undefined, [], TZ)).toEqual({ start: 9, end: 19 });
+    expect(gridHours([DAY], () => [window("09:00", "13:00")], [appointment({ start: at("08:30"), end: at("09:30") })], TZ)).toEqual({
+      start: 8,
+      end: 13,
+    });
+  });
+
+  it("maps dates to row classes or null outside the range", () => {
+    const range = { start: 9, end: 19 };
+    expect(spanClass(at("10:00"), at("11:00"), DAY, range, TZ)).toBe("row-start-5 row-span-4");
+    expect(spanClass(at("19:30"), at("20:00"), DAY, range, TZ)).toBeNull();
+  });
+});
+
+describe("nowMark", () => {
+  const range = { start: 9, end: 19 };
+  it("places the mark on the 15-minute row with alignment and hides it outside range", () => {
+    expect(nowMark(9 * 60 + 35, range)).toEqual({ start: 3, align: "center" });
+    expect(nowMark(9 * 60 + 30, range)).toEqual({ start: 3, align: "start" });
+    expect(nowMark(9 * 60 + 44, range)).toEqual({ start: 3, align: "end" });
+    expect(nowMark(8 * 60 + 59, range)).toBeNull();
+    expect(nowMark(19 * 60, range)).toBeNull();
+  });
+});
+
+describe("day view texts", () => {
+  it("formats day titles, free spans, and appointment detail", () => {
+    expect(dayTitle(DAY)).toBe("Понедельник, 2 ноября");
+    expect(dayShortTitle(DAY)).toBe("Пн, 2 ноября");
+    expect(dayTitle("2026-11-08")).toBe("Воскресенье, 8 ноября");
+    expect(dayShortTitle("2026-11-08")).toBe("Вс, 8 ноября");
+    expect(freeText([window("14:00", "14:30"), window("15:00", "16:00")], TZ)).toBe("14:00–14:30, 15:00–16:00");
+    expect(freeText([], TZ)).toBe("нет");
+    expect(blockDetail(appointment({ serviceName: "Массаж спины", source: "bot" }))).toBe("Массаж спины · 60\u00a0мин · бот");
+    expect(blockDetail(appointment({ serviceName: "Массаж спины", source: "manual" }))).toBe("Массаж спины · 60\u00a0мин · вручную");
   });
 });

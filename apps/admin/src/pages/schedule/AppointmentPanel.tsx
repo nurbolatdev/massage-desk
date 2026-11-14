@@ -21,7 +21,7 @@ export function AppointmentPanel({ appointment, timeZone, empty }: Props) {
     },
   ];
   return (
-    <aside aria-label="Выбранная запись" className="flex basis-panel-basis grow flex-col gap-14 rounded-16 border border-line bg-surface p-20">
+    <aside aria-label="Выбранная запись" className="flex flex-col gap-14 rounded-16 border border-line bg-surface p-20">
       {empty ? (
         <>
           <h2 className="text-subtitle text-ink">На этой неделе записей нет</h2>

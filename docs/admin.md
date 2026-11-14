@@ -14,7 +14,7 @@ Web app `apps/admin` (React, Vite, TanStack Router and Query, shadcn/ui, Rechart
 
 ## Status
 
-M1-16 skeleton is done. M1-17 (schedule) is in progress: the schedule page shows the week (working hours, breaks, days off, the selected appointment), view only. The day view, rescheduling and the working hours editor come in the next pull requests. The other sections are placeholders, filled by M1-18, M1-19 and later milestones.
+M1-16 skeleton is done. M1-17 (schedule) is in progress: the schedule page shows the week and day views (Week / Day switch; the day view includes free time, a current-time line, and a day summary), view only. Rescheduling and the working hours editor come in the next pull requests. The other sections are placeholders, filled by M1-18, M1-19 and later milestones.
 
 ## Run locally
 
@@ -39,4 +39,4 @@ Tokens in `apps/admin/src/styles/index.css` follow `docs/design.md`. A test bloc
 ## Known gaps
 
 - The design guard does not catch shadows (`drop-shadow-*`, `inset-shadow-*`, `text-shadow-*`), `aspect-*`, `z-N`, `opacity-N`, `duration-N`/`delay-N`, `h-px`/`w-px` or underline offsets; extend it in a separate commit.
-- Schedule: the phone in the appointment panel is shown as received (no formatting), and the selected week is not kept in the page address.
+- Schedule: the phone in the appointment panel is shown as received (no formatting); the selected week, day, and view mode are not kept in the page address; the day summary omits expected revenue and chats needing help; and there are no buttons to create an appointment or close a day.

@@ -1,14 +1,19 @@
-import { isoWeekday, localDay, nextDay, zonedTime, type WorkingWindow } from "@massage-desk/shared";
+import { isoWeekday, localDay, nextDay, workingWindowsOfDay, zonedTime, type WorkingWindow } from "@massage-desk/shared";
 
 import { ApiError } from "@/lib/api/errors";
 import { NBSP, formatDayMonth, formatDayMonthShort, formatTime, plural } from "@/lib/format";
 
-import type { Appointment, TimeOffPeriod } from "./schedule";
+import type { Appointment, TimeOffPeriod, WorkingBlock } from "./schedule";
 
 export const SLOT_MINUTES = 15;
+export const MIN_FREE_MINUTES = 30;
 export const MAX_ROWS = 96;
 export const DEFAULT_HOURS = { start: 9, end: 19 };
 export const WEEKDAYS_SHORT = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+export const WEEKDAYS_LONG = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"];
+
+const SLOT_MS = SLOT_MINUTES * 60_000;
+const MIN_FREE_MS = MIN_FREE_MINUTES * 60_000;
 
 export const STATUS_TEXT: Record<Appointment["status"], string> = {
   confirmed: "Подтверждена",
@@ -22,7 +27,15 @@ export const SOURCE_TEXT: Record<Appointment["source"], string> = {
   manual: "Вручную",
 };
 
-type Span = { start: number; end: number };
+export type Span = { start: number; end: number };
+
+export type DaySchedule = {
+  windows: WorkingWindow[] | undefined;
+  off: boolean;
+  list: Appointment[];
+  count: number;
+  free: WorkingWindow[] | undefined;
+};
 
 /** Minutes from the local midnight of `day`; 0 before the day, 1440 after it. */
 export function minutesOfDay(date: Date, day: string, timeZone: string): number {
@@ -143,4 +156,108 @@ export function loadErrorText(error: unknown): string {
     if (error.status !== undefined) return `Сервер ответил с ошибкой. Код: ${error.status}.`;
   }
   return "Попробуйте ещё раз через минуту.";
+}
+
+/** Whole hours covering all working windows of `days` and all `appointments` (already filtered via `gridAppointments`). */
+export function gridHours(
+  days: readonly string[],
+  windowsOf: (day: string) => WorkingWindow[] | undefined,
+  appointments: readonly Appointment[],
+  timeZone: string,
+): Span {
+  const span = (from: Date, to: Date, day: string) => ({ start: minutesOfDay(from, day, timeZone), end: minutesOfDay(to, day, timeZone) });
+  return hourRange([
+    ...days.flatMap((day) => (windowsOf(day) ?? []).map((w) => span(w.start, w.end, day))),
+    ...appointments.map((a) => span(a.start, a.end, localDay(a.start, timeZone))),
+  ]);
+}
+
+/** Grid row classes for `[from, to)` on `day` within `range`, or `null` when outside. */
+export function spanClass(from: Date, to: Date, day: string, range: Span, timeZone: string): string | null {
+  const rows = rowsOf(minutesOfDay(from, day, timeZone), minutesOfDay(to, day, timeZone), range);
+  return rows && rowClass(rows);
+}
+
+/** Free intervals inside `windows` from `notBefore` (rounded up to 15 min) of at least `MIN_FREE_MINUTES`. */
+export function freeSpans(
+  windows: readonly WorkingWindow[],
+  appointments: readonly Appointment[],
+  timeOff: readonly TimeOffPeriod[],
+  notBefore: Date,
+): WorkingWindow[] {
+  const busy = [
+    ...appointments.filter((a) => a.status !== "cancelled").map((a) => ({ start: a.start.getTime(), end: a.end.getTime() })),
+    ...timeOff.map((p) => ({ start: p.start.getTime(), end: p.end.getTime() })),
+  ].sort((a, b) => a.start - b.start);
+  const floorMs = Math.ceil(notBefore.getTime() / SLOT_MS) * SLOT_MS;
+  const free: WorkingWindow[] = [];
+  for (const w of [...windows].sort((a, b) => a.start.getTime() - b.start.getTime())) {
+    const winEnd = w.end.getTime();
+    let cursor = Math.max(w.start.getTime(), floorMs);
+    for (const b of busy) {
+      if (b.end <= cursor) continue;
+      if (b.start >= winEnd) break;
+      if (b.start > cursor) free.push({ start: new Date(cursor), end: new Date(b.start) });
+      cursor = Math.max(cursor, b.end);
+      if (cursor >= winEnd) break;
+    }
+    if (cursor < winEnd) free.push({ start: new Date(cursor), end: new Date(winEnd) });
+  }
+  return free.filter((g) => g.end.getTime() - g.start.getTime() >= MIN_FREE_MS);
+}
+
+type DayScheduleInput = {
+  day: string;
+  timeZone: string;
+  appointments: Appointment[];
+  timeOff: TimeOffPeriod[];
+  workingBlocks: WorkingBlock[] | undefined;
+  now: Date;
+};
+
+/** Computed schedule state for a single `day`. */
+export function daySchedule({ day, timeZone, appointments, timeOff, workingBlocks, now }: DayScheduleInput): DaySchedule {
+  const windows = workingBlocks && workingWindowsOfDay(workingBlocks, day, timeZone);
+  const off = isDayOff(day, windows, timeOff, timeZone);
+  const dayList = gridAppointments(appointments).filter((a) => localDay(a.start, timeZone) === day);
+  const count = dayList.filter((a) => a.status !== "cancelled").length;
+  const free = windows === undefined ? undefined : off ? [] : freeSpans(windows, dayList, timeOff, now);
+  const list = free
+    ? dayList.filter((a) => a.status !== "cancelled" || !free.some((s) => s.start < a.end && a.start < s.end))
+    : dayList;
+  return { windows, off, list, count, free };
+}
+
+/** Grid row and vertical alignment inside the 15-minute slot for the current-time line, or `null` when outside `range`. */
+export function nowMark(minutes: number, range: Span): { start: number; align: "start" | "center" | "end" } | null {
+  const from = range.start * 60;
+  if (minutes < from || minutes >= range.end * 60) return null;
+  const offset = minutes - from;
+  const rem = offset % SLOT_MINUTES;
+  return { start: Math.floor(offset / SLOT_MINUTES) + 1, align: rem < 5 ? "start" : rem < 10 ? "center" : "end" };
+}
+
+/** "Понедельник, 2 ноября" */
+export function dayTitle(day: string): string {
+  return `${WEEKDAYS_LONG[isoWeekday(day) - 1] ?? ""}, ${formatDayMonth(day)}`;
+}
+
+/** "Пн, 2 ноября" */
+export function dayShortTitle(day: string): string {
+  return `${WEEKDAYS_SHORT[isoWeekday(day) - 1] ?? ""}, ${formatDayMonth(day)}`;
+}
+
+/** "15:00–16:00" */
+export function spanText(span: WorkingWindow, timeZone: string): string {
+  return `${formatTime(span.start, timeZone)}–${formatTime(span.end, timeZone)}`;
+}
+
+/** "14:00–14:30, 15:00–16:00" or "нет". */
+export function freeText(spans: readonly WorkingWindow[], timeZone: string): string {
+  return spans.length === 0 ? "нет" : spans.map((s) => spanText(s, timeZone)).join(", ");
+}
+
+/** "Массаж спины · 60 мин · бот" */
+export function blockDetail(a: Appointment): string {
+  return `${serviceText(a)} · ${SOURCE_TEXT[a.source].toLowerCase()}`;
 }

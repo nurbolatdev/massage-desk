@@ -464,7 +464,11 @@ Split into five pull requests.
 - **Branch:** `feature/admin-schedule-day`
 - **Pull request:** `feat(admin): schedule day view`
 - **Commits:**
+  1. `feat(admin): day schedule logic`
+  1. `refactor(admin): day column shared by schedule grids`
+  1. `feat(admin): day grid of the schedule`
   1. `feat(admin): schedule day view`
+  1. `docs: admin schedule day view`
 
 **Pull request 4 of 5**
 
