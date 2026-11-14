@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -12,6 +13,7 @@ type ConfirmDialogProps = {
   onConfirm: () => void;
   busy?: boolean;
   error?: string;
+  children?: ReactNode;
 };
 
 export function ConfirmDialog({
@@ -24,6 +26,7 @@ export function ConfirmDialog({
   onConfirm,
   busy = false,
   error,
+  children,
 }: ConfirmDialogProps) {
   const cancelRef = useRef<HTMLButtonElement>(null);
   const keepOpen = (event: Event) => {
@@ -45,6 +48,7 @@ export function ConfirmDialog({
         <div className="flex flex-col gap-14 px-24 pt-20 pb-16">
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{text}</DialogDescription>
+          {children}
           {error ? (
             <p
               role="alert"
