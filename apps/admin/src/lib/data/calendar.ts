@@ -219,9 +219,12 @@ type DayScheduleInput = {
 export function daySchedule({ day, timeZone, appointments, timeOff, workingBlocks, now }: DayScheduleInput): DaySchedule {
   const windows = workingBlocks && workingWindowsOfDay(workingBlocks, day, timeZone);
   const off = isDayOff(day, windows, timeOff, timeZone);
-  const list = gridAppointments(appointments).filter((a) => localDay(a.start, timeZone) === day);
-  const count = list.filter((a) => a.status !== "cancelled").length;
-  const free = windows === undefined ? undefined : off ? [] : freeSpans(windows, list, timeOff, now);
+  const dayList = gridAppointments(appointments).filter((a) => localDay(a.start, timeZone) === day);
+  const count = dayList.filter((a) => a.status !== "cancelled").length;
+  const free = windows === undefined ? undefined : off ? [] : freeSpans(windows, dayList, timeOff, now);
+  const list = free
+    ? dayList.filter((a) => a.status !== "cancelled" || !free.some((s) => s.start < a.end && a.start < s.end))
+    : dayList;
   return { windows, off, list, count, free };
 }
 

@@ -276,7 +276,7 @@ describe("daySchedule", () => {
 
   it("excludes cancelled from count and other days from list", () => {
     const otherDay = appointment({ id: "other", start: new Date("2026-11-03T05:00:00Z"), end: new Date("2026-11-03T06:00:00Z") });
-    const cancelled = appointment({ id: "canc", status: "cancelled", start: at("11:30"), end: at("12:00") });
+    const cancelled = appointment({ id: "canc", status: "cancelled", start: at("13:00"), end: at("13:30") });
     const active = appointment({ id: "act", start: at("10:00"), end: at("11:00") });
     const res = daySchedule({
       day: DAY,
@@ -288,6 +288,44 @@ describe("daySchedule", () => {
     });
     expect(res.list.map((a) => a.id)).toEqual(["act", "canc"]);
     expect(res.count).toBe(1);
+  });
+
+  it("drops cancelled appointments overlapping free spans from list but keeps them outside free or on day off", () => {
+    const cancelledFree = appointment({ id: "canc-free", status: "cancelled", start: at("15:00"), end: at("16:00") });
+    const cancelledPast = appointment({ id: "canc-past", status: "cancelled", start: at("09:00"), end: at("09:30") });
+    const active = appointment({ id: "act", start: at("14:00"), end: at("15:00") });
+    const active2 = appointment({ id: "act2", start: at("16:00"), end: at("19:00") });
+    const afternoon = [{ weekday: 1, start: "14:00", end: "19:00" }];
+    const res = daySchedule({
+      day: DAY,
+      timeZone: TZ,
+      appointments: [cancelledPast, active, cancelledFree, active2],
+      timeOff: [],
+      workingBlocks: afternoon,
+      now: at("09:35"),
+    });
+    expect(res.free?.map((w) => spanText(w, TZ))).toEqual(["15:00–16:00"]);
+    expect(res.list.map((a) => a.id)).toEqual(["canc-past", "act", "act2"]);
+    expect(res.count).toBe(2);
+
+    const dayOffRes = daySchedule({
+      day: "2026-11-08",
+      timeZone: TZ,
+      appointments: [
+        appointment({
+          id: "canc-off",
+          status: "cancelled",
+          start: new Date("2026-11-08T10:00:00+05:00"),
+          end: new Date("2026-11-08T11:00:00+05:00"),
+        }),
+      ],
+      timeOff: [],
+      workingBlocks: blocks,
+      now: at("09:35"),
+    });
+    expect(dayOffRes.off).toBe(true);
+    expect(dayOffRes.list.map((a) => a.id)).toEqual(["canc-off"]);
+    expect(dayOffRes.count).toBe(0);
   });
 });
 

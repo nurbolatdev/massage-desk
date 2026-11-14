@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 
 import { daySchedule } from "@/lib/data/calendar";
-import type { Appointment, WorkingBlock } from "@/lib/data/schedule";
+import type { Appointment, TimeOffPeriod, WorkingBlock } from "@/lib/data/schedule";
 
 import { DayGrid } from "./DayGrid";
 
@@ -53,6 +53,7 @@ type SetupOptions = {
   today?: string;
   workingBlocks?: WorkingBlock[] | undefined;
   appointments?: Appointment[];
+  timeOff?: TimeOffPeriod[];
   selectedId?: string | null;
 };
 
@@ -61,10 +62,11 @@ function setup(options: SetupOptions = {}) {
   const today = options.today ?? DAY;
   const workingBlocks = "workingBlocks" in options ? options.workingBlocks : blocks;
   const appointments = options.appointments ?? list;
+  const timeOff = options.timeOff ?? [];
   const selectedId = options.selectedId ?? null;
   const onSelect = vi.fn();
   const onMove = vi.fn();
-  const schedule = daySchedule({ day, timeZone: TZ, appointments, timeOff: [], workingBlocks, now: NOW });
+  const schedule = daySchedule({ day, timeZone: TZ, appointments, timeOff, workingBlocks, now: NOW });
   render(
     <DayGrid
       day={day}
@@ -72,7 +74,7 @@ function setup(options: SetupOptions = {}) {
       now={NOW}
       timeZone={TZ}
       schedule={schedule}
-      timeOff={[]}
+      timeOff={timeOff}
       selectedId={selectedId}
       onSelect={onSelect}
       onMove={onMove}
@@ -113,7 +115,10 @@ describe("DayGrid", () => {
 
   it("handles block selection and day navigation", () => {
     const { onSelect, onMove } = setup({ selectedId: "a4" });
-    expect(screen.getByRole("button", { name: /Марат Каримов/ }).getAttribute("aria-pressed")).toBe("true");
+    const selected = screen.getByRole("button", { name: /Марат Каримов/ });
+    expect(selected.getAttribute("aria-pressed")).toBe("true");
+    expect(selected.classList.contains("bg-primary")).toBe(true);
+    expect(screen.getByRole("button", { name: /Айгуль Сапарова/ }).classList.contains("bg-primary")).toBe(false);
 
     fireEvent.click(screen.getByRole("button", { name: /Айгуль Сапарова/ }));
     expect(onSelect).toHaveBeenCalledWith("a1");
@@ -143,5 +148,26 @@ describe("DayGrid", () => {
     expect(screen.queryByText(/Перерыв/)).toBeNull();
     expect(screen.queryByText(/Свободно/)).toBeNull();
     expect(screen.getByRole("button", { name: /Айгуль Сапарова/ })).toBeTruthy();
+  });
+
+  it("hides a cancelled appointment in a free span while keeping one outside free spans", () => {
+    const cancelledFree: Appointment = { ...appt("c1", "Олег Ким", "Массаж спины", "15:00", "16:00"), status: "cancelled" };
+    const cancelledPast: Appointment = { ...appt("c2", "Анна Иванова", "Массаж спины", "09:00", "09:30"), status: "cancelled" };
+    setup({ appointments: [...list, cancelledFree, cancelledPast] });
+    expect(screen.getByText("Свободно 15:00–16:00 · бот предлагает это время")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Олег Ким/ })).toBeNull();
+    expect(screen.getByRole("button", { name: /Анна Иванова.*, отменена$/ })).toBeTruthy();
+  });
+
+  it("shows closed time for partial time off without a free block on that span", () => {
+    const closed: TimeOffPeriod = {
+      id: "t1",
+      start: new Date(`${DAY}T15:00:00+05:00`),
+      end: new Date(`${DAY}T16:00:00+05:00`),
+    };
+    setup({ timeOff: [closed] });
+    expect(screen.getByText("Запись закрыта")).toBeTruthy();
+    expect(screen.queryByText(/Свободно 15:00–16:00/)).toBeNull();
+    expect(screen.getByText("Свободно 14:00–14:30 · бот предлагает это время")).toBeTruthy();
   });
 });
