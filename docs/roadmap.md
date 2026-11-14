@@ -475,8 +475,13 @@ Split into five pull requests.
 - **Branch:** `feature/admin-schedule-reschedule`
 - **Pull request:** `feat(admin): calendar with drag-and-drop reschedule`
 - **Commits:**
+  1. `feat(admin): reschedule drop target`
+  1. `feat(admin): reschedule texts`
+  1. `feat(admin): reschedule confirm dialog`
+  1. `feat(admin): drag layer for the schedule grids`
   1. `feat(admin): calendar with drag-and-drop reschedule`
   1. `test(admin): reschedule conflict is shown`
+  1. `docs: admin drag-and-drop reschedule`
 
 **Pull request 5 of 5**
 
