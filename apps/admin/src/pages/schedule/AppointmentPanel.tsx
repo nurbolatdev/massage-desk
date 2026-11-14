@@ -1,4 +1,6 @@
 import { SOURCE_TEXT, STATUS_TEXT, serviceText, whenText } from "@/lib/data/calendar";
+import { canReschedule } from "@/lib/data/dropTarget";
+import { DRAG_HINT, KEYBOARD_HINT } from "@/lib/data/reschedule";
 import type { Appointment } from "@/lib/data/schedule";
 
 type Props = { appointment: Appointment | null; timeZone: string; empty: boolean };
@@ -44,6 +46,12 @@ export function AppointmentPanel({ appointment, timeZone, empty }: Props) {
                   </div>
                 ))}
               </dl>
+              {canReschedule(appointment) && (
+                <div className="flex flex-col gap-6 rounded-12 bg-bg-page p-12 text-secondary font-normal text-text-strong">
+                  <p>{DRAG_HINT}</p>
+                  <p>{KEYBOARD_HINT}</p>
+                </div>
+              )}
             </>
           ) : (
             <p className="text-body text-muted">Нажмите на запись в календаре — здесь появятся подробности.</p>
