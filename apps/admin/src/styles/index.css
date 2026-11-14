@@ -125,6 +125,8 @@
   --spacing-aside-text: 420px;
   /* Schedule mockup: grid row (15 min, in rem so it grows with the system font), grid minimum width, flex bases. */
   --spacing-slot-week: 0.875rem;
+  /* Day view: 72 px per hour. */
+  --spacing-slot-day: 1.125rem;
   --spacing-calendar-min: 760px;
   --spacing-calendar-basis: 640px;
   --spacing-panel-basis: 280px;
@@ -161,6 +163,10 @@
 
 @utility rows-slot-week {
   grid-auto-rows: var(--spacing-slot-week);
+}
+
+@utility rows-slot-day {
+  grid-auto-rows: var(--spacing-slot-day);
 }
 
 /* Break stripes from the schedule mockup. */

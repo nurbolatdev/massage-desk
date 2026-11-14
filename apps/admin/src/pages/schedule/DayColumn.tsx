@@ -1,9 +1,26 @@
 import type { ReactNode } from "react";
 import type { WorkingWindow } from "@massage-desk/shared";
 
-import { type Span, breaksOf, minutesOfDay, rowClass, spanClass } from "@/lib/data/calendar";
+import { type Span, blockDetail, breaksOf, minutesOfDay, rowClass, spanClass, spanText } from "@/lib/data/calendar";
 import type { Appointment, TimeOffPeriod } from "@/lib/data/schedule";
 import { formatTime } from "@/lib/format";
+
+type GridLayout = "week" | "day";
+
+const LAYOUT = {
+  week: {
+    rows: "rows-slot-week",
+    column: "border-l border-line",
+    breakBox: "justify-center text-label",
+    block: "mx-4 my-2 rounded-8 px-6 py-4",
+  },
+  day: {
+    rows: "rows-slot-day",
+    column: "min-w-0 grow",
+    breakBox: "mx-12 rounded-10 pl-14 text-secondary",
+    block: "mx-12 my-2 rounded-10 px-12 py-4",
+  },
+} as const;
 
 const BLOCK_COLORS = {
   bot: "bg-primary-soft border-primary-mid text-primary-strong",
@@ -12,9 +29,9 @@ const BLOCK_COLORS = {
   selected: "bg-primary border-stone-dark text-surface",
 };
 
-export function HourColumn({ hours }: { hours: readonly number[] }) {
+export function HourColumn({ hours, layout = "week" }: { hours: readonly number[]; layout?: GridLayout }) {
   return (
-    <div className="rows-slot-week grid w-56 shrink-0">
+    <div className={`${LAYOUT[layout].rows} grid w-56 shrink-0`}>
       {hours.map((h) => (
         <span key={h} className="row-span-4 border-t border-divider pr-8 pt-2 text-right text-label font-normal text-muted">
           {h}:00
@@ -35,6 +52,7 @@ type DayColumnProps = {
   timeOff: readonly TimeOffPeriod[];
   selectedId: string | null;
   onSelect: (id: string) => void;
+  layout?: GridLayout;
   children?: ReactNode;
 };
 
@@ -49,10 +67,12 @@ export function DayColumn({
   timeOff,
   selectedId,
   onSelect,
+  layout = "week",
   children,
 }: DayColumnProps) {
+  const cfg = LAYOUT[layout];
   return (
-    <div className={`rows-slot-week grid grid-cols-1 border-l border-line ${off ? "bg-segment-bg" : ""}`}>
+    <div className={`${cfg.rows} grid grid-cols-1 ${cfg.column} ${off ? "bg-segment-bg" : ""}`}>
       {hours.map((h, i) => (
         <div key={h} className={`col-start-1 border-t border-divider ${rowClass({ start: i * 4 + 1, span: 4 })}`} />
       ))}
@@ -61,8 +81,8 @@ export function DayColumn({
           const rows = spanClass(gap.start, gap.end, day, range, timeZone);
           return (
             rows && (
-              <div key={gap.start.getTime()} className={`hatch col-start-1 flex items-center justify-center text-label font-semibold text-neutral-fg ${rows}`}>
-                Перерыв
+              <div key={gap.start.getTime()} className={`hatch col-start-1 flex items-center font-semibold text-neutral-fg ${cfg.breakBox} ${rows}`}>
+                {layout === "day" ? `Перерыв ${spanText(gap, timeZone)}` : "Перерыв"}
               </div>
             )
           );
@@ -74,7 +94,7 @@ export function DayColumn({
             const rows = spanClass(p.start, p.end, day, range, timeZone);
             return (
               rows && (
-                <div key={p.id} className={`col-start-1 flex items-center justify-center bg-segment-bg text-label font-semibold text-neutral-fg ${rows}`}>
+                <div key={p.id} className={`col-start-1 flex items-center bg-segment-bg font-semibold text-neutral-fg ${cfg.breakBox} ${rows}`}>
                   Запись закрыта
                 </div>
               )
@@ -94,9 +114,17 @@ export function DayColumn({
             aria-pressed={selected}
             aria-label={`${a.clientName}, ${time}, ${a.serviceName}${a.status === "cancelled" ? ", отменена" : ""}`}
             onClick={() => onSelect(a.id)}
-            className={`col-start-1 mx-4 my-2 overflow-hidden rounded-8 border-appointment px-6 py-4 text-left ${color} ${rows}`}
+            className={`col-start-1 overflow-hidden border-appointment text-left ${cfg.block} ${color} ${rows}`}
           >
-            {minutes < 60 ? (
+            {layout === "day" ? (
+              <span className="flex items-start gap-16">
+                <span className="shrink-0 text-body font-bold tabular-nums">{time}</span>
+                <span className="flex min-w-0 flex-col">
+                  <span className="truncate text-body font-bold">{a.clientName}</span>
+                  {minutes >= 60 && <span className="truncate text-secondary font-normal">{blockDetail(a)}</span>}
+                </span>
+              </span>
+            ) : minutes < 60 ? (
               <span className="block truncate text-label">{`${formatTime(a.start, timeZone)} ${a.clientName}`}</span>
             ) : (
               <>
