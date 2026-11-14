@@ -134,6 +134,19 @@ describe("RescheduleDialog", () => {
     );
   });
 
+  it("includes old and new slots in the dialog accessible description", () => {
+    renderDialog();
+    const dialog = screen.getByRole("dialog", { name: "Перенести запись?" });
+    const ids = (dialog.getAttribute("aria-describedby") ?? "").split(/\s+/).filter(Boolean);
+    const description = ids.map((id) => document.getElementById(id)?.textContent ?? "").join(" ");
+    expect(description).toContain("Вы перетащили запись: Марат Каримов.");
+    expect(description).toContain("Было:");
+    expect(description).toContain("пн 2 нояб.");
+    expect(description).toContain("Станет:");
+    expect(description).toContain("чт 5 нояб.");
+    expect(description).toContain("16:00–17:00");
+  });
+
   it("shows fallback error text on server 500", async () => {
     reschedule.mockRejectedValue(new ApiError("server", { status: 500 }));
     renderDialog();

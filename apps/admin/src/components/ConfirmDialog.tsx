@@ -13,6 +13,7 @@ type ConfirmDialogProps = {
   onConfirm: () => void;
   busy?: boolean;
   error?: string;
+  describedBy?: string;
   children?: ReactNode;
 };
 
@@ -26,6 +27,7 @@ export function ConfirmDialog({
   onConfirm,
   busy = false,
   error,
+  describedBy,
   children,
 }: ConfirmDialogProps) {
   const cancelRef = useRef<HTMLButtonElement>(null);
@@ -37,6 +39,7 @@ export function ConfirmDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showClose={false}
+        aria-describedby={describedBy}
         onOpenAutoFocus={(event) => {
           event.preventDefault();
           cancelRef.current?.focus();

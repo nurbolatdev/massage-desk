@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { ChevronRight } from "lucide-react";
 
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -24,6 +25,7 @@ type RescheduleDialogProps = {
 
 /** Confirmation dialog showing old and new times and server reschedule errors. */
 export function RescheduleDialog({ appointment, start, timeZone, onClose, onDone }: RescheduleDialogProps) {
+  const slotsId = useId();
   const end = new Date(start.getTime() + (appointment.end.getTime() - appointment.start.getTime()));
   const before = slotLines(appointment.start, appointment.end, timeZone);
   const after = slotLines(start, end, timeZone);
@@ -44,6 +46,7 @@ export function RescheduleDialog({ appointment, start, timeZone, onClose, onDone
       cancelLabel={RESCHEDULE_BACK}
       busy={mutation.isPending}
       error={error}
+      describedBy={slotsId}
       onConfirm={() =>
         mutation.mutate(
           { id: appointment.id, start },
@@ -51,7 +54,7 @@ export function RescheduleDialog({ appointment, start, timeZone, onClose, onDone
         )
       }
     >
-      <div className="flex items-center gap-12">
+      <div id={slotsId} className="flex items-center gap-12">
         <div className="min-w-0 flex-1 rounded-12 bg-neutral-soft px-12 py-10 text-body font-bold text-muted line-through">
           <span className="sr-only">Было: </span>
           <span className="block">{before.day}</span>

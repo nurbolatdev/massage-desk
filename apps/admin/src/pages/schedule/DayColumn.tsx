@@ -7,6 +7,8 @@ import { canReschedule } from "@/lib/data/dropTarget";
 import type { Appointment, TimeOffPeriod } from "@/lib/data/schedule";
 import { formatTime } from "@/lib/format";
 
+import { useDragInstructionsId } from "./dndContext";
+
 type GridLayout = "week" | "day";
 
 const LAYOUT = {
@@ -73,6 +75,7 @@ type AppointmentBlockProps = {
 function AppointmentBlock({ appointment: a, day, range, timeZone, layout, selected, draggable, onSelect }: AppointmentBlockProps) {
   const canDrag = draggable && canReschedule(a);
   const { ref } = useDraggable({ id: a.id, disabled: !canDrag });
+  const instructionsId = useDragInstructionsId();
   const rows = spanClass(a.start, a.end, day, range, timeZone);
   if (!rows) return null;
 
@@ -86,6 +89,8 @@ function AppointmentBlock({ appointment: a, day, range, timeZone, layout, select
       ref={canDrag ? ref : undefined}
       type="button"
       aria-pressed={selected}
+      aria-roledescription={canDrag ? "запись, можно перенести" : undefined}
+      aria-describedby={canDrag ? instructionsId : undefined}
       aria-label={`${a.clientName}, ${time}, ${a.serviceName}${a.status === "cancelled" ? ", отменена" : ""}`}
       onClick={() => onSelect(a.id)}
       className={`col-start-1 overflow-hidden border-appointment text-left ${cfg.block} ${color} ${rows}${canDrag ? " cursor-grab" : ""}`}

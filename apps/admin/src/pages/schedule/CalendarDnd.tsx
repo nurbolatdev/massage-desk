@@ -1,12 +1,23 @@
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
-import { RestrictToVerticalAxis, SnapModifier } from "@dnd-kit/abstract/modifiers";
+import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
+import { RestrictToVerticalAxis } from "@dnd-kit/abstract/modifiers";
 import { Accessibility, PointerActivationConstraints, defaultPreset } from "@dnd-kit/dom";
-import { DragDropProvider, type DragEndEvent, KeyboardSensor, PointerSensor, useDragDropManager } from "@dnd-kit/react";
+import {
+  DragDropProvider,
+  type DragEndEvent,
+  type DragMoveEvent,
+  type DragStartEvent,
+  KeyboardSensor,
+  PointerSensor,
+  useDragDropMonitor,
+} from "@dnd-kit/react";
 
 import type { Span } from "@/lib/data/calendar";
 import { dropTarget, type GridStep } from "@/lib/data/dropTarget";
 import { DRAG_CANCELLED, DRAG_INSTRUCTIONS, dragMoveText, dragStartText, dropText } from "@/lib/data/reschedule";
 import type { Appointment } from "@/lib/data/schedule";
+
+import { DragInstructionsContext } from "./dndContext";
+import { RoundSnapModifier } from "./snapModifier";
 
 type Props = {
   days: readonly string[];
@@ -19,7 +30,11 @@ type Props = {
 };
 
 type DndState = { byId: Map<string, Appointment>; days: readonly string[]; range: Span; timeZone: string; step: GridStep };
-type MoveLike = { operation: DragEndEvent["operation"]; by?: { x: number; y: number } };
+type MoveLike = {
+  operation: DragEndEvent["operation"];
+  by?: { x: number; y: number };
+  to?: { x: number; y: number };
+};
 
 const ZERO_STEP: GridStep = { x: 0, y: 0 };
 const BASE_PLUGINS = defaultPreset.plugins.filter((plugin) => plugin !== Accessibility);
@@ -32,73 +47,79 @@ function measureStep(root: HTMLElement | null): GridStep {
   return { x: Number.isFinite(x) ? x : 0, y: Number.isFinite(y) ? y : 0 };
 }
 
-function resolveTarget(state: DndState, { operation: { source, transform }, by }: MoveLike) {
+function resolveTarget(state: DndState, { operation: { source, transform, position }, by, to }: MoveLike) {
   const appointment = source ? state.byId.get(String(source.id)) : undefined;
   if (!appointment) return null;
+  const dx = to ? to.x - position.initial.x : transform.x + (by?.x ?? 0);
+  const dy = to ? to.y - position.initial.y : transform.y + (by?.y ?? 0);
   const start = dropTarget({
     appointment,
     days: state.days,
     range: state.range,
     timeZone: state.timeZone,
-    dx: transform.x + (by?.x ?? 0),
-    dy: transform.y + (by?.y ?? 0),
+    dx,
+    dy,
     step: state.step,
   });
   return start ? { appointment, start } : null;
 }
 
-function DndAccessibility({ state }: { state: DndState }) {
-  const manager = useDragDropManager();
+function DndAnnouncer({ state }: { state: DndState }) {
+  const [announcement, setAnnouncement] = useState("");
   const stateRef = useRef(state);
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
 
-  useEffect(() => {
-    if (!manager) return;
-    manager.registry.plugins.unregister(Accessibility);
-    manager.registry.plugins.register(Accessibility, {
-      screenReaderInstructions: { draggable: DRAG_INSTRUCTIONS },
-      announcements: {
-        dragstart: ({ operation: { source } }) => {
-          const cur = stateRef.current;
-          const a = source ? cur.byId.get(String(source.id)) : undefined;
-          return a ? dragStartText(a, cur.timeZone) : undefined;
-        },
-        dragmove: (event) => {
-          const cur = stateRef.current;
-          const target = resolveTarget(cur, event);
-          return target ? dragMoveText(target.start, cur.timeZone) : undefined;
-        },
-        dragend: (event) => {
-          if (event.canceled) return DRAG_CANCELLED;
-          const cur = stateRef.current;
-          return dropText(resolveTarget(cur, event)?.start ?? null, cur.timeZone);
-        },
+  const handlers = useMemo(
+    () => ({
+      onDragStart: ({ operation: { source } }: DragStartEvent) => {
+        const cur = stateRef.current;
+        const a = source ? cur.byId.get(String(source.id)) : undefined;
+        if (a) setAnnouncement(dragStartText(a, cur.timeZone));
       },
-    });
-    return () => manager.registry.plugins.unregister(Accessibility);
-  }, [manager]);
+      onDragMove: (event: DragMoveEvent) => {
+        const cur = stateRef.current;
+        const target = resolveTarget(cur, event);
+        if (target) setAnnouncement(dragMoveText(target.start, cur.timeZone));
+      },
+      onDragEnd: (event: DragEndEvent) => {
+        if (event.canceled) {
+          setAnnouncement(DRAG_CANCELLED);
+          return;
+        }
+        const cur = stateRef.current;
+        setAnnouncement(dropText(resolveTarget(cur, event)?.start ?? null, cur.timeZone));
+      },
+    }),
+    [],
+  );
 
-  return null;
+  useDragDropMonitor(handlers);
+
+  return (
+    <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+      {announcement}
+    </div>
+  );
 }
 
 /** Drag-and-drop provider for schedule grids; measures column/row step from the DOM. */
 export function CalendarDnd({ days, range, timeZone, appointments, vertical = false, onDrop, children }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
+  const instructionsId = useId();
   const [step, setStep] = useState<GridStep>(ZERO_STEP);
 
   useEffect(() => {
     const root = rootRef.current;
-    const col = root?.querySelector("[data-grid-column]") ?? null;
     const update = () => {
       const next = measureStep(root);
       setStep((prev) => (prev.x === next.x && prev.y === next.y ? prev : next));
     };
     update();
-    if (!col || typeof ResizeObserver === "undefined") return;
+    if (!root || typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(update);
-    observer.observe(col);
+    observer.observe(root);
     return () => observer.disconnect();
   }, []);
 
@@ -110,7 +131,12 @@ export function CalendarDnd({ days, range, timeZone, appointments, vertical = fa
       PointerSensor.configure({ activationConstraints: [new PointerActivationConstraints.Distance({ value: 8 })] }),
       KeyboardSensor.configure({
         offset: step,
-        keyboardCodes: { ...KeyboardSensor.defaults.keyboardCodes, start: ["Space"], end: ["Space", "Enter"], cancel: ["Escape"] },
+        keyboardCodes: {
+          ...KeyboardSensor.defaults.keyboardCodes,
+          start: ["Space"],
+          end: ["Space", "Enter"],
+          cancel: ["Escape", "Tab"],
+        },
       }),
     ],
     [step],
@@ -118,7 +144,7 @@ export function CalendarDnd({ days, range, timeZone, appointments, vertical = fa
 
   const modifiers = useMemo(
     () => [
-      ...(step.y > 0 ? [SnapModifier.configure({ size: { x: step.x > 0 ? step.x : 1, y: step.y } })] : []),
+      ...(step.y > 0 ? [RoundSnapModifier.configure({ size: step })] : []),
       ...(vertical ? [RestrictToVerticalAxis] : []),
     ],
     [step, vertical],
@@ -132,10 +158,17 @@ export function CalendarDnd({ days, range, timeZone, appointments, vertical = fa
 
   return (
     <div ref={rootRef}>
-      <DragDropProvider sensors={sensors} modifiers={modifiers} plugins={BASE_PLUGINS} onDragEnd={handleDragEnd}>
-        <DndAccessibility state={dndState} />
-        {children}
-      </DragDropProvider>
+      <DragInstructionsContext.Provider value={onDrop ? instructionsId : undefined}>
+        <DragDropProvider sensors={sensors} modifiers={modifiers} plugins={BASE_PLUGINS} onDragEnd={handleDragEnd}>
+          <DndAnnouncer state={dndState} />
+          {onDrop && (
+            <span id={instructionsId} className="sr-only">
+              {DRAG_INSTRUCTIONS}
+            </span>
+          )}
+          {children}
+        </DragDropProvider>
+      </DragInstructionsContext.Provider>
     </div>
   );
 }
