@@ -9,12 +9,13 @@ import { Button } from "@/components/ui/button";
 import { icon } from "@/components/icon";
 import { daySchedule, gridAppointments, loadErrorText, scheduleView, weekLabel } from "@/lib/data/calendar";
 import { useScheduleRange, useTimeZone } from "@/lib/data/hooks";
-import { weekRange } from "@/lib/data/schedule";
+import { weekRange, type Appointment } from "@/lib/data/schedule";
 import { useNow } from "@/lib/useNow";
 
 import { AppointmentPanel } from "./AppointmentPanel";
 import { DayGrid } from "./DayGrid";
 import { DaySummary } from "./DaySummary";
+import { RescheduleDialog } from "./RescheduleDialog";
 import { WeekGrid } from "./WeekGrid";
 
 const NAV_BUTTON = "flex size-target items-center justify-center rounded-8 text-ink";
@@ -30,6 +31,7 @@ export function SchedulePage() {
   const [view, setView] = useState<"week" | "day">("week");
   const [anchor, setAnchor] = useState<string>();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [request, setRequest] = useState<{ appointment: Appointment; start: Date } | null>(null);
   const day = anchor ?? today;
   const range = day ? weekRange(day) : undefined;
   const schedule = useScheduleRange(range?.from, range?.to);
@@ -123,6 +125,7 @@ export function SchedulePage() {
                 selectedId={selected?.id ?? null}
                 onSelect={setSelectedId}
                 onMove={move}
+                onReschedule={(appointment, start) => setRequest({ appointment, start })}
               />
             ) : (
               <WeekGrid
@@ -134,6 +137,7 @@ export function SchedulePage() {
                 workingBlocks={schedule.workingBlocks}
                 selectedId={selected?.id ?? null}
                 onSelect={setSelectedId}
+                onReschedule={(appointment, start) => setRequest({ appointment, start })}
               />
             )}
           </div>
@@ -148,6 +152,18 @@ export function SchedulePage() {
             )}
           </div>
         </div>
+      )}
+      {request && schedule.timeZone && (
+        <RescheduleDialog
+          appointment={request.appointment}
+          start={request.start}
+          timeZone={schedule.timeZone}
+          onClose={() => setRequest(null)}
+          onDone={(id) => {
+            setRequest(null);
+            setSelectedId(id);
+          }}
+        />
       )}
     </PageMain>
   );

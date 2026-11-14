@@ -11,9 +11,10 @@ import {
   spanClass,
   spanText,
 } from "@/lib/data/calendar";
-import type { TimeOffPeriod } from "@/lib/data/schedule";
+import type { Appointment, TimeOffPeriod } from "@/lib/data/schedule";
 import { formatTime } from "@/lib/format";
 
+import { CalendarDnd } from "./CalendarDnd";
 import { DayColumn, HourColumn } from "./DayColumn";
 
 const NAV_BUTTON = "flex size-target items-center justify-center rounded-8 text-ink";
@@ -34,9 +35,10 @@ type Props = {
   selectedId: string | null;
   onSelect: (id: string) => void;
   onMove: (delta: -1 | 1) => void;
+  onReschedule?: (appointment: Appointment, start: Date) => void;
 };
 
-export function DayGrid({ day, today, now, timeZone, schedule, timeOff, selectedId, onSelect, onMove }: Props) {
+export function DayGrid({ day, today, now, timeZone, schedule, timeOff, selectedId, onSelect, onMove, onReschedule }: Props) {
   const range = gridHours([day], () => schedule.windows, schedule.list, timeZone);
   const hours = Array.from({ length: range.end - range.start }, (_, i) => range.start + i);
   const mark = day === today ? nowMark(minutesOfDay(now, day, timeZone), range) : null;
@@ -58,21 +60,23 @@ export function DayGrid({ day, today, now, timeZone, schedule, timeOff, selected
           </span>
         )}
       </div>
-      <div className="flex">
-        <HourColumn hours={hours} layout="day" />
-        <DayColumn
-          day={day}
-          windows={schedule.windows}
-          off={schedule.off}
-          list={schedule.list}
-          range={range}
-          hours={hours}
-          timeZone={timeZone}
-          timeOff={timeOff}
-          selectedId={selectedId}
-          onSelect={onSelect}
-          layout="day"
-        >
+      <CalendarDnd days={[day]} range={range} timeZone={timeZone} appointments={schedule.list} vertical onDrop={onReschedule}>
+        <div className="flex">
+          <HourColumn hours={hours} layout="day" />
+          <DayColumn
+            day={day}
+            windows={schedule.windows}
+            off={schedule.off}
+            list={schedule.list}
+            range={range}
+            hours={hours}
+            timeZone={timeZone}
+            timeOff={timeOff}
+            selectedId={selectedId}
+            onSelect={onSelect}
+            layout="day"
+            draggable={onReschedule !== undefined}
+          >
           {schedule.free?.map((span) => {
             const rows = spanClass(span.start, span.end, day, range, timeZone);
             return (
@@ -96,7 +100,8 @@ export function DayGrid({ day, today, now, timeZone, schedule, timeOff, selected
             </div>
           )}
         </DayColumn>
-      </div>
+        </div>
+      </CalendarDnd>
     </section>
   );
 }

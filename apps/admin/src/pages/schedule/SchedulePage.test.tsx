@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, within } from "@testing-library/rea
 
 import { ApiError } from "@/lib/api/errors";
 import { useScheduleRange } from "@/lib/data/hooks";
+import { DRAG_HINT, KEYBOARD_HINT } from "@/lib/data/reschedule";
 import type { Appointment } from "@/lib/data/schedule";
 
 import { SchedulePage } from "./SchedulePage";
@@ -210,5 +211,25 @@ describe("SchedulePage day view", () => {
     render(<SchedulePage />);
     fireEvent.click(screen.getByRole("button", { name: "День" }));
     expect(screen.getByRole("region", { name: "День" })).toBeTruthy();
+  });
+});
+
+describe("SchedulePage reschedule hints", () => {
+  it("shows drag and keyboard hints for a selected confirmed appointment", () => {
+    mocked.mockReturnValue(result());
+    render(<SchedulePage />);
+    fireEvent.click(screen.getByRole("button", { name: /Айгуль Сапарова/ }));
+    const panel = screen.getByRole("complementary", { name: "Выбранная запись" });
+    expect(within(panel).getByText(DRAG_HINT)).toBeTruthy();
+    expect(within(panel).getByText(KEYBOARD_HINT)).toBeTruthy();
+  });
+
+  it("hides drag and keyboard hints for a selected cancelled appointment", () => {
+    mocked.mockReturnValue(result({ appointments: [{ ...appointment, status: "cancelled" }] }));
+    render(<SchedulePage />);
+    fireEvent.click(screen.getByRole("button", { name: /Айгуль Сапарова/ }));
+    const panel = screen.getByRole("complementary", { name: "Выбранная запись" });
+    expect(within(panel).queryByText(DRAG_HINT)).toBeNull();
+    expect(within(panel).queryByText(KEYBOARD_HINT)).toBeNull();
   });
 });

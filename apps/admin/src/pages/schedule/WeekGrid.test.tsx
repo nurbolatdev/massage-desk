@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { weekDays } from "@massage-desk/shared";
 
+import { DRAG_INSTRUCTIONS } from "@/lib/data/reschedule";
 import type { Appointment } from "@/lib/data/schedule";
 import { WeekGrid } from "./WeekGrid";
 
@@ -104,5 +105,77 @@ describe("WeekGrid", () => {
     const midday = { id: "t3", start: new Date("2026-11-04T15:00:00+05:00"), end: new Date("2026-11-04T17:00:00+05:00") };
     setup({ timeOff: [midday] });
     expect(screen.getByText("Запись закрыта")).toBeTruthy();
+  });
+
+  it("marks only confirmed blocks as grabbable when onReschedule is provided", () => {
+    const done = appt("a6", "Анна Иванова", "2026-11-05", "12:00", "13:00", "done");
+    setup({ appointments: [...list, done], onReschedule: vi.fn() });
+    expect(screen.getByRole("button", { name: /Айгуль Сапарова/ }).classList.contains("cursor-grab")).toBe(true);
+    expect(screen.getByRole("button", { name: /Светлана/ }).classList.contains("cursor-grab")).toBe(false);
+    expect(screen.getByRole("button", { name: /Анна Иванова/ }).classList.contains("cursor-grab")).toBe(false);
+  });
+
+  it("does not mark blocks as grabbable without onReschedule and still selects on click", () => {
+    const done = appt("a6", "Анна Иванова", "2026-11-05", "12:00", "13:00", "done");
+    setup({ appointments: [...list, done] });
+    expect(screen.getByRole("button", { name: /Айгуль Сапарова/ }).classList.contains("cursor-grab")).toBe(false);
+    expect(screen.getByRole("button", { name: /Светлана/ }).classList.contains("cursor-grab")).toBe(false);
+    expect(screen.getByRole("button", { name: /Анна Иванова/ }).classList.contains("cursor-grab")).toBe(false);
+
+    cleanup();
+    const onSelect = setup({ onReschedule: vi.fn() });
+    fireEvent.click(screen.getByRole("button", { name: /Айгуль Сапарова/ }));
+    expect(onSelect).toHaveBeenCalledWith("a1");
+  });
+
+  it("keeps aria-pressed on selected draggable blocks across appointment updates and sets Russian drag attributes", async () => {
+    const done = appt("a6", "Анна Иванова", "2026-11-05", "12:00", "13:00", "done");
+    const extra = appt("a7", "Дильноза Рахимова", "2026-11-06", "14:00", "15:00");
+    const { rerender } = render(
+      <WeekGrid
+        days={days}
+        today="2026-11-03"
+        timeZone={tz}
+        appointments={[...list, done]}
+        timeOff={[]}
+        workingBlocks={blocks}
+        selectedId="a1"
+        onSelect={vi.fn()}
+        onReschedule={vi.fn()}
+      />,
+    );
+
+    const selected = screen.getByRole("button", { name: /Айгуль Сапарова/ });
+    expect(selected.getAttribute("aria-pressed")).toBe("true");
+    expect(selected.getAttribute("aria-roledescription")).toBe("запись, можно перенести");
+    expect(selected.getAttribute("draggable")).toBeNull();
+    const describedById = selected.getAttribute("aria-describedby");
+    expect(describedById).toBeTruthy();
+    expect(document.getElementById(describedById ?? "")?.textContent).toBe(DRAG_INSTRUCTIONS);
+
+    const cancelled = screen.getByRole("button", { name: /Светлана/ });
+    expect(cancelled.getAttribute("aria-roledescription")).toBeNull();
+    expect(cancelled.getAttribute("aria-describedby")).toBeNull();
+    expect(screen.getByRole("button", { name: /Анна Иванова/ }).getAttribute("aria-roledescription")).toBeNull();
+
+    rerender(
+      <WeekGrid
+        days={days}
+        today="2026-11-03"
+        timeZone={tz}
+        appointments={[...list, done, extra]}
+        timeOff={[]}
+        workingBlocks={blocks}
+        selectedId="a1"
+        onSelect={vi.fn()}
+        onReschedule={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Дильноза Рахимова/ })).toBeTruthy();
+    });
+    expect(screen.getByRole("button", { name: /Айгуль Сапарова/ }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: /Айгуль Сапарова/ }).getAttribute("draggable")).toBeNull();
   });
 });
