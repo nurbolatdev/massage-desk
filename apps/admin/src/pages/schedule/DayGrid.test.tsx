@@ -171,3 +171,57 @@ describe("DayGrid", () => {
     expect(screen.getByText("Свободно 14:00–14:30 · бот предлагает это время")).toBeTruthy();
   });
 });
+
+describe("DayGrid drag-and-drop", () => {
+  const cancelledPast: Appointment = { ...appt("c2", "Анна Иванова", "Массаж спины", "09:00", "09:30"), status: "cancelled" };
+  const donePast: Appointment = { ...appt("d1", "Ольга Орлова", "Массаж спины", "09:30", "10:00"), status: "done" };
+  const all = [...list, cancelledPast, donePast];
+
+  it("marks only confirmed blocks as grabbable when onReschedule is provided", () => {
+    const schedule = daySchedule({ day: DAY, timeZone: TZ, appointments: all, timeOff: [], workingBlocks: blocks, now: NOW });
+    render(
+      <DayGrid
+        day={DAY}
+        today={DAY}
+        now={NOW}
+        timeZone={TZ}
+        schedule={schedule}
+        timeOff={[]}
+        selectedId={null}
+        onSelect={vi.fn()}
+        onMove={vi.fn()}
+        onReschedule={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("button", { name: /Айгуль Сапарова/ }).classList.contains("cursor-grab")).toBe(true);
+    expect(screen.getByRole("button", { name: /Анна Иванова/ }).classList.contains("cursor-grab")).toBe(false);
+    expect(screen.getByRole("button", { name: /Ольга Орлова/ }).classList.contains("cursor-grab")).toBe(false);
+  });
+
+  it("does not mark blocks as grabbable without onReschedule and still selects on click", () => {
+    setup({ appointments: all });
+    expect(screen.getByRole("button", { name: /Айгуль Сапарова/ }).classList.contains("cursor-grab")).toBe(false);
+    expect(screen.getByRole("button", { name: /Анна Иванова/ }).classList.contains("cursor-grab")).toBe(false);
+    expect(screen.getByRole("button", { name: /Ольга Орлова/ }).classList.contains("cursor-grab")).toBe(false);
+
+    cleanup();
+    const onSelect = vi.fn();
+    const schedule = daySchedule({ day: DAY, timeZone: TZ, appointments: all, timeOff: [], workingBlocks: blocks, now: NOW });
+    render(
+      <DayGrid
+        day={DAY}
+        today={DAY}
+        now={NOW}
+        timeZone={TZ}
+        schedule={schedule}
+        timeOff={[]}
+        selectedId={null}
+        onSelect={onSelect}
+        onMove={vi.fn()}
+        onReschedule={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Айгуль Сапарова/ }));
+    expect(onSelect).toHaveBeenCalledWith("a1");
+  });
+});

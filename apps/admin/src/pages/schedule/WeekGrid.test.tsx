@@ -105,4 +105,25 @@ describe("WeekGrid", () => {
     setup({ timeOff: [midday] });
     expect(screen.getByText("Запись закрыта")).toBeTruthy();
   });
+
+  it("marks only confirmed blocks as grabbable when onReschedule is provided", () => {
+    const done = appt("a6", "Анна Иванова", "2026-11-05", "12:00", "13:00", "done");
+    setup({ appointments: [...list, done], onReschedule: vi.fn() });
+    expect(screen.getByRole("button", { name: /Айгуль Сапарова/ }).classList.contains("cursor-grab")).toBe(true);
+    expect(screen.getByRole("button", { name: /Светлана/ }).classList.contains("cursor-grab")).toBe(false);
+    expect(screen.getByRole("button", { name: /Анна Иванова/ }).classList.contains("cursor-grab")).toBe(false);
+  });
+
+  it("does not mark blocks as grabbable without onReschedule and still selects on click", () => {
+    const done = appt("a6", "Анна Иванова", "2026-11-05", "12:00", "13:00", "done");
+    setup({ appointments: [...list, done] });
+    expect(screen.getByRole("button", { name: /Айгуль Сапарова/ }).classList.contains("cursor-grab")).toBe(false);
+    expect(screen.getByRole("button", { name: /Светлана/ }).classList.contains("cursor-grab")).toBe(false);
+    expect(screen.getByRole("button", { name: /Анна Иванова/ }).classList.contains("cursor-grab")).toBe(false);
+
+    cleanup();
+    const onSelect = setup({ onReschedule: vi.fn() });
+    fireEvent.click(screen.getByRole("button", { name: /Айгуль Сапарова/ }));
+    expect(onSelect).toHaveBeenCalledWith("a1");
+  });
 });

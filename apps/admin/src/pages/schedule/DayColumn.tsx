@@ -1,7 +1,9 @@
 import type { ReactNode } from "react";
+import { useDraggable } from "@dnd-kit/react";
 import type { WorkingWindow } from "@massage-desk/shared";
 
 import { type Span, blockDetail, breaksOf, minutesOfDay, rowClass, spanClass, spanText } from "@/lib/data/calendar";
+import { canReschedule } from "@/lib/data/dropTarget";
 import type { Appointment, TimeOffPeriod } from "@/lib/data/schedule";
 import { formatTime } from "@/lib/format";
 
@@ -53,8 +55,61 @@ type DayColumnProps = {
   selectedId: string | null;
   onSelect: (id: string) => void;
   layout?: GridLayout;
+  draggable?: boolean;
   children?: ReactNode;
 };
+
+type AppointmentBlockProps = {
+  appointment: Appointment;
+  day: string;
+  range: Span;
+  timeZone: string;
+  layout: GridLayout;
+  selected: boolean;
+  draggable: boolean;
+  onSelect: (id: string) => void;
+};
+
+function AppointmentBlock({ appointment: a, day, range, timeZone, layout, selected, draggable, onSelect }: AppointmentBlockProps) {
+  const canDrag = draggable && canReschedule(a);
+  const { ref } = useDraggable({ id: a.id, disabled: !canDrag });
+  const rows = spanClass(a.start, a.end, day, range, timeZone);
+  if (!rows) return null;
+
+  const minutes = Math.round((a.end.getTime() - a.start.getTime()) / 60000);
+  const time = `${formatTime(a.start, timeZone)}–${formatTime(a.end, timeZone)}`;
+  const color = selected ? BLOCK_COLORS.selected : a.status === "cancelled" ? BLOCK_COLORS.cancelled : BLOCK_COLORS[a.source];
+  const cfg = LAYOUT[layout];
+
+  return (
+    <button
+      ref={canDrag ? ref : undefined}
+      type="button"
+      aria-pressed={selected}
+      aria-label={`${a.clientName}, ${time}, ${a.serviceName}${a.status === "cancelled" ? ", отменена" : ""}`}
+      onClick={() => onSelect(a.id)}
+      className={`col-start-1 overflow-hidden border-appointment text-left ${cfg.block} ${color} ${rows}${canDrag ? " cursor-grab" : ""}`}
+    >
+      {layout === "day" ? (
+        <span className="flex items-start gap-16">
+          <span className="shrink-0 text-body font-bold tabular-nums">{time}</span>
+          <span className="flex min-w-0 flex-col">
+            <span className="truncate text-body font-bold">{a.clientName}</span>
+            {minutes >= 60 && <span className="truncate text-secondary font-normal">{blockDetail(a)}</span>}
+          </span>
+        </span>
+      ) : minutes < 60 ? (
+        <span className="block truncate text-label">{`${formatTime(a.start, timeZone)} ${a.clientName}`}</span>
+      ) : (
+        <>
+          <span className="block text-label">{time}</span>
+          <span className="block truncate text-secondary font-bold">{a.clientName}</span>
+          {minutes > 60 && <span className="block truncate text-label font-normal">{a.serviceName}</span>}
+        </>
+      )}
+    </button>
+  );
+}
 
 export function DayColumn({
   day,
@@ -68,11 +123,12 @@ export function DayColumn({
   selectedId,
   onSelect,
   layout = "week",
+  draggable = false,
   children,
 }: DayColumnProps) {
   const cfg = LAYOUT[layout];
   return (
-    <div className={`${cfg.rows} grid grid-cols-1 ${cfg.column} ${off ? "bg-segment-bg" : ""}`}>
+    <div data-grid-column="" className={`${cfg.rows} grid grid-cols-1 ${cfg.column} ${off ? "bg-segment-bg" : ""}`}>
       {hours.map((h, i) => (
         <div key={h} className={`col-start-1 border-t border-divider ${rowClass({ start: i * 4 + 1, span: 4 })}`} />
       ))}
@@ -100,42 +156,19 @@ export function DayColumn({
               )
             );
           })}
-      {list.map((a) => {
-        const minutes = Math.round((a.end.getTime() - a.start.getTime()) / 60000);
-        const time = `${formatTime(a.start, timeZone)}–${formatTime(a.end, timeZone)}`;
-        const selected = a.id === selectedId;
-        const rows = spanClass(a.start, a.end, day, range, timeZone);
-        if (!rows) return null;
-        const color = selected ? BLOCK_COLORS.selected : a.status === "cancelled" ? BLOCK_COLORS.cancelled : BLOCK_COLORS[a.source];
-        return (
-          <button
-            key={a.id}
-            type="button"
-            aria-pressed={selected}
-            aria-label={`${a.clientName}, ${time}, ${a.serviceName}${a.status === "cancelled" ? ", отменена" : ""}`}
-            onClick={() => onSelect(a.id)}
-            className={`col-start-1 overflow-hidden border-appointment text-left ${cfg.block} ${color} ${rows}`}
-          >
-            {layout === "day" ? (
-              <span className="flex items-start gap-16">
-                <span className="shrink-0 text-body font-bold tabular-nums">{time}</span>
-                <span className="flex min-w-0 flex-col">
-                  <span className="truncate text-body font-bold">{a.clientName}</span>
-                  {minutes >= 60 && <span className="truncate text-secondary font-normal">{blockDetail(a)}</span>}
-                </span>
-              </span>
-            ) : minutes < 60 ? (
-              <span className="block truncate text-label">{`${formatTime(a.start, timeZone)} ${a.clientName}`}</span>
-            ) : (
-              <>
-                <span className="block text-label">{time}</span>
-                <span className="block truncate text-secondary font-bold">{a.clientName}</span>
-                {minutes > 60 && <span className="block truncate text-label font-normal">{a.serviceName}</span>}
-              </>
-            )}
-          </button>
-        );
-      })}
+      {list.map((a) => (
+        <AppointmentBlock
+          key={a.id}
+          appointment={a}
+          day={day}
+          range={range}
+          timeZone={timeZone}
+          layout={layout}
+          selected={a.id === selectedId}
+          draggable={draggable}
+          onSelect={onSelect}
+        />
+      ))}
       {children}
     </div>
   );

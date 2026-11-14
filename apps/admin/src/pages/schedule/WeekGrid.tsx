@@ -3,6 +3,7 @@ import { isoWeekday, localDay, workingWindowsOfDay, type WorkingWindow } from "@
 import { WEEKDAYS_SHORT, dayNote, gridAppointments, gridHours, isDayOff } from "@/lib/data/calendar";
 import type { Appointment, TimeOffPeriod, WorkingBlock } from "@/lib/data/schedule";
 
+import { CalendarDnd } from "./CalendarDnd";
 import { DayColumn, HourColumn } from "./DayColumn";
 
 type Props = {
@@ -14,9 +15,20 @@ type Props = {
   workingBlocks: WorkingBlock[] | undefined;
   selectedId: string | null;
   onSelect: (id: string) => void;
+  onReschedule?: (appointment: Appointment, start: Date) => void;
 };
 
-export function WeekGrid({ days, today, timeZone, appointments, timeOff, workingBlocks, selectedId, onSelect }: Props) {
+export function WeekGrid({
+  days,
+  today,
+  timeZone,
+  appointments,
+  timeOff,
+  workingBlocks,
+  selectedId,
+  onSelect,
+  onReschedule,
+}: Props) {
   const windowsOf = (day: string): WorkingWindow[] | undefined =>
     workingBlocks && workingWindowsOfDay(workingBlocks, day, timeZone);
   const shown = gridAppointments(appointments);
@@ -45,26 +57,29 @@ export function WeekGrid({ days, today, timeZone, appointments, timeOff, working
             ))}
           </div>
         </div>
-        <div className="flex">
-          <HourColumn hours={hours} />
-          <div className="grid grow grid-cols-7">
-            {columns.map(({ day, windows, off, list }) => (
-              <DayColumn
-                key={day}
-                day={day}
-                windows={windows}
-                off={off}
-                list={list}
-                range={range}
-                hours={hours}
-                timeZone={timeZone}
-                timeOff={timeOff}
-                selectedId={selectedId}
-                onSelect={onSelect}
-              />
-            ))}
+        <CalendarDnd days={days} range={range} timeZone={timeZone} appointments={shown} onDrop={onReschedule}>
+          <div className="flex">
+            <HourColumn hours={hours} />
+            <div className="grid grow grid-cols-7">
+              {columns.map(({ day, windows, off, list }) => (
+                <DayColumn
+                  key={day}
+                  day={day}
+                  windows={windows}
+                  off={off}
+                  list={list}
+                  range={range}
+                  hours={hours}
+                  timeZone={timeZone}
+                  timeOff={timeOff}
+                  selectedId={selectedId}
+                  onSelect={onSelect}
+                  draggable={onReschedule !== undefined}
+                />
+              ))}
+            </div>
           </div>
-        </div>
+        </CalendarDnd>
       </div>
     </section>
   );
