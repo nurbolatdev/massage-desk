@@ -11,9 +11,11 @@ type ConfirmDialogProps = {
   confirmLabel: string;
   cancelLabel: string;
   onConfirm: () => void;
+  confirmVariant?: "primary" | "destructive-solid";
   busy?: boolean;
   error?: string;
   describedBy?: string;
+  onCloseAutoFocus?: (event: Event) => void;
   children?: ReactNode;
 };
 
@@ -25,9 +27,11 @@ export function ConfirmDialog({
   confirmLabel,
   cancelLabel,
   onConfirm,
+  confirmVariant = "primary",
   busy = false,
   error,
   describedBy,
+  onCloseAutoFocus,
   children,
 }: ConfirmDialogProps) {
   const cancelRef = useRef<HTMLButtonElement>(null);
@@ -44,6 +48,7 @@ export function ConfirmDialog({
           event.preventDefault();
           cancelRef.current?.focus();
         }}
+        onCloseAutoFocus={onCloseAutoFocus}
         onEscapeKeyDown={keepOpen}
         onPointerDownOutside={keepOpen}
         onInteractOutside={keepOpen}
@@ -70,7 +75,7 @@ export function ConfirmDialog({
           >
             {cancelLabel}
           </Button>
-          <Button disabled={busy} onClick={onConfirm}>
+          <Button variant={confirmVariant} disabled={busy} onClick={onConfirm}>
             {confirmLabel}
           </Button>
         </div>

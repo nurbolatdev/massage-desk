@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api, unwrap } from "@/lib/api";
 
+import { type AppointmentAction, postAppointmentAction } from "./appointmentActions";
 import { queryKeys } from "./queryKeys";
 import { rescheduleAppointment } from "./reschedule";
 import {
@@ -82,6 +83,17 @@ export function useRescheduleAppointment() {
   return useMutation({
     networkMode: "always",
     mutationFn: ({ id, start }: { id: string; start: Date }) => rescheduleAppointment(api, id, start),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all }),
+  });
+}
+
+/** No optimistic update: the server decides whether the appointment can still change. */
+export function useAppointmentAction() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    networkMode: "always",
+    mutationFn: ({ id, action }: { id: string; action: AppointmentAction }) =>
+      postAppointmentAction(api, id, action),
     onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all }),
   });
 }

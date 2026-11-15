@@ -1,4 +1,3 @@
-import type { components } from "@massage-desk/api-types";
 import { isoWeekday, localDay } from "@massage-desk/shared";
 
 import type { createApi } from "@/lib/api/client";
@@ -7,15 +6,13 @@ import { ApiError } from "@/lib/api/errors";
 import { formatDayMonthShort, formatTime } from "@/lib/format";
 
 import { WEEKDAYS_SHORT, spanText } from "./calendar";
-import type { Appointment } from "./schedule";
-
-export type RescheduledAppointment = components["schemas"]["AppointmentResponse"];
+import type { Appointment, AppointmentResponse } from "./schedule";
 
 export function rescheduleAppointment(
   api: ReturnType<typeof createApi>,
   id: string,
   start: Date,
-): Promise<RescheduledAppointment> {
+): Promise<AppointmentResponse> {
   return unwrap(
     api.POST("/appointments/{id}/reschedule", {
       params: { path: { id } },
