@@ -36,6 +36,7 @@ export function rescheduleErrorKind(error: unknown): RescheduleErrorKind {
 export const RESCHEDULE_TITLE = "Перенести запись?";
 export const RESCHEDULE_CONFIRM = "Перенести";
 export const RESCHEDULE_BACK = "Вернуть как было";
+export const RESCHEDULE_PICK_AGAIN = "Выбрать другое время";
 export const DRAG_HINT = "Перетащите запись на другое время. Занятое время и перерывы не принимают запись.";
 export const KEYBOARD_HINT = "С клавиатуры: пробел — взять запись, стрелки — сдвинуть, Enter — поставить, Esc — отменить.";
 export const DRAG_INSTRUCTIONS =
@@ -60,6 +61,11 @@ export function whenShort(start: Date, timeZone: string): string {
 /** Confirmation body naming the client and clarifying that no message is sent. */
 export function rescheduleText(clientName: string): string {
   return `Вы перетащили запись: ${clientName}. Клиенту сообщение не придёт — если нужно, напишите ему сами.`;
+}
+
+/** Confirmation body when the new time was picked from the appointment panel. */
+export function pickedText(clientName: string): string {
+  return `Вы выбрали новое время для записи: ${clientName}. Клиенту сообщение не придёт — если нужно, напишите ему сами.`;
 }
 
 const STATIC_ERRORS: Record<Exclude<RescheduleErrorKind, "taken">, string> = {
