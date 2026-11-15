@@ -1,9 +1,26 @@
+import type { Ref } from "react";
+
+import { Button } from "@/components/ui/button";
+import {
+  CANCEL_LABEL,
+  NO_SHOW_LABEL,
+  panelActions,
+  type AppointmentAction,
+} from "@/lib/data/appointmentActions";
 import { SOURCE_TEXT, STATUS_TEXT, serviceText, whenText } from "@/lib/data/calendar";
 import { canReschedule } from "@/lib/data/dropTarget";
 import { DRAG_HINT, KEYBOARD_HINT } from "@/lib/data/reschedule";
 import type { Appointment } from "@/lib/data/schedule";
+import { useOnline } from "@/lib/useOnline";
 
-type Props = { appointment: Appointment | null; timeZone: string; empty: boolean };
+type Props = {
+  appointment: Appointment | null;
+  timeZone: string;
+  empty: boolean;
+  now?: Date;
+  onAction?: (kind: AppointmentAction) => void;
+  nameRef?: Ref<HTMLElement>;
+};
 
 const LEGEND = [
   { label: "Записал бот", color: "bg-primary-soft border-primary-mid" },
@@ -11,7 +28,9 @@ const LEGEND = [
   { label: "Отменена", color: "bg-neutral-soft border-border-dashed" },
 ];
 
-export function AppointmentPanel({ appointment, timeZone, empty }: Props) {
+export function AppointmentPanel({ appointment, timeZone, empty, now, onAction, nameRef }: Props) {
+  const online = useOnline();
+  const actions = appointment && onAction && now ? panelActions(appointment, now) : null;
   const rows = appointment && [
     { term: "Когда", value: whenText(appointment, timeZone) },
     { term: "Услуга", value: serviceText(appointment) },
@@ -35,7 +54,9 @@ export function AppointmentPanel({ appointment, timeZone, empty }: Props) {
           {appointment && rows ? (
             <>
               <div className="flex flex-col gap-4">
-                <strong className="text-title-s font-bold">{appointment.clientName}</strong>
+                <strong ref={nameRef} tabIndex={-1} className="text-title-s font-bold">
+                  {appointment.clientName}
+                </strong>
                 <span className="text-body text-muted">{appointment.clientPhone}</span>
               </div>
               <dl className="flex flex-col gap-8 text-body">
@@ -46,6 +67,20 @@ export function AppointmentPanel({ appointment, timeZone, empty }: Props) {
                   </div>
                 ))}
               </dl>
+              {actions && onAction && (actions.cancel || actions.noShow) && (
+                <div className="flex flex-wrap gap-8">
+                  {actions.noShow && (
+                    <Button variant="secondary" className="grow" disabled={!online} onClick={() => onAction("noShow")}>
+                      {NO_SHOW_LABEL}
+                    </Button>
+                  )}
+                  {actions.cancel && (
+                    <Button variant="destructive" className="grow" disabled={!online} onClick={() => onAction("cancel")}>
+                      {CANCEL_LABEL}
+                    </Button>
+                  )}
+                </div>
+              )}
               {canReschedule(appointment) && (
                 <div className="flex flex-col gap-6 rounded-12 bg-bg-page p-12 text-secondary font-normal text-text-strong">
                   <p>{DRAG_HINT}</p>

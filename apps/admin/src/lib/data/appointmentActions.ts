@@ -26,8 +26,9 @@ export function postAppointmentAction(
 
 /** Which actions the panel offers for an appointment at `now`. */
 export function panelActions(a: Appointment, now: Date): { cancel: boolean; noShow: boolean } {
-  const confirmed = a.status === "confirmed";
-  return { cancel: confirmed, noShow: confirmed && a.start.getTime() <= now.getTime() };
+  if (a.status !== "confirmed") return { cancel: false, noShow: false };
+  const started = a.start.getTime() <= now.getTime();
+  return { cancel: !started, noShow: started };
 }
 
 export const CANCEL_LABEL = "Отменить";

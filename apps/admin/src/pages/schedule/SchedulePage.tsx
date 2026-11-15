@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, CircleAlert, RefreshCw } from "lucide-react";
 import { localDay, addDays, weekDays } from "@massage-desk/shared";
 
@@ -7,11 +7,13 @@ import { PageSkeleton } from "@/components/PageSkeleton";
 import { StateCard } from "@/components/StateCard";
 import { Button } from "@/components/ui/button";
 import { icon } from "@/components/icon";
+import type { AppointmentAction } from "@/lib/data/appointmentActions";
 import { daySchedule, gridAppointments, loadErrorText, scheduleView, weekLabel } from "@/lib/data/calendar";
 import { useScheduleRange, useTimeZone } from "@/lib/data/hooks";
 import { weekRange, type Appointment } from "@/lib/data/schedule";
 import { useNow } from "@/lib/useNow";
 
+import { AppointmentActionDialog } from "./AppointmentActionDialog";
 import { AppointmentPanel } from "./AppointmentPanel";
 import { DayGrid } from "./DayGrid";
 import { DaySummary } from "./DaySummary";
@@ -32,6 +34,12 @@ export function SchedulePage() {
   const [anchor, setAnchor] = useState<string>();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [request, setRequest] = useState<{ appointment: Appointment; start: Date } | null>(null);
+  const [action, setAction] = useState<{
+    appointment: Appointment;
+    kind: AppointmentAction;
+    trigger: HTMLElement | null;
+  } | null>(null);
+  const nameRef = useRef<HTMLElement>(null);
   const day = anchor ?? today;
   const range = day ? weekRange(day) : undefined;
   const schedule = useScheduleRange(range?.from, range?.to);
@@ -54,6 +62,11 @@ export function SchedulePage() {
   const status = scheduleView({ hasData, error });
   const shown = appointments ? gridAppointments(appointments) : [];
   const selected = shown.find((a) => a.id === selectedId) ?? null;
+  const startAction = (kind: AppointmentAction) => {
+    if (!selected) return;
+    const trigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setAction({ appointment: selected, kind, trigger });
+  };
   const dayData =
     view === "day" && status === "ready" && schedule.timeZone && appointments && timeOff && day
       ? daySchedule({
@@ -144,11 +157,27 @@ export function SchedulePage() {
           <div className="flex basis-panel-basis grow flex-col gap-16">
             {dayData ? (
               <>
-                {selected && <AppointmentPanel appointment={selected} timeZone={schedule.timeZone} empty={false} />}
+                {selected && (
+                  <AppointmentPanel
+                    appointment={selected}
+                    timeZone={schedule.timeZone}
+                    empty={false}
+                    now={now}
+                    nameRef={nameRef}
+                    onAction={startAction}
+                  />
+                )}
                 <DaySummary day={day} timeZone={schedule.timeZone} schedule={dayData} />
               </>
             ) : (
-              <AppointmentPanel appointment={selected} timeZone={schedule.timeZone} empty={shown.length === 0} />
+              <AppointmentPanel
+                appointment={selected}
+                timeZone={schedule.timeZone}
+                empty={shown.length === 0}
+                now={now}
+                nameRef={nameRef}
+                onAction={startAction}
+              />
             )}
           </div>
         </div>
@@ -163,6 +192,22 @@ export function SchedulePage() {
             setRequest(null);
             setSelectedId(id);
           }}
+        />
+      )}
+      {action && schedule.timeZone && (
+        <AppointmentActionDialog
+          appointment={action.appointment}
+          kind={action.kind}
+          timeZone={schedule.timeZone}
+          onClose={() => {
+            const trigger = action.trigger;
+            setAction(null);
+            setTimeout(() => {
+              if (trigger && trigger !== document.body && trigger.isConnected) trigger.focus();
+            }, 0);
+          }}
+          onDone={() => setAction(null)}
+          returnFocus={() => nameRef.current}
         />
       )}
     </PageMain>

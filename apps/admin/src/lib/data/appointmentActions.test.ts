@@ -85,9 +85,9 @@ describe("panelActions", () => {
     expect(panelActions(AIGUL, new Date("2026-11-02T04:59:59Z"))).toEqual({ cancel: true, noShow: false });
   });
 
-  it("allows cancel and noShow at exact start and after for confirmed", () => {
-    expect(panelActions(AIGUL, START)).toEqual({ cancel: true, noShow: true });
-    expect(panelActions(AIGUL, new Date("2026-11-02T05:30:00Z"))).toEqual({ cancel: true, noShow: true });
+  it("allows only noShow at exact start and after for confirmed", () => {
+    expect(panelActions(AIGUL, START)).toEqual({ cancel: false, noShow: true });
+    expect(panelActions(AIGUL, new Date("2026-11-02T05:30:00Z"))).toEqual({ cancel: false, noShow: true });
   });
 
   it("disallows both for non-confirmed statuses", () => {
