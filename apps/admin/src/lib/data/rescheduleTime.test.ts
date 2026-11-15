@@ -8,6 +8,8 @@ import {
   DAY_CHOICES,
   PICK_DAY_HINT,
   SERVICE_HIDDEN,
+  TIMES_EMPTY,
+  TIMES_LOADING,
   choiceDay,
   dayPick,
   daySlotsOptions,
@@ -17,6 +19,7 @@ import {
   slotsErrorText,
   slotsRetry,
   slotsRetryable,
+  slotsStatusText,
   slotsView,
   toStarts,
 } from "./rescheduleTime";
@@ -116,6 +119,17 @@ describe("slotsView", () => {
     expect(slotsView({ day: "2026-11-01", today: TODAY, online: false, starts: someStarts, error: null })).toBe(
       "pickDay",
     );
+  });
+});
+
+describe("slotsStatusText", () => {
+  it("returns status copy for text states and null for non-text states", () => {
+    expect(slotsStatusText("loading")).toBe(TIMES_LOADING);
+    expect(slotsStatusText("empty")).toBe(TIMES_EMPTY);
+    expect(slotsStatusText("pickDay")).toBe(PICK_DAY_HINT);
+    expect(slotsStatusText("offline")).toBeNull();
+    expect(slotsStatusText("error")).toBeNull();
+    expect(slotsStatusText("ready")).toBeNull();
   });
 });
 

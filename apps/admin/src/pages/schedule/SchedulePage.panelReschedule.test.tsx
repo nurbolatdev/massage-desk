@@ -281,4 +281,58 @@ describe("SchedulePage panel reschedule", () => {
     expect(within(picker).getByRole("status").textContent).toBe("Загружаем свободное время…");
     expect(within(picker).queryByRole("button", { name: "15:00" })).toBeNull();
   });
+
+  it("closes the whole reschedule flow on 404 gone via Close button", async () => {
+    slots.mockResolvedValueOnce(response("2026-11-03", ["2026-11-03T15:00:00+05:00"]));
+    reschedule.mockRejectedValueOnce(new ApiError("problem", { status: 404 }));
+    mockedRange.mockReturnValue(rangeResult([AIGUL]));
+    renderPage();
+
+    const panel = screen.getByRole("complementary", { name: "Выбранная запись" });
+    fireEvent.click(screen.getByRole("button", { name: /Айгуль Сапарова/ }));
+    fireEvent.click(within(panel).getByRole("button", { name: "Перенести" }));
+
+    fireEvent.click(await screen.findByRole("button", { name: "15:00" }));
+    const confirm = screen.getByRole("dialog", { name: "Перенести запись?" });
+    fireEvent.click(within(confirm).getByRole("button", { name: "Перенести" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("Запись уже изменилась.");
+
+    fireEvent.click(within(confirm).getByRole("button", { name: "Закрыть" }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(screen.queryByRole("dialog", { name: "Перенос записи" })).toBeNull();
+    });
+    expect(slots).toHaveBeenCalledTimes(1);
+    expect(reschedule).toHaveBeenCalledTimes(1);
+  });
+
+  it("closes the whole reschedule flow on 404 gone via Escape", async () => {
+    slots.mockResolvedValueOnce(response("2026-11-03", ["2026-11-03T15:00:00+05:00"]));
+    reschedule.mockRejectedValueOnce(new ApiError("problem", { status: 404 }));
+    mockedRange.mockReturnValue(rangeResult([AIGUL]));
+    renderPage();
+
+    const panel = screen.getByRole("complementary", { name: "Выбранная запись" });
+    fireEvent.click(screen.getByRole("button", { name: /Айгуль Сапарова/ }));
+    fireEvent.click(within(panel).getByRole("button", { name: "Перенести" }));
+
+    fireEvent.click(await screen.findByRole("button", { name: "15:00" }));
+    const confirm = screen.getByRole("dialog", { name: "Перенести запись?" });
+    fireEvent.click(within(confirm).getByRole("button", { name: "Перенести" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("Запись уже изменилась.");
+
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(screen.queryByRole("dialog", { name: "Перенос записи" })).toBeNull();
+    });
+    expect(slots).toHaveBeenCalledTimes(1);
+    expect(reschedule).toHaveBeenCalledTimes(1);
+  });
 });

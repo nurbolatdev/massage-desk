@@ -176,4 +176,64 @@ describe("RescheduleDialog", () => {
     expect(dialog.textContent).not.toContain("перетащили");
     expect(screen.getByRole("button", { name: "Выбрать другое время" })).toBeTruthy();
   });
+
+  it("shows Close and calls onGone on NOT_CONFIRMED when via is panel", async () => {
+    reschedule.mockRejectedValue(new ApiError("problem", { status: 409, code: "NOT_CONFIRMED" }));
+    const onClose = vi.fn();
+    const onGone = vi.fn();
+    const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <RescheduleDialog
+          appointment={MARAT}
+          start={THU_START}
+          timeZone={TZ}
+          via="panel"
+          onClose={onClose}
+          onGone={onGone}
+          onDone={vi.fn()}
+        />
+      </QueryClientProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Перенести" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toBe(
+      "Запись уже изменилась. Закройте окно — на экране новое состояние.",
+    );
+    const closeBtn = screen.getByRole("button", { name: "Закрыть" });
+    expect(screen.queryByRole("button", { name: "Выбрать другое время" })).toBeNull();
+
+    fireEvent.click(closeBtn);
+    expect(onGone).toHaveBeenCalledTimes(1);
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("keeps Pick another time and calls onClose on TIME_TAKEN when onGone is passed", async () => {
+    reschedule.mockRejectedValue(new ApiError("problem", { status: 409, code: "TIME_TAKEN" }));
+    const onClose = vi.fn();
+    const onGone = vi.fn();
+    const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <RescheduleDialog
+          appointment={MARAT}
+          start={THU_START}
+          timeZone={TZ}
+          via="panel"
+          onClose={onClose}
+          onGone={onGone}
+          onDone={vi.fn()}
+        />
+      </QueryClientProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Перенести" }));
+
+    await screen.findByRole("alert");
+    fireEvent.click(screen.getByRole("button", { name: "Выбрать другое время" }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onGone).not.toHaveBeenCalled();
+  });
 });

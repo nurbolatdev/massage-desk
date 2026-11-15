@@ -115,6 +115,17 @@ export function slotsView({
   return "loading";
 }
 
+const STATUS_TEXT: Partial<Record<SlotsView, string>> = {
+  loading: TIMES_LOADING,
+  empty: TIMES_EMPTY,
+  pickDay: PICK_DAY_HINT,
+};
+
+/** Status text announced via the picker's persistent live region, or `null` for non-text views. */
+export function slotsStatusText(view: SlotsView): string | null {
+  return STATUS_TEXT[view] ?? null;
+}
+
 function isServiceHidden(error: unknown): boolean {
   return error instanceof ApiError && error.code === "SERVICE_NOT_FOUND";
 }

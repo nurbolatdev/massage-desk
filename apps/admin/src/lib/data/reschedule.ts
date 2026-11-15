@@ -37,6 +37,7 @@ export const RESCHEDULE_TITLE = "Перенести запись?";
 export const RESCHEDULE_CONFIRM = "Перенести";
 export const RESCHEDULE_BACK = "Вернуть как было";
 export const RESCHEDULE_PICK_AGAIN = "Выбрать другое время";
+export const RESCHEDULE_CLOSE = "Закрыть";
 export const DRAG_HINT = "Перетащите запись на другое время. Занятое время и перерывы не принимают запись.";
 export const KEYBOARD_HINT = "С клавиатуры: пробел — взять запись, стрелки — сдвинуть, Enter — поставить, Esc — отменить.";
 export const DRAG_INSTRUCTIONS =
