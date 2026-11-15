@@ -63,6 +63,24 @@ describe("toApiError", () => {
     expect(error.conflicts).toEqual([valid]);
   });
 
+  it("filters out conflicts with unparseable start or end dates", () => {
+    const valid = {
+      appointmentId: "a1",
+      clientName: "Айгуль",
+      start: "2026-11-07T10:00:00+05:00",
+      end: "2026-11-07T11:00:00+05:00",
+    };
+    const error = toApiError(409, {
+      code: "APPOINTMENT_CONFLICT",
+      conflicts: [
+        { ...valid, appointmentId: "a2", start: "abc" },
+        { ...valid, appointmentId: "a3", end: "abc" },
+        valid,
+      ],
+    });
+    expect(error.conflicts).toEqual([valid]);
+  });
+
   it("leaves conflicts undefined when absent, non-array, or 5xx", () => {
     expect(toApiError(409, { code: "APPOINTMENT_CONFLICT" }).conflicts).toBeUndefined();
     expect(

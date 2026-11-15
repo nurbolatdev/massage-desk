@@ -50,7 +50,7 @@ describe("WorkingHoursConflictDialog", () => {
 
     const dialog = screen.getByRole("dialog", { name: "Сохранить новые часы?" });
     expect(dialog.textContent).toContain(
-      "1 запись не попадает в новые часы. Записи останутся — их нужно перенести или отменить самим. Новых записей в это время не будет.",
+      "1 запись не попадает в новые часы. Запись останется — её нужно перенести или отменить самим. Новых записей в это время не будет.",
     );
 
     const list = within(dialog).getByRole("list", { name: "Записи вне новых часов" });
@@ -123,5 +123,18 @@ describe("WorkingHoursConflictDialog", () => {
 
     const alert = screen.getByRole("alert");
     expect(alert.textContent).toBe("Сервер ответил с ошибкой. Код: 500. Часы не сохранены.");
+  });
+
+  it("includes summary text and conflict items in the dialog accessible description", () => {
+    const conflict = makeConflict(0, "Айгуль Сапарова");
+    renderDialog({ conflicts: [conflict] });
+
+    const dialog = screen.getByRole("dialog", { name: "Сохранить новые часы?" });
+    const ids = (dialog.getAttribute("aria-describedby") ?? "").split(/\s+/).filter(Boolean);
+    const description = ids.map((id) => document.getElementById(id)?.textContent ?? "").join(" ");
+    const { day, time } = slotLines(new Date(conflict.start), new Date(conflict.end), TZ);
+
+    expect(description).toContain("1 запись не попадает в новые часы.");
+    expect(description).toContain(`Айгуль Сапарова — ${day}, ${time}`);
   });
 });

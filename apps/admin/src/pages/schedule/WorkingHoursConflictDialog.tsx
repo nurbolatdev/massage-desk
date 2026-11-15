@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { CircleAlert } from "lucide-react";
 
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -33,6 +34,7 @@ export function WorkingHoursConflictDialog({
   onClose,
   onCloseAutoFocus,
 }: WorkingHoursConflictDialogProps) {
+  const listId = useId();
   const lines = conflictLines(conflicts, timeZone);
   const visible = lines.slice(0, CONFLICT_LIST_MAX);
   const more = conflictMore(lines.length - visible.length);
@@ -49,6 +51,7 @@ export function WorkingHoursConflictDialog({
       cancelLabel={CONFLICT_BACK}
       busy={busy}
       error={error}
+      describedBy={listId}
       onConfirm={onConfirm}
       onCloseAutoFocus={onCloseAutoFocus}
     >
@@ -59,7 +62,7 @@ export function WorkingHoursConflictDialog({
           className="shrink-0 text-warning-icon"
           aria-hidden="true"
         />
-        <ul aria-label="Записи вне новых часов" className="flex min-w-0 flex-col gap-4">
+        <ul id={listId} aria-label="Записи вне новых часов" className="flex min-w-0 flex-col gap-4">
           {visible.map(({ id, name, when }) => (
             <li key={id}>
               <span className="font-bold">{name}</span> — {when}

@@ -514,6 +514,7 @@ Split into eight pull requests.
   1. `feat(admin): save working hours`
   1. `feat(admin): working hours conflict dialog`
   1. `docs: admin working hours split`
+  1. `fix(admin): working hours review fixes`
 
 **Pull request 8 of 8**
 

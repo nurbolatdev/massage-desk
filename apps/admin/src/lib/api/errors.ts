@@ -41,8 +41,10 @@ function isConflict(item: unknown): item is AppointmentConflict {
     typeof item.appointmentId === "string" &&
     "start" in item &&
     typeof item.start === "string" &&
+    !Number.isNaN(Date.parse(item.start)) &&
     "end" in item &&
     typeof item.end === "string" &&
+    !Number.isNaN(Date.parse(item.end)) &&
     "clientName" in item &&
     (typeof item.clientName === "string" || item.clientName === null)
   );

@@ -124,7 +124,10 @@ export function useSaveWorkingHours() {
     networkMode: "always",
     mutationFn: ({ blocks, force }: { blocks: WorkingBlock[]; force: boolean }) =>
       saveWorkingHours(api, blocks, force),
-    onSuccess: (week) => queryClient.setQueryData(queryKeys.workingHours, week),
+    onSuccess: async (week) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.workingHours });
+      queryClient.setQueryData(queryKeys.workingHours, week);
+    },
     onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.slots.all }),
   });
 }

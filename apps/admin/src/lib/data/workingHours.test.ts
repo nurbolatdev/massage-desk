@@ -208,6 +208,16 @@ describe("nextRange", () => {
     expect(nextRange([{ start: "09:00", end: "23:00" }])).toEqual({ start: "", end: "" });
     expect(nextRange([{ start: "", end: "" }])).toEqual({ start: "", end: "" });
   });
+
+  it("ignores reversed or incomplete ranges and does not collide with an existing valid start", () => {
+    expect(nextRange([{ start: "13:00", end: "09:00" }])).toEqual({ start: "", end: "" });
+    const afterPartial = nextRange([
+      { start: "09:00", end: "13:00" },
+      { start: "14:00", end: "" },
+    ]);
+    expect(afterPartial.start).not.toBe("14:00");
+    expect(afterPartial).toEqual({ start: "15:00", end: "16:00" });
+  });
 });
 
 describe("labels and copy", () => {
@@ -346,11 +356,14 @@ describe("saveErrorKind and saveErrorText", () => {
 
 describe("conflict formatting", () => {
   it("formats conflictText with plural noun and verb agreement", () => {
-    const tail = "Записи останутся — их нужно перенести или отменить самим. Новых записей в это время не будет.";
-    expect(conflictText(1)).toBe(`1 запись не попадает в новые часы. ${tail}`);
-    expect(conflictText(2)).toBe(`2 записи не попадают в новые часы. ${tail}`);
-    expect(conflictText(5)).toBe(`5 записей не попадают в новые часы. ${tail}`);
-    expect(conflictText(21)).toBe(`21 запись не попадает в новые часы. ${tail}`);
+    const singularTail =
+      "Запись останется — её нужно перенести или отменить самим. Новых записей в это время не будет.";
+    const pluralTail =
+      "Записи останутся — их нужно перенести или отменить самим. Новых записей в это время не будет.";
+    expect(conflictText(1)).toBe(`1 запись не попадает в новые часы. ${singularTail}`);
+    expect(conflictText(2)).toBe(`2 записи не попадают в новые часы. ${pluralTail}`);
+    expect(conflictText(5)).toBe(`5 записей не попадают в новые часы. ${pluralTail}`);
+    expect(conflictText(21)).toBe(`21 запись не попадает в новые часы. ${singularTail}`);
   });
 
   it("sorts conflictLines by start, defaults missing clientName, and formats via slotLines", () => {

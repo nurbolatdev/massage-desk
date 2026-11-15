@@ -12,7 +12,7 @@ export type WeekDraft = HoursRange[][];
 export type DayProblem = "empty" | "order" | "overlap";
 
 // same as the API
-export const TIME_PATTERN = /^([01][0-9]|2[0-3]):[0-5][0-9]$/;
+const TIME_PATTERN = /^([01][0-9]|2[0-3]):[0-5][0-9]$/;
 export const MAX_RANGES_PER_DAY = 4;
 export const DEFAULT_RANGE: HoursRange = { start: "09:00", end: "18:00" };
 
@@ -102,12 +102,17 @@ export function canAddRange(ranges: readonly HoursRange[]): boolean {
   return ranges.length < MAX_RANGES_PER_DAY;
 }
 
-/** Suggests a new 1-hour range 1 hour after the latest valid end, or empty fields if it does not fit. */
+function isValidRange(r: HoursRange): boolean {
+  return TIME_PATTERN.test(r.start) && TIME_PATTERN.test(r.end) && r.end > r.start;
+}
+
+/** Suggests a new 1-hour range 1 hour after the latest valid time, or empty fields if it does not fit. */
 export function nextRange(ranges: readonly HoursRange[]): HoursRange {
   if (ranges.length === 0) return { ...DEFAULT_RANGE };
-  const validEnds = ranges.filter((r) => TIME_PATTERN.test(r.end)).map((r) => toMinutes(r.end));
-  if (validEnds.length === 0) return { start: "", end: "" };
-  const startMin = Math.max(...validEnds) + 60;
+  const validRanges = ranges.filter(isValidRange);
+  if (validRanges.length === 0) return { start: "", end: "" };
+  const validStarts = ranges.filter((r) => TIME_PATTERN.test(r.start)).map((r) => toMinutes(r.start));
+  const startMin = Math.max(...validRanges.map((r) => toMinutes(r.end)), ...validStarts) + 60;
   const endMin = startMin + 60;
   return endMin > MAX_MINUTE ? { start: "", end: "" } : { start: fromMinutes(startMin), end: fromMinutes(endMin) };
 }
@@ -177,8 +182,12 @@ export function saveErrorText(kind: Exclude<SaveErrorKind, "conflict">, error: u
 
 export function conflictText(n: number): string {
   const noun = plural(n, "запись", "записи", "записей");
-  const verb = noun === "запись" ? "попадает" : "попадают";
-  return `${n} ${noun} не ${verb} в новые часы. Записи останутся — их нужно перенести или отменить самим. Новых записей в это время не будет.`;
+  const singular = noun === "запись";
+  const verb = singular ? "попадает" : "попадают";
+  const remain = singular
+    ? "Запись останется — её нужно перенести или отменить самим."
+    : "Записи останутся — их нужно перенести или отменить самим.";
+  return `${n} ${noun} не ${verb} в новые часы. ${remain} Новых записей в это время не будет.`;
 }
 
 export function conflictLines(conflicts: readonly AppointmentConflict[], timeZone: string): ConflictLine[] {

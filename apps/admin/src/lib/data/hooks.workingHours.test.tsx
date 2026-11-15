@@ -112,4 +112,40 @@ describe("useSaveWorkingHours", () => {
     }
     expect(client.getQueryData(queryKeys.workingHours)).toEqual(initial);
   });
+
+  it("does not let an in-flight GET overwrite saved working hours", async () => {
+    let resolveGet!: (res: Response) => void;
+    const stale = { blocks: [{ weekday: 1, start: "08:00", end: "12:00" }] };
+    const saved = { blocks: [{ weekday: 1, start: "10:00", end: "17:00" }] };
+
+    respond.mockImplementation((req) => {
+      if (req.method === "GET") {
+        return new Promise((resolve) => {
+          resolveGet = resolve;
+        });
+      }
+      return Promise.resolve(
+        new Response(JSON.stringify(saved), { status: 200, headers: { "Content-Type": "application/json" } }),
+      );
+    });
+
+    const client = makeClient();
+    renderHook(() => useWorkingHours(), { wrapper: makeWrapper(client) });
+    const { result } = renderHook(() => useSaveWorkingHours(), { wrapper: makeWrapper(client) });
+
+    await waitFor(() => expect(resolveGet).toBeTypeOf("function"));
+
+    await act(async () => {
+      await result.current.mutateAsync({ blocks: saved.blocks, force: false });
+    });
+
+    await act(async () => {
+      resolveGet(
+        new Response(JSON.stringify(stale), { status: 200, headers: { "Content-Type": "application/json" } }),
+      );
+      await Promise.resolve();
+    });
+
+    expect(client.getQueryData(queryKeys.workingHours)).toEqual(saved);
+  });
 });
