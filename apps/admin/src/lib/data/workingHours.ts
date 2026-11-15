@@ -1,5 +1,11 @@
+import type { createApi } from "@/lib/api/client";
+import { unwrap } from "@/lib/api/client";
+import { ApiError, type AppointmentConflict } from "@/lib/api/errors";
+import { plural } from "@/lib/format";
+
 import { WEEKDAYS_LONG } from "./calendar";
-import type { WorkingBlock } from "./schedule";
+import { slotLines } from "./reschedule";
+import type { WorkingBlock, WorkingHours } from "./schedule";
 
 export type HoursRange = { start: string; end: string };
 export type WeekDraft = HoursRange[][];
@@ -130,4 +136,65 @@ export function rangeFieldLabel(day: number, index: number, edge: "start" | "end
 
 export function removeRangeLabel(day: number, index: number): string {
   return `Удалить: ${WEEKDAYS_LONG[day] ?? ""}, время ${index + 1}`;
+}
+
+export const CONFLICT_TITLE = "Сохранить новые часы?";
+export const CONFLICT_CONFIRM = "Да, сохранить";
+export const CONFLICT_BACK = "Изменить часы";
+export const CONFLICT_LIST_MAX = 5;
+
+export type SaveErrorKind = "conflict" | "invalid" | "offline" | "failed";
+export type ConflictLine = { id: string; name: string; when: string };
+
+export function saveWorkingHours(
+  api: ReturnType<typeof createApi>,
+  blocks: WorkingBlock[],
+  force: boolean,
+): Promise<WorkingHours> {
+  return unwrap(api.PUT("/working-hours", { body: { blocks, force } }));
+}
+
+export function saveErrorKind(error: unknown): SaveErrorKind {
+  if (!(error instanceof ApiError)) return "failed";
+  if (error.kind === "network") return "offline";
+  if (error.code === "APPOINTMENT_CONFLICT" && (error.conflicts?.length ?? 0) > 0) return "conflict";
+  if (error.code === "INVALID_HOURS" || error.code === "INVALID_REQUEST") return "invalid";
+  return "failed";
+}
+
+const STATIC_SAVE_ERRORS: Record<Exclude<SaveErrorKind, "conflict" | "failed">, string> = {
+  invalid: "Эти часы сохранить нельзя. Проверьте, что конец позже начала и часы одного дня не пересекаются.",
+  offline: "Нет связи с сервером. Часы не сохранены — нажмите «Сохранить», когда интернет вернётся.",
+};
+
+export function saveErrorText(kind: Exclude<SaveErrorKind, "conflict">, error: unknown): string {
+  if (kind !== "failed") return STATIC_SAVE_ERRORS[kind];
+  if (error instanceof ApiError && error.status !== undefined) {
+    return `Сервер ответил с ошибкой. Код: ${error.status}. Часы не сохранены.`;
+  }
+  return "Часы не сохранены. Попробуйте ещё раз через минуту.";
+}
+
+export function conflictText(n: number): string {
+  const noun = plural(n, "запись", "записи", "записей");
+  const verb = noun === "запись" ? "попадает" : "попадают";
+  return `${n} ${noun} не ${verb} в новые часы. Записи останутся — их нужно перенести или отменить самим. Новых записей в это время не будет.`;
+}
+
+export function conflictLines(conflicts: readonly AppointmentConflict[], timeZone: string): ConflictLine[] {
+  return [...conflicts]
+    .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())
+    .map((c) => {
+      const { day, time } = slotLines(new Date(c.start), new Date(c.end), timeZone);
+      return {
+        id: c.appointmentId,
+        name: c.clientName ?? "Клиент без имени",
+        when: `${day}, ${time}`,
+      };
+    });
+}
+
+export function conflictMore(rest: number): string | null {
+  if (rest <= 0) return null;
+  return `И ещё ${rest} ${plural(rest, "запись", "записи", "записей")}.`;
 }

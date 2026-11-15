@@ -12,9 +12,19 @@ import {
   fetchWorkingHours,
   toAppointments,
   toTimeOffPeriods,
+  type WorkingBlock,
 } from "./schedule";
+import { saveWorkingHours } from "./workingHours";
 
 const SETTINGS_STALE_TIME = 5 * 60 * 1000;
+
+function workingHoursQuery() {
+  return {
+    queryKey: queryKeys.workingHours,
+    queryFn: () => fetchWorkingHours(api),
+    staleTime: SETTINGS_STALE_TIME,
+  };
+}
 
 export function useSettings() {
   return useQuery({
@@ -49,12 +59,7 @@ export function useScheduleRange(from: string | undefined, to: string | undefine
     select: toTimeOffPeriods,
     enabled: known,
   });
-  const hours = useQuery({
-    queryKey: queryKeys.workingHours,
-    queryFn: () => fetchWorkingHours(api),
-    staleTime: SETTINGS_STALE_TIME,
-    enabled: known,
-  });
+  const hours = useQuery({ ...workingHoursQuery(), enabled: known });
 
   const refetch = () => {
     void settings.refetch();
@@ -106,4 +111,20 @@ export function useAppointmentAction() {
 /** Free start times of a day; computed by the server. */
 export function useDaySlots(serviceId: string, day: string | null) {
   return useQuery(daySlotsOptions(serviceId, day, (id, d) => fetchSlots(api, id, d)));
+}
+
+export function useWorkingHours() {
+  return useQuery(workingHoursQuery());
+}
+
+/** No optimistic update: the server checks the week and the appointments it leaves out. */
+export function useSaveWorkingHours() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    networkMode: "always",
+    mutationFn: ({ blocks, force }: { blocks: WorkingBlock[]; force: boolean }) =>
+      saveWorkingHours(api, blocks, force),
+    onSuccess: (week) => queryClient.setQueryData(queryKeys.workingHours, week),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.slots.all }),
+  });
 }

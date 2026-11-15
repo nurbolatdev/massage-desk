@@ -1,7 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
+import { createApi } from "@/lib/api/client";
+import { ApiError, type AppointmentConflict } from "@/lib/api/errors";
+
+import { slotLines } from "./reschedule";
 import {
   ADD_RANGE_LABEL,
+  CONFLICT_BACK,
+  CONFLICT_CONFIRM,
+  CONFLICT_LIST_MAX,
+  CONFLICT_TITLE,
   DAY_OFF_LABEL,
   DAY_PROBLEM_TEXT,
   DEFAULT_RANGE,
@@ -15,12 +23,18 @@ import {
   addRange,
   canAddRange,
   canSave,
+  conflictLines,
+  conflictMore,
+  conflictText,
   dayProblem,
   nextRange,
   rangeFieldLabel,
   removeRange,
   removeRangeLabel,
   sameWeek,
+  saveErrorKind,
+  saveErrorText,
+  saveWorkingHours,
   setDayOff,
   setRange,
   toBlocks,
@@ -219,5 +233,152 @@ describe("labels and copy", () => {
     expect(DAY_PROBLEM_TEXT.overlap).toBe(
       "Часы этого дня пересекаются или идут подряд. Объедините их или оставьте перерыв.",
     );
+    expect(CONFLICT_TITLE).toBe("Сохранить новые часы?");
+    expect(CONFLICT_CONFIRM).toBe("Да, сохранить");
+    expect(CONFLICT_BACK).toBe("Изменить часы");
+    expect(CONFLICT_LIST_MAX).toBe(5);
+  });
+});
+
+const TZ = "Asia/Tashkent";
+
+function setupApi(respond: (input: Request) => Promise<Response>) {
+  const fetch = vi.fn<(input: Request) => Promise<Response>>(respond);
+  const api = createApi({
+    baseUrl: "https://api.test",
+    getAccessToken: async () => "tok",
+    onUnauthorized: vi.fn(),
+    fetch,
+  });
+  return { fetch, api };
+}
+
+describe("saveWorkingHours", () => {
+  it("sends PUT /working-hours with blocks and force flag and returns saved week", async () => {
+    const blocks = [{ weekday: 1, start: "09:00", end: "13:00" }];
+    const { fetch, api } = setupApi(
+      async () => new Response(JSON.stringify({ blocks }), { status: 200 }),
+    );
+
+    const saved = await saveWorkingHours(api, blocks, false);
+    expect(saved).toEqual({ blocks });
+
+    const req = fetch.mock.calls[0]?.[0];
+    expect(req?.method).toBe("PUT");
+    expect(req?.url).toBe("https://api.test/working-hours");
+    expect(await req?.json()).toEqual({ blocks, force: false });
+
+    await saveWorkingHours(api, blocks, true);
+    const forcedReq = fetch.mock.calls[1]?.[0];
+    expect(await forcedReq?.json()).toEqual({ blocks, force: true });
+  });
+
+  it("rejects with ApiError carrying code and conflicts on 409", async () => {
+    const conflicts: AppointmentConflict[] = [
+      {
+        appointmentId: "a1",
+        clientName: null,
+        start: "2026-11-07T10:00:00+05:00",
+        end: "2026-11-07T11:00:00+05:00",
+      },
+    ];
+    const { api } = setupApi(
+      async () =>
+        new Response(JSON.stringify({ code: "APPOINTMENT_CONFLICT", conflicts }), {
+          status: 409,
+          headers: { "Content-Type": "application/problem+json" },
+        }),
+    );
+
+    let caught: unknown;
+    try {
+      await saveWorkingHours(api, [], false);
+    } catch (e) {
+      caught = e;
+    }
+
+    expect(caught).toBeInstanceOf(ApiError);
+    if (caught instanceof ApiError) {
+      expect(caught.code).toBe("APPOINTMENT_CONFLICT");
+      expect(caught.conflicts).toEqual(conflicts);
+    }
+  });
+});
+
+describe("saveErrorKind and saveErrorText", () => {
+  const sampleConflict: AppointmentConflict = {
+    appointmentId: "a1",
+    clientName: "Айгуль Сапарова",
+    start: "2026-11-07T10:00:00+05:00",
+    end: "2026-11-07T11:00:00+05:00",
+  };
+
+  it("maps error categories", () => {
+    expect(
+      saveErrorKind(
+        new ApiError("problem", { status: 409, code: "APPOINTMENT_CONFLICT", conflicts: [sampleConflict] }),
+      ),
+    ).toBe("conflict");
+    expect(saveErrorKind(new ApiError("problem", { status: 409, code: "APPOINTMENT_CONFLICT" }))).toBe("failed");
+    expect(
+      saveErrorKind(new ApiError("problem", { status: 409, code: "APPOINTMENT_CONFLICT", conflicts: [] })),
+    ).toBe("failed");
+    expect(saveErrorKind(new ApiError("problem", { status: 422, code: "INVALID_HOURS" }))).toBe("invalid");
+    expect(saveErrorKind(new ApiError("problem", { status: 400, code: "INVALID_REQUEST" }))).toBe("invalid");
+    expect(saveErrorKind(new ApiError("network"))).toBe("offline");
+    expect(saveErrorKind(new ApiError("server", { status: 500 }))).toBe("failed");
+    expect(saveErrorKind(new Error())).toBe("failed");
+  });
+
+  it("returns exact Russian error messages", () => {
+    expect(saveErrorText("invalid", new Error())).toBe(
+      "Эти часы сохранить нельзя. Проверьте, что конец позже начала и часы одного дня не пересекаются.",
+    );
+    expect(saveErrorText("offline", new ApiError("network"))).toBe(
+      "Нет связи с сервером. Часы не сохранены — нажмите «Сохранить», когда интернет вернётся.",
+    );
+    expect(saveErrorText("failed", new ApiError("server", { status: 500 }))).toBe(
+      "Сервер ответил с ошибкой. Код: 500. Часы не сохранены.",
+    );
+    expect(saveErrorText("failed", new Error())).toBe("Часы не сохранены. Попробуйте ещё раз через минуту.");
+  });
+});
+
+describe("conflict formatting", () => {
+  it("formats conflictText with plural noun and verb agreement", () => {
+    const tail = "Записи останутся — их нужно перенести или отменить самим. Новых записей в это время не будет.";
+    expect(conflictText(1)).toBe(`1 запись не попадает в новые часы. ${tail}`);
+    expect(conflictText(2)).toBe(`2 записи не попадают в новые часы. ${tail}`);
+    expect(conflictText(5)).toBe(`5 записей не попадают в новые часы. ${tail}`);
+    expect(conflictText(21)).toBe(`21 запись не попадает в новые часы. ${tail}`);
+  });
+
+  it("sorts conflictLines by start, defaults missing clientName, and formats via slotLines", () => {
+    const later: AppointmentConflict = {
+      appointmentId: "a2",
+      clientName: "Марат Каримов",
+      start: "2026-11-08T14:00:00+05:00",
+      end: "2026-11-08T15:00:00+05:00",
+    };
+    const earlier: AppointmentConflict = {
+      appointmentId: "a1",
+      clientName: null,
+      start: "2026-11-07T10:00:00+05:00",
+      end: "2026-11-07T11:00:00+05:00",
+    };
+
+    const first = slotLines(new Date(earlier.start), new Date(earlier.end), TZ);
+    const second = slotLines(new Date(later.start), new Date(later.end), TZ);
+
+    expect(conflictLines([later, earlier], TZ)).toEqual([
+      { id: "a1", name: "Клиент без имени", when: `${first.day}, ${first.time}` },
+      { id: "a2", name: "Марат Каримов", when: `${second.day}, ${second.time}` },
+    ]);
+  });
+
+  it("formats conflictMore or returns null for zero", () => {
+    expect(conflictMore(0)).toBeNull();
+    expect(conflictMore(2)).toBe("И ещё 2 записи.");
+    expect(conflictMore(5)).toBe("И ещё 5 записей.");
   });
 });
