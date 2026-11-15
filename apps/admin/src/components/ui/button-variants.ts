@@ -8,6 +8,9 @@ export const buttonVariants = cva(
         primary: "bg-primary text-surface active:bg-primary-strong",
         secondary:
           "border border-border-strong bg-surface text-ink active:bg-segment-bg",
+        destructive:
+          "border border-danger-border bg-surface text-danger active:bg-danger-soft disabled:border-disabled-bg",
+        "destructive-solid": "bg-danger text-surface active:bg-danger-strong",
         "ghost-on-dark":
           "bg-transparent font-semibold text-on-primary-muted hover:bg-stone-mid disabled:bg-transparent",
       },
