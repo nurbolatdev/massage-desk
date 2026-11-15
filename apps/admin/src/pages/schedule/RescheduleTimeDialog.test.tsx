@@ -5,7 +5,7 @@ import { useRef, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "@/lib/api/errors";
-import { type SlotsResponse, toStarts } from "@/lib/data/rescheduleTime";
+import { type SlotsResponse, daySlotsOptions } from "@/lib/data/rescheduleTime";
 import type { Appointment } from "@/lib/data/schedule";
 
 import { RescheduleTimeDialog } from "./RescheduleTimeDialog";
@@ -16,12 +16,7 @@ const slots = vi.hoisted(() =>
 
 vi.mock("@/lib/data/hooks", () => ({
   useDaySlots: (serviceId: string, day: string | null) =>
-    useQuery({
-      queryKey: ["slots", serviceId, day],
-      queryFn: () => slots(serviceId, day ?? ""),
-      enabled: day !== null,
-      select: toStarts,
-    }),
+    useQuery(daySlotsOptions(serviceId, day, slots)),
 }));
 
 const TZ = "Asia/Tashkent";
@@ -52,7 +47,7 @@ function renderDialog(overrides?: {
 }) {
   const onClose = overrides?.onClose ?? vi.fn();
   const onPick = overrides?.onPick ?? vi.fn();
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const client = new QueryClient({ defaultOptions: { queries: { retryDelay: 0 } } });
   render(
     <QueryClientProvider client={client}>
       <RescheduleTimeDialog
@@ -156,17 +151,50 @@ describe("RescheduleTimeDialog", () => {
     ).toBeTruthy();
   });
 
+  it("keeps one live status region across text states", async () => {
+    let resolveToday!: (res: SlotsResponse) => void;
+    slots.mockImplementationOnce(
+      () =>
+        new Promise((r) => {
+          resolveToday = r;
+        }),
+    );
+    renderDialog();
+
+    const status = screen.getByRole("status");
+    expect(status.getAttribute("aria-live")).toBe("polite");
+    expect(status.textContent).toBe("Загружаем свободное время…");
+
+    resolveToday(response("2026-11-02", []));
+    await waitFor(() => {
+      expect(screen.getByRole("status")).toBe(status);
+      expect(status.textContent).toBe("В этот день нет свободного времени. Выберите другой день.");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Другое число" }));
+    const input = screen.getByLabelText<HTMLInputElement>("Дата");
+    fireEvent.change(input, { target: { value: "2026-11-01" } });
+    expect(screen.getByRole("status")).toBe(status);
+    expect(status.textContent).toBe("Выберите день не раньше сегодняшнего.");
+
+    slots.mockResolvedValueOnce(response("2026-11-10", ["2026-11-10T06:00:00Z"]));
+    fireEvent.change(input, { target: { value: "2026-11-10" } });
+    expect(await screen.findByRole("button", { name: "11:00" })).toBeTruthy();
+    expect(screen.getByRole("status")).toBe(status);
+    expect(status.textContent).toBe("");
+  });
+
   it("shows network error with retry and hidden service error without retry", async () => {
-    slots
-      .mockRejectedValueOnce(new ApiError("network"))
-      .mockResolvedValueOnce(response("2026-11-02", ["2026-11-02T06:00:00Z"]));
+    slots.mockRejectedValue(new ApiError("network"));
     renderDialog();
 
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toContain("Не получилось загрузить свободное время.");
+    expect(slots).toHaveBeenCalledTimes(4);
 
+    slots.mockResolvedValueOnce(response("2026-11-02", ["2026-11-02T06:00:00Z"]));
     fireEvent.click(screen.getByRole("button", { name: "Повторить" }));
-    await waitFor(() => expect(slots).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(slots).toHaveBeenCalledTimes(5));
     expect(await screen.findByRole("button", { name: "11:00" })).toBeTruthy();
 
     cleanup();
@@ -179,6 +207,17 @@ describe("RescheduleTimeDialog", () => {
       "Эта услуга скрыта, поэтому свободное время не считается. Перенесите запись перетаскиванием в календаре.",
     );
     expect(screen.queryByRole("button", { name: "Повторить" })).toBeNull();
+    expect(slots).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not retry on 400 error and keeps retry button", async () => {
+    slots.mockRejectedValue(new ApiError("problem", { status: 400 }));
+    renderDialog();
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("Не получилось загрузить свободное время.");
+    expect(screen.getByRole("button", { name: "Повторить" })).toBeTruthy();
+    expect(slots).toHaveBeenCalledTimes(1);
   });
 
   it("shows offline message without time chips when offline", () => {
@@ -242,7 +281,7 @@ describe("RescheduleTimeDialog", () => {
       );
     }
 
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const client = new QueryClient({ defaultOptions: { queries: { retryDelay: 0 } } });
     render(
       <QueryClientProvider client={client}>
         <Harness />

@@ -38,9 +38,6 @@ function SlotsBody({
   onRetry: () => void;
   onSelect: (start: Date) => void;
 }) {
-  if (view === "pickDay") return <p className="text-body text-muted">{rt.PICK_DAY_HINT}</p>;
-  if (view === "empty") return <p className="text-body text-muted">{rt.TIMES_EMPTY}</p>;
-  if (view === "loading") return <p role="status" className="text-body text-muted">{rt.TIMES_LOADING}</p>;
   if (view === "offline") {
     return (
       <div className="flex items-center gap-10 rounded-10 bg-text-strong px-12 py-10 text-body text-surface">
@@ -65,6 +62,7 @@ function SlotsBody({
       </div>
     );
   }
+  if (view !== "ready") return null;
   return (
     <div role="group" aria-label={rt.TIMES_LABEL} className="grid grid-cols-4 gap-6">
       {(starts ?? []).map((start) => (
@@ -89,6 +87,7 @@ export function RescheduleTimeDialog({ appointment, timeZone, today, day, trigge
   const online = useOnline();
   const query = useDaySlots(appointment.serviceId, rt.pickableDay(pick.day, today) ? pick.day : null);
   const view = rt.slotsView({ day: pick.day, today, online, starts: query.data, error: query.error });
+  const statusText = rt.slotsStatusText(view);
 
   return (
     <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
@@ -133,17 +132,22 @@ export function RescheduleTimeDialog({ appointment, timeZone, today, day, trigge
           )}
           <div className="flex flex-col gap-8">
             <span className="text-secondary font-bold text-muted">{rt.TIMES_LABEL}</span>
-            <SlotsBody
-              view={view}
-              starts={query.data}
-              error={query.error}
-              timeZone={timeZone}
-              onRetry={() => { void query.refetch(); }}
-              onSelect={(start) => {
-                picked.current = true;
-                onPick(start, pick.day);
-              }}
-            />
+            <div>
+              <div role="status" aria-live="polite">
+                {statusText && <p className="text-body text-muted">{statusText}</p>}
+              </div>
+              <SlotsBody
+                view={view}
+                starts={query.data}
+                error={query.error}
+                timeZone={timeZone}
+                onRetry={() => { void query.refetch(); }}
+                onSelect={(start) => {
+                  picked.current = true;
+                  onPick(start, pick.day);
+                }}
+              />
+            </div>
           </div>
         </div>
         <div className="flex justify-end gap-10 border-t border-divider px-24 pt-14 pb-20">

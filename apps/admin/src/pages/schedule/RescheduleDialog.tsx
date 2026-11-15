@@ -6,6 +6,7 @@ import { icon } from "@/components/icon";
 import { useRescheduleAppointment } from "@/lib/data/hooks";
 import {
   RESCHEDULE_BACK,
+  RESCHEDULE_CLOSE,
   RESCHEDULE_CONFIRM,
   RESCHEDULE_PICK_AGAIN,
   RESCHEDULE_TITLE,
@@ -24,6 +25,7 @@ type RescheduleDialogProps = {
   via?: "drag" | "panel";
   returnFocus?: () => HTMLElement | null;
   onClose: () => void;
+  onGone?: () => void;
   onDone: (id: string) => void;
 };
 
@@ -35,6 +37,7 @@ export function RescheduleDialog({
   via = "drag",
   returnFocus,
   onClose,
+  onGone,
   onDone,
 }: RescheduleDialogProps) {
   const slotsId = useId();
@@ -43,20 +46,23 @@ export function RescheduleDialog({
   const before = slotLines(appointment.start, appointment.end, timeZone);
   const after = slotLines(start, end, timeZone);
   const mutation = useRescheduleAppointment();
-  const error = mutation.error
-    ? rescheduleErrorText(rescheduleErrorKind(mutation.error), start, timeZone)
-    : undefined;
+  const kind = mutation.error ? rescheduleErrorKind(mutation.error) : undefined;
+  const gone = kind === "gone" && onGone !== undefined;
+  const error = kind ? rescheduleErrorText(kind, start, timeZone) : undefined;
 
   return (
     <ConfirmDialog
       open
       onOpenChange={(open) => {
-        if (!open) onClose();
+        if (!open) {
+          if (gone) onGone();
+          else onClose();
+        }
       }}
       title={RESCHEDULE_TITLE}
       text={via === "panel" ? pickedText(appointment.clientName) : rescheduleText(appointment.clientName)}
       confirmLabel={RESCHEDULE_CONFIRM}
-      cancelLabel={via === "panel" ? RESCHEDULE_PICK_AGAIN : RESCHEDULE_BACK}
+      cancelLabel={gone ? RESCHEDULE_CLOSE : via === "panel" ? RESCHEDULE_PICK_AGAIN : RESCHEDULE_BACK}
       busy={mutation.isPending}
       error={error}
       describedBy={slotsId}

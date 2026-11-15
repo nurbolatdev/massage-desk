@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider, useMutation, useQuery } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "@/lib/api/errors";
 import { useScheduleRange } from "@/lib/data/hooks";
-import { type SlotsResponse, toStarts } from "@/lib/data/rescheduleTime";
+import { type SlotsResponse, daySlotsOptions } from "@/lib/data/rescheduleTime";
 import type { Appointment } from "@/lib/data/schedule";
 
 import { SchedulePage } from "./SchedulePage";
@@ -19,13 +19,7 @@ vi.mock("@/lib/data/hooks", () => ({
   useTimeZone: () => "Asia/Tashkent",
   useScheduleRange: vi.fn(),
   useDaySlots: (serviceId: string, day: string | null) =>
-    useQuery({
-      queryKey: ["slots", serviceId, day],
-      queryFn: () => slots(serviceId, day ?? ""),
-      enabled: day !== null,
-      select: toStarts,
-      staleTime: 0,
-    }),
+    useQuery(daySlotsOptions(serviceId, day, slots)),
   useRescheduleAppointment: () =>
     useMutation({
       networkMode: "always",
@@ -257,5 +251,88 @@ describe("SchedulePage panel reschedule", () => {
     await waitFor(() => {
       expect(mockedRange).toHaveBeenLastCalledWith("2026-11-09", "2026-11-15");
     });
+  });
+
+  it("after TIME_TAKEN the picker shows loading, not the old times", async () => {
+    slots
+      .mockResolvedValueOnce(response("2026-11-03", ["2026-11-03T15:00:00+05:00"]))
+      .mockImplementation(() => new Promise<SlotsResponse>(() => {}));
+    reschedule.mockRejectedValueOnce(new ApiError("problem", { status: 409, code: "TIME_TAKEN" }));
+    mockedRange.mockReturnValue(rangeResult([AIGUL]));
+    renderPage();
+
+    const panel = screen.getByRole("complementary", { name: "Выбранная запись" });
+    fireEvent.click(screen.getByRole("button", { name: /Айгуль Сапарова/ }));
+    fireEvent.click(within(panel).getByRole("button", { name: "Перенести" }));
+
+    fireEvent.click(await screen.findByRole("button", { name: "15:00" }));
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+
+    const confirm = screen.getByRole("dialog", { name: "Перенести запись?" });
+    fireEvent.click(within(confirm).getByRole("button", { name: "Перенести" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toBe("15:00 уже занято. Выберите другое время.");
+
+    fireEvent.click(within(confirm).getByRole("button", { name: "Выбрать другое время" }));
+
+    const picker = screen.getByRole("dialog", { name: "Перенос записи" });
+    await waitFor(() => expect(slots).toHaveBeenCalledTimes(2));
+    expect(within(picker).getByRole("status").textContent).toBe("Загружаем свободное время…");
+    expect(within(picker).queryByRole("button", { name: "15:00" })).toBeNull();
+  });
+
+  it("closes the whole reschedule flow on 404 gone via Close button", async () => {
+    slots.mockResolvedValueOnce(response("2026-11-03", ["2026-11-03T15:00:00+05:00"]));
+    reschedule.mockRejectedValueOnce(new ApiError("problem", { status: 404 }));
+    mockedRange.mockReturnValue(rangeResult([AIGUL]));
+    renderPage();
+
+    const panel = screen.getByRole("complementary", { name: "Выбранная запись" });
+    fireEvent.click(screen.getByRole("button", { name: /Айгуль Сапарова/ }));
+    fireEvent.click(within(panel).getByRole("button", { name: "Перенести" }));
+
+    fireEvent.click(await screen.findByRole("button", { name: "15:00" }));
+    const confirm = screen.getByRole("dialog", { name: "Перенести запись?" });
+    fireEvent.click(within(confirm).getByRole("button", { name: "Перенести" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("Запись уже изменилась.");
+
+    fireEvent.click(within(confirm).getByRole("button", { name: "Закрыть" }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(screen.queryByRole("dialog", { name: "Перенос записи" })).toBeNull();
+    });
+    expect(slots).toHaveBeenCalledTimes(1);
+    expect(reschedule).toHaveBeenCalledTimes(1);
+  });
+
+  it("closes the whole reschedule flow on 404 gone via Escape", async () => {
+    slots.mockResolvedValueOnce(response("2026-11-03", ["2026-11-03T15:00:00+05:00"]));
+    reschedule.mockRejectedValueOnce(new ApiError("problem", { status: 404 }));
+    mockedRange.mockReturnValue(rangeResult([AIGUL]));
+    renderPage();
+
+    const panel = screen.getByRole("complementary", { name: "Выбранная запись" });
+    fireEvent.click(screen.getByRole("button", { name: /Айгуль Сапарова/ }));
+    fireEvent.click(within(panel).getByRole("button", { name: "Перенести" }));
+
+    fireEvent.click(await screen.findByRole("button", { name: "15:00" }));
+    const confirm = screen.getByRole("dialog", { name: "Перенести запись?" });
+    fireEvent.click(within(confirm).getByRole("button", { name: "Перенести" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("Запись уже изменилась.");
+
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(screen.queryByRole("dialog", { name: "Перенос записи" })).toBeNull();
+    });
+    expect(slots).toHaveBeenCalledTimes(1);
+    expect(reschedule).toHaveBeenCalledTimes(1);
   });
 });

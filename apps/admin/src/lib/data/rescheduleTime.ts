@@ -1,3 +1,4 @@
+import { queryOptions } from "@tanstack/react-query";
 import type { components } from "@massage-desk/api-types";
 import { addDays, isDay } from "@massage-desk/shared";
 
@@ -6,6 +7,7 @@ import { unwrap } from "@/lib/api/client";
 import { ApiError } from "@/lib/api/errors";
 
 import { loadErrorText } from "./calendar";
+import { queryKeys } from "./queryKeys";
 import { whenShort } from "./reschedule";
 import type { Appointment } from "./schedule";
 
@@ -18,6 +20,33 @@ export function fetchSlots(
   day: string,
 ): Promise<SlotsResponse> {
   return unwrap(api.GET("/slots", { params: { query: { serviceId, day } } }));
+}
+
+const SLOTS_ATTEMPTS = 3;
+
+export function slotsRetry(failureCount: number, error: unknown): boolean {
+  // A 4xx answer will not change on repeat.
+  if (error instanceof ApiError && error.status !== undefined && error.status >= 400 && error.status < 500) {
+    return false;
+  }
+  return failureCount < SLOTS_ATTEMPTS;
+}
+
+export function daySlotsOptions(
+  serviceId: string,
+  day: string | null,
+  load: (serviceId: string, day: string) => Promise<SlotsResponse>,
+) {
+  return queryOptions({
+    queryKey: queryKeys.slots.one(serviceId, day ?? ""),
+    queryFn: () => load(serviceId, day ?? ""),
+    select: toStarts,
+    enabled: day !== null,
+    staleTime: 0,
+    // A closed picker keeps no times: they may be taken by now.
+    gcTime: 0,
+    retry: slotsRetry,
+  });
 }
 
 export function toStarts(res: SlotsResponse): Date[] {
@@ -84,6 +113,17 @@ export function slotsView({
   if (starts !== undefined) return starts.length === 0 ? "empty" : "ready";
   if (error != null) return "error";
   return "loading";
+}
+
+const STATUS_TEXT: Partial<Record<SlotsView, string>> = {
+  loading: TIMES_LOADING,
+  empty: TIMES_EMPTY,
+  pickDay: PICK_DAY_HINT,
+};
+
+/** Status text announced via the picker's persistent live region, or `null` for non-text views. */
+export function slotsStatusText(view: SlotsView): string | null {
+  return STATUS_TEXT[view] ?? null;
 }
 
 function isServiceHidden(error: unknown): boolean {

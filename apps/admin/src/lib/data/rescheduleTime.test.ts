@@ -8,13 +8,18 @@ import {
   DAY_CHOICES,
   PICK_DAY_HINT,
   SERVICE_HIDDEN,
+  TIMES_EMPTY,
+  TIMES_LOADING,
   choiceDay,
   dayPick,
+  daySlotsOptions,
   fetchSlots,
   pickableDay,
   pickerText,
   slotsErrorText,
+  slotsRetry,
   slotsRetryable,
+  slotsStatusText,
   slotsView,
   toStarts,
 } from "./rescheduleTime";
@@ -117,6 +122,17 @@ describe("slotsView", () => {
   });
 });
 
+describe("slotsStatusText", () => {
+  it("returns status copy for text states and null for non-text states", () => {
+    expect(slotsStatusText("loading")).toBe(TIMES_LOADING);
+    expect(slotsStatusText("empty")).toBe(TIMES_EMPTY);
+    expect(slotsStatusText("pickDay")).toBe(PICK_DAY_HINT);
+    expect(slotsStatusText("offline")).toBeNull();
+    expect(slotsStatusText("error")).toBeNull();
+    expect(slotsStatusText("ready")).toBeNull();
+  });
+});
+
 describe("slotsErrorText, slotsRetryable and pickerText", () => {
   it("handles hidden service and network/server errors", () => {
     const hidden = new ApiError("problem", { status: 404, code: "SERVICE_NOT_FOUND" });
@@ -138,5 +154,36 @@ describe("slotsErrorText, slotsRetryable and pickerText", () => {
       `Айгуль Сапарова, сейчас ${whenShort(AIGUL.start, TZ)}. Выберите новый день и время.`,
     );
     expect(pickerText(AIGUL, TZ)).toBe("Айгуль Сапарова, сейчас пн 2 нояб., 10:00. Выберите новый день и время.");
+  });
+});
+
+describe("slotsRetry and daySlotsOptions", () => {
+  it("stops retrying on 4xx and retries network, 5xx and unknown errors up to 3 times", () => {
+    expect(slotsRetry(0, new ApiError("problem", { status: 404, code: "SERVICE_NOT_FOUND" }))).toBe(false);
+    expect(slotsRetry(0, new ApiError("problem", { status: 400 }))).toBe(false);
+    expect(slotsRetry(0, new ApiError("problem", { status: 409 }))).toBe(false);
+    expect(slotsRetry(0, new ApiError("unauthorized", { status: 401 }))).toBe(false);
+
+    const net = new ApiError("network");
+    expect(slotsRetry(0, net)).toBe(true);
+    expect(slotsRetry(2, net)).toBe(true);
+    expect(slotsRetry(3, net)).toBe(false);
+
+    const server = new ApiError("server", { status: 500 });
+    expect(slotsRetry(0, server)).toBe(true);
+    expect(slotsRetry(2, server)).toBe(true);
+    expect(slotsRetry(3, server)).toBe(false);
+
+    expect(slotsRetry(0, new Error("x"))).toBe(true);
+  });
+
+  it("configures daySlotsOptions with disabled null day, zero gc/stale times and slotsRetry", () => {
+    const load = vi.fn();
+    const opts = daySlotsOptions("s1", null, load);
+    expect(opts.enabled).toBe(false);
+    expect(opts.gcTime).toBe(0);
+    expect(opts.staleTime).toBe(0);
+    expect(opts.retry).toBe(slotsRetry);
+    expect(opts.queryKey).toEqual(["slots", "s1", ""]);
   });
 });

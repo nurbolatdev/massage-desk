@@ -5,7 +5,7 @@ import { api, unwrap } from "@/lib/api";
 import { type AppointmentAction, postAppointmentAction } from "./appointmentActions";
 import { queryKeys } from "./queryKeys";
 import { rescheduleAppointment } from "./reschedule";
-import { fetchSlots, toStarts } from "./rescheduleTime";
+import { daySlotsOptions, fetchSlots } from "./rescheduleTime";
 import {
   fetchAppointments,
   fetchTimeOff,
@@ -105,11 +105,5 @@ export function useAppointmentAction() {
 
 /** Free start times of a day; computed by the server. */
 export function useDaySlots(serviceId: string, day: string | null) {
-  return useQuery({
-    queryKey: queryKeys.slots.one(serviceId, day ?? ""),
-    queryFn: () => fetchSlots(api, serviceId, day ?? ""),
-    select: toStarts,
-    enabled: day !== null,
-    staleTime: 0,
-  });
+  return useQuery(daySlotsOptions(serviceId, day, (id, d) => fetchSlots(api, id, d)));
 }

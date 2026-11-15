@@ -234,6 +234,7 @@ export function SchedulePage() {
           onClose={() =>
             setMoving({ appointment: moving.appointment, trigger: moving.trigger, day: moving.day })
           }
+          onGone={() => setMoving(null)}
           onDone={(id) => {
             const newDay = localDay(moveStart, moveTz);
             setMoving(null);
