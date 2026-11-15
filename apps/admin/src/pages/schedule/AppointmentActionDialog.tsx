@@ -17,6 +17,7 @@ type AppointmentActionDialogProps = {
   timeZone: string;
   onClose: () => void;
   onDone: (id: string) => void;
+  trigger?: HTMLElement | null;
   returnFocus?: () => HTMLElement | null;
 };
 
@@ -27,6 +28,7 @@ export function AppointmentActionDialog({
   timeZone,
   onClose,
   onDone,
+  trigger,
   returnFocus,
 }: AppointmentActionDialogProps) {
   const done = useRef(false);
@@ -61,8 +63,11 @@ export function AppointmentActionDialog({
         )
       }
       onCloseAutoFocus={(event) => {
-        if (!done.current) return;
-        const target = returnFocus?.();
+        const target = done.current
+          ? returnFocus?.()
+          : trigger?.isConnected
+            ? trigger
+            : null;
         if (!target) return;
         event.preventDefault();
         target.focus();

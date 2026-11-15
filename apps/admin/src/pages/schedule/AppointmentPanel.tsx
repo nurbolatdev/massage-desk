@@ -18,7 +18,7 @@ type Props = {
   timeZone: string;
   empty: boolean;
   now?: Date;
-  onAction?: (kind: AppointmentAction) => void;
+  onAction?: (kind: AppointmentAction, trigger: HTMLElement) => void;
   nameRef?: Ref<HTMLElement>;
 };
 
@@ -30,7 +30,8 @@ const LEGEND = [
 
 export function AppointmentPanel({ appointment, timeZone, empty, now, onAction, nameRef }: Props) {
   const online = useOnline();
-  const actions = appointment && onAction && now ? panelActions(appointment, now) : null;
+  const actions =
+    appointment && onAction && now ? { ...panelActions(appointment, now), onAction } : null;
   const rows = appointment && [
     { term: "Когда", value: whenText(appointment, timeZone) },
     { term: "Услуга", value: serviceText(appointment) },
@@ -67,15 +68,25 @@ export function AppointmentPanel({ appointment, timeZone, empty, now, onAction, 
                   </div>
                 ))}
               </dl>
-              {actions && onAction && (actions.cancel || actions.noShow) && (
+              {actions && (actions.cancel || actions.noShow) && (
                 <div className="flex flex-wrap gap-8">
                   {actions.noShow && (
-                    <Button variant="secondary" className="grow" disabled={!online} onClick={() => onAction("noShow")}>
+                    <Button
+                      variant="secondary"
+                      className="grow"
+                      disabled={!online}
+                      onClick={(event) => actions.onAction("noShow", event.currentTarget)}
+                    >
                       {NO_SHOW_LABEL}
                     </Button>
                   )}
                   {actions.cancel && (
-                    <Button variant="destructive" className="grow" disabled={!online} onClick={() => onAction("cancel")}>
+                    <Button
+                      variant="destructive"
+                      className="grow"
+                      disabled={!online}
+                      onClick={(event) => actions.onAction("cancel", event.currentTarget)}
+                    >
                       {CANCEL_LABEL}
                     </Button>
                   )}

@@ -138,18 +138,26 @@ describe("SchedulePage appointment actions", () => {
     expect(within(panel).getByRole<HTMLButtonElement>("button", { name: "Отменить" }).disabled).toBe(true);
   });
 
-  it("returns focus to the panel button when cancelling the confirm dialog", async () => {
+  it("returns focus to the panel button when cancelling the confirm dialog or pressing Escape", async () => {
     mockedRange.mockReturnValue(rangeResult([FUTURE]));
     renderPage();
 
     const panel = screen.getByRole("complementary", { name: "Выбранная запись" });
     fireEvent.click(screen.getByRole("button", { name: /Марат Каримов/ }));
     const cancelBtn = within(panel).getByRole("button", { name: "Отменить" });
-    cancelBtn.focus();
     fireEvent.click(cancelBtn);
 
     expect(screen.getByRole("dialog", { name: "Отменить запись?" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Не отменять" }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(document.activeElement).toBe(cancelBtn);
+    });
+
+    cancelBtn.blur();
+    fireEvent.click(cancelBtn);
+    fireEvent.keyDown(screen.getByRole("dialog", { name: "Отменить запись?" }), { key: "Escape" });
 
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).toBeNull();

@@ -37,7 +37,7 @@ export function SchedulePage() {
   const [action, setAction] = useState<{
     appointment: Appointment;
     kind: AppointmentAction;
-    trigger: HTMLElement | null;
+    trigger: HTMLElement;
   } | null>(null);
   const nameRef = useRef<HTMLElement>(null);
   const day = anchor ?? today;
@@ -62,9 +62,8 @@ export function SchedulePage() {
   const status = scheduleView({ hasData, error });
   const shown = appointments ? gridAppointments(appointments) : [];
   const selected = shown.find((a) => a.id === selectedId) ?? null;
-  const startAction = (kind: AppointmentAction) => {
+  const startAction = (kind: AppointmentAction, trigger: HTMLElement) => {
     if (!selected) return;
-    const trigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setAction({ appointment: selected, kind, trigger });
   };
   const dayData =
@@ -199,13 +198,8 @@ export function SchedulePage() {
           appointment={action.appointment}
           kind={action.kind}
           timeZone={schedule.timeZone}
-          onClose={() => {
-            const trigger = action.trigger;
-            setAction(null);
-            setTimeout(() => {
-              if (trigger && trigger !== document.body && trigger.isConnected) trigger.focus();
-            }, 0);
-          }}
+          trigger={action.trigger}
+          onClose={() => setAction(null)}
           onDone={() => setAction(null)}
           returnFocus={() => nameRef.current}
         />

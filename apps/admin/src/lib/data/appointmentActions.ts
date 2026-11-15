@@ -1,14 +1,11 @@
-import type { components } from "@massage-desk/api-types";
-
 import type { createApi } from "@/lib/api/client";
 import { unwrap } from "@/lib/api/client";
 import { ApiError } from "@/lib/api/errors";
 
 import { whenShort } from "./reschedule";
-import type { Appointment } from "./schedule";
+import type { Appointment, AppointmentResponse } from "./schedule";
 
 export type AppointmentAction = "cancel" | "noShow";
-export type AppointmentResponse = components["schemas"]["AppointmentResponse"];
 
 /** Cancels an appointment or marks it as no-show on the server. */
 export function postAppointmentAction(

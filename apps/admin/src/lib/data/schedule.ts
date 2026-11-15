@@ -7,6 +7,7 @@ import { unwrap } from "@/lib/api/client";
 type Api = ReturnType<typeof createApi>;
 
 export type AppointmentListItem = components["schemas"]["AppointmentListItem"];
+export type AppointmentResponse = components["schemas"]["AppointmentResponse"];
 export type TimeOffItem = components["schemas"]["TimeOffResponse"];
 export type WorkingBlock = components["schemas"]["WorkingBlock"];
 export type WorkingHours = components["schemas"]["WorkingHoursResponse"];

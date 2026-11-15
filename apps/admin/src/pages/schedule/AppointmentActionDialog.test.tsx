@@ -177,6 +177,7 @@ describe("AppointmentActionDialog", () => {
 
     function Harness() {
       const [open, setOpen] = useState(true);
+      const [trigger, setTrigger] = useState<HTMLElement | null>(null);
       const nameRef = useRef<HTMLDivElement>(null);
       const triggerRef = useRef<HTMLButtonElement>(null);
       returnFocusSpy.mockImplementation(() => nameRef.current);
@@ -186,7 +187,14 @@ describe("AppointmentActionDialog", () => {
           <div ref={nameRef} tabIndex={-1}>
             Айгуль Сапарова
           </div>
-          <button ref={triggerRef} type="button" onClick={() => setOpen(true)}>
+          <button
+            ref={triggerRef}
+            type="button"
+            onClick={(event) => {
+              setTrigger(event.currentTarget);
+              setOpen(true);
+            }}
+          >
             Открыть
           </button>
           {open && (
@@ -194,6 +202,7 @@ describe("AppointmentActionDialog", () => {
               appointment={AIGUL}
               kind="cancel"
               timeZone={TZ}
+              trigger={trigger}
               onClose={() => setOpen(false)}
               onDone={() => setOpen(false)}
               returnFocus={() => returnFocusSpy()}
@@ -220,12 +229,23 @@ describe("AppointmentActionDialog", () => {
     });
 
     returnFocusSpy.mockClear();
-    fireEvent.click(screen.getByRole("button", { name: "Открыть" }));
+    const openBtn = screen.getByRole("button", { name: "Открыть" });
+    fireEvent.click(openBtn);
     expect(screen.getByRole("dialog")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Не отменять" }));
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).toBeNull();
+      expect(document.activeElement).toBe(openBtn);
     });
     expect(returnFocusSpy).not.toHaveBeenCalled();
+
+    fireEvent.click(openBtn);
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    openBtn.remove();
+    fireEvent.click(screen.getByRole("button", { name: "Не отменять" }));
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+    expect(document.activeElement).not.toBe(openBtn);
   });
 });
