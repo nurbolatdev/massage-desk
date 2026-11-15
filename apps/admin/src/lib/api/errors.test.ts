@@ -29,4 +29,88 @@ describe("toApiError", () => {
   it("is an Error with the kind", () => {
     expect(new ApiError("network")).toBeInstanceOf(Error);
   });
+
+  it("extracts appointment conflicts from a 4xx problem", () => {
+    const conflicts = [
+      {
+        appointmentId: "a1",
+        clientName: null,
+        start: "2026-11-07T10:00:00+05:00",
+        end: "2026-11-07T11:00:00+05:00",
+      },
+    ];
+    const error = toApiError(409, { code: "APPOINTMENT_CONFLICT", conflicts });
+    expect(error.kind).toBe("problem");
+    expect(error.code).toBe("APPOINTMENT_CONFLICT");
+    expect(error.conflicts).toEqual(conflicts);
+  });
+
+  it("filters out malformed conflict items", () => {
+    const valid = {
+      appointmentId: "a1",
+      clientName: "Айгуль",
+      start: "2026-11-07T10:00:00+05:00",
+      end: "2026-11-07T11:00:00+05:00",
+    };
+    const error = toApiError(409, {
+      code: "APPOINTMENT_CONFLICT",
+      conflicts: [
+        { appointmentId: "a2", clientName: null, end: "2026-11-07T11:00:00+05:00" },
+        { ...valid, appointmentId: "a3", clientName: 5 },
+        valid,
+      ],
+    });
+    expect(error.conflicts).toEqual([valid]);
+  });
+
+  it("filters out conflicts with unparseable start or end dates", () => {
+    const valid = {
+      appointmentId: "a1",
+      clientName: "Айгуль",
+      start: "2026-11-07T10:00:00+05:00",
+      end: "2026-11-07T11:00:00+05:00",
+    };
+    const error = toApiError(409, {
+      code: "APPOINTMENT_CONFLICT",
+      conflicts: [
+        { ...valid, appointmentId: "a2", start: "abc" },
+        { ...valid, appointmentId: "a3", end: "abc" },
+        valid,
+      ],
+    });
+    expect(error.conflicts).toEqual([valid]);
+  });
+
+  it("leaves conflicts undefined when absent, non-array, or 5xx", () => {
+    expect(toApiError(409, { code: "APPOINTMENT_CONFLICT" }).conflicts).toBeUndefined();
+    expect(
+      toApiError(409, { code: "APPOINTMENT_CONFLICT", conflicts: "bad" }).conflicts,
+    ).toBeUndefined();
+
+    const serverError = toApiError(500, {
+      code: "APPOINTMENT_CONFLICT",
+      conflicts: [
+        {
+          appointmentId: "a1",
+          clientName: null,
+          start: "2026-11-07T10:00:00+05:00",
+          end: "2026-11-07T11:00:00+05:00",
+        },
+      ],
+    });
+    expect(serverError.kind).toBe("server");
+    expect(serverError.conflicts).toBeUndefined();
+  });
+
+  it("stores conflicts passed to the ApiError constructor", () => {
+    const conflicts = [
+      {
+        appointmentId: "a1",
+        clientName: "Айгуль",
+        start: "2026-11-07T10:00:00+05:00",
+        end: "2026-11-07T11:00:00+05:00",
+      },
+    ];
+    expect(new ApiError("problem", { status: 409, conflicts }).conflicts).toEqual(conflicts);
+  });
 });

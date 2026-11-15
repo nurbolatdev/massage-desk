@@ -434,9 +434,9 @@ Split into two pull requests. Weekly days off belong to the working-hours editor
 
 ### M1-17 · Admin: schedule
 
-Split into seven pull requests.
+Split into eight pull requests.
 
-**Pull request 1 of 7**
+**Pull request 1 of 8**
 
 - **Branch:** `feature/admin-schedule`
 - **Pull request:** `feat(admin): schedule data layer and api cors`
@@ -448,7 +448,7 @@ Split into seven pull requests.
   1. `docs: admin schedule split into four pull requests`
 - **Also (from M1-16):** CORS allows only the admin origin from an environment variable, never "*". Done in this pull request.
 
-**Pull request 2 of 7**
+**Pull request 2 of 8**
 
 - **Branch:** `feature/admin-schedule-calendar`
 - **Pull request:** `feat(admin): schedule week calendar`
@@ -459,7 +459,7 @@ Split into seven pull requests.
   1. `feat(admin): schedule page with week calendar`
   1. `docs: admin week calendar and schedule split`
 
-**Pull request 3 of 7**
+**Pull request 3 of 8**
 
 - **Branch:** `feature/admin-schedule-day`
 - **Pull request:** `feat(admin): schedule day view`
@@ -470,7 +470,7 @@ Split into seven pull requests.
   1. `feat(admin): schedule day view`
   1. `docs: admin schedule day view`
 
-**Pull request 4 of 7**
+**Pull request 4 of 8**
 
 - **Branch:** `feature/admin-schedule-reschedule`
 - **Pull request:** `feat(admin): calendar with drag-and-drop reschedule`
@@ -483,7 +483,7 @@ Split into seven pull requests.
   1. `test(admin): reschedule conflict is shown`
   1. `docs: admin drag-and-drop reschedule`
 
-**Pull request 5 of 7**
+**Pull request 5 of 8**
 
 - **Branch:** `feature/admin-appointment-actions`
 - **Pull request:** `feat(admin): appointment actions panel`
@@ -494,7 +494,7 @@ Split into seven pull requests.
   1. `feat(admin): cancel and no-show from the appointment panel`
   1. `docs: admin cancel and no-show`
 
-**Pull request 6 of 7**
+**Pull request 6 of 8**
 
 - **Branch:** `feature/admin-appointment-reschedule`
 - **Pull request:** `feat(admin): reschedule from the appointment panel`
@@ -504,12 +504,27 @@ Split into seven pull requests.
   1. `feat(admin): reschedule from the appointment panel`
   1. `docs: admin reschedule from the appointment panel`
 
-**Pull request 7 of 7**
+**Pull request 7 of 8**
 
 - **Branch:** `feature/admin-working-hours`
-- **Pull request:** `feat(admin): working hours editor`
+- **Pull request:** `feat(admin): working hours data and conflict dialog`
 - **Commits:**
+  1. `feat(admin): appointment conflicts in api errors`
+  1. `feat(admin): working hours draft and checks`
+  1. `feat(admin): save working hours`
+  1. `feat(admin): working hours conflict dialog`
+  1. `docs: admin working hours split`
+  1. `fix(admin): working hours review fixes`
+
+**Pull request 8 of 8**
+
+- **Branch:** `feature/admin-working-hours-editor`
+- **Pull request:** `feat(admin): working hours editor`
+- **Commits (planned):**
+  1. `feat(admin): working hours day row`
   1. `feat(admin): working hours editor`
+  1. `feat(admin): working hours view on the schedule page`
+  1. `docs: admin working hours editor`
 
 ### M1-18 · Admin: clients
 
