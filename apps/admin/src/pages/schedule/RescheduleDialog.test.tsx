@@ -156,4 +156,24 @@ describe("RescheduleDialog", () => {
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toBe("Не получилось перенести. Попробуйте ещё раз через минуту.");
   });
+
+  it("uses panel copy and cancel label when via is panel", () => {
+    const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <RescheduleDialog
+          appointment={MARAT}
+          start={THU_START}
+          timeZone={TZ}
+          via="panel"
+          onClose={vi.fn()}
+          onDone={vi.fn()}
+        />
+      </QueryClientProvider>,
+    );
+    const dialog = screen.getByRole("dialog", { name: "Перенести запись?" });
+    expect(dialog.textContent).toContain("Вы выбрали новое время для записи: Марат Каримов");
+    expect(dialog.textContent).not.toContain("перетащили");
+    expect(screen.getByRole("button", { name: "Выбрать другое время" })).toBeTruthy();
+  });
 });

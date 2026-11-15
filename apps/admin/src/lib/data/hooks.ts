@@ -5,6 +5,7 @@ import { api, unwrap } from "@/lib/api";
 import { type AppointmentAction, postAppointmentAction } from "./appointmentActions";
 import { queryKeys } from "./queryKeys";
 import { rescheduleAppointment } from "./reschedule";
+import { fetchSlots, toStarts } from "./rescheduleTime";
 import {
   fetchAppointments,
   fetchTimeOff,
@@ -83,7 +84,11 @@ export function useRescheduleAppointment() {
   return useMutation({
     networkMode: "always",
     mutationFn: ({ id, start }: { id: string; start: Date }) => rescheduleAppointment(api, id, start),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all }),
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.slots.all }),
+      ]),
   });
 }
 
@@ -95,5 +100,16 @@ export function useAppointmentAction() {
     mutationFn: ({ id, action }: { id: string; action: AppointmentAction }) =>
       postAppointmentAction(api, id, action),
     onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all }),
+  });
+}
+
+/** Free start times of a day; computed by the server. */
+export function useDaySlots(serviceId: string, day: string | null) {
+  return useQuery({
+    queryKey: queryKeys.slots.one(serviceId, day ?? ""),
+    queryFn: () => fetchSlots(api, serviceId, day ?? ""),
+    select: toStarts,
+    enabled: day !== null,
+    staleTime: 0,
   });
 }

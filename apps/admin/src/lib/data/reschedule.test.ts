@@ -10,10 +10,12 @@ import {
   KEYBOARD_HINT,
   RESCHEDULE_BACK,
   RESCHEDULE_CONFIRM,
+  RESCHEDULE_PICK_AGAIN,
   RESCHEDULE_TITLE,
   dragMoveText,
   dragStartText,
   dropText,
+  pickedText,
   rescheduleAppointment,
   rescheduleErrorKind,
   rescheduleErrorText,
@@ -133,6 +135,13 @@ describe("reschedule texts", () => {
   it("formats confirmation text with client name", () => {
     expect(rescheduleText("Марат Каримов")).toBe(
       "Вы перетащили запись: Марат Каримов. Клиенту сообщение не придёт — если нужно, напишите ему сами.",
+    );
+  });
+
+  it("formats panel reschedule label and confirmation text", () => {
+    expect(RESCHEDULE_PICK_AGAIN).toBe("Выбрать другое время");
+    expect(pickedText("Марат Каримов")).toBe(
+      "Вы выбрали новое время для записи: Марат Каримов. Клиенту сообщение не придёт — если нужно, напишите ему сами.",
     );
   });
 

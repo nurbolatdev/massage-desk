@@ -9,4 +9,8 @@ export const queryKeys = {
     all: ["timeOff"] as const,
     range: (from: string, to: string) => ["timeOff", from, to] as const,
   },
+  slots: {
+    all: ["slots"] as const,
+    one: (serviceId: string, day: string) => ["slots", serviceId, day] as const,
+  },
 };

@@ -498,7 +498,7 @@ Split into seven pull requests.
 
 - **Branch:** `feature/admin-appointment-reschedule`
 - **Pull request:** `feat(admin): reschedule from the appointment panel`
-- **Commits (planned):**
+- **Commits:**
   1. `feat(admin): reschedule time data`
   1. `feat(admin): day and time picker`
   1. `feat(admin): reschedule from the appointment panel`

@@ -28,6 +28,7 @@ export function panelActions(a: Appointment, now: Date): { cancel: boolean; noSh
   return { cancel: !started, noShow: started };
 }
 
+export const RESCHEDULE_LABEL = "Перенести";
 export const CANCEL_LABEL = "Отменить";
 export const NO_SHOW_LABEL = "Не пришёл";
 

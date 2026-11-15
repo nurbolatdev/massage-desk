@@ -18,6 +18,7 @@ import { AppointmentPanel } from "./AppointmentPanel";
 import { DayGrid } from "./DayGrid";
 import { DaySummary } from "./DaySummary";
 import { RescheduleDialog } from "./RescheduleDialog";
+import { RescheduleTimeDialog } from "./RescheduleTimeDialog";
 import { WeekGrid } from "./WeekGrid";
 
 const NAV_BUTTON = "flex size-target items-center justify-center rounded-8 text-ink";
@@ -34,6 +35,12 @@ export function SchedulePage() {
   const [anchor, setAnchor] = useState<string>();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [request, setRequest] = useState<{ appointment: Appointment; start: Date } | null>(null);
+  const [moving, setMoving] = useState<{
+    appointment: Appointment;
+    trigger: HTMLElement;
+    day?: string;
+    start?: Date;
+  } | null>(null);
   const [action, setAction] = useState<{
     appointment: Appointment;
     kind: AppointmentAction;
@@ -66,6 +73,11 @@ export function SchedulePage() {
     if (!selected) return;
     setAction({ appointment: selected, kind, trigger });
   };
+  const startReschedule = (trigger: HTMLElement) => {
+    if (selected) setMoving({ appointment: selected, trigger });
+  };
+  const moveStart = moving?.start;
+  const moveTz = schedule.timeZone;
   const dayData =
     view === "day" && status === "ready" && schedule.timeZone && appointments && timeOff && day
       ? daySchedule({
@@ -164,6 +176,7 @@ export function SchedulePage() {
                     now={now}
                     nameRef={nameRef}
                     onAction={startAction}
+                    onReschedule={startReschedule}
                   />
                 )}
                 <DaySummary day={day} timeZone={schedule.timeZone} schedule={dayData} />
@@ -176,6 +189,7 @@ export function SchedulePage() {
                 now={now}
                 nameRef={nameRef}
                 onAction={startAction}
+                onReschedule={startReschedule}
               />
             )}
           </div>
@@ -191,6 +205,44 @@ export function SchedulePage() {
             setRequest(null);
             setSelectedId(id);
           }}
+        />
+      )}
+      {moving && !moveStart && moveTz && today && (
+        <RescheduleTimeDialog
+          appointment={moving.appointment}
+          timeZone={moveTz}
+          today={today}
+          day={moving.day}
+          trigger={moving.trigger}
+          onClose={() => setMoving(null)}
+          onPick={(start, pickedDay) =>
+            setMoving({
+              appointment: moving.appointment,
+              trigger: moving.trigger,
+              day: pickedDay,
+              start,
+            })
+          }
+        />
+      )}
+      {moving && moveStart && moveTz && (
+        <RescheduleDialog
+          via="panel"
+          appointment={moving.appointment}
+          start={moveStart}
+          timeZone={moveTz}
+          onClose={() =>
+            setMoving({ appointment: moving.appointment, trigger: moving.trigger, day: moving.day })
+          }
+          onDone={(id) => {
+            const newDay = localDay(moveStart, moveTz);
+            setMoving(null);
+            setSelectedId(id);
+            if (view === "week" ? !days.includes(newDay) : day !== newDay) {
+              setAnchor(newDay);
+            }
+          }}
+          returnFocus={() => nameRef.current}
         />
       )}
       {action && schedule.timeZone && (
