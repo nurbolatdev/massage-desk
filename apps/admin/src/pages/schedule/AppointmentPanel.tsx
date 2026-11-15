@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import {
   CANCEL_LABEL,
   NO_SHOW_LABEL,
+  RESCHEDULE_LABEL,
   panelActions,
   type AppointmentAction,
 } from "@/lib/data/appointmentActions";
@@ -19,6 +20,7 @@ type Props = {
   empty: boolean;
   now?: Date;
   onAction?: (kind: AppointmentAction, trigger: HTMLElement) => void;
+  onReschedule?: (trigger: HTMLElement) => void;
   nameRef?: Ref<HTMLElement>;
 };
 
@@ -28,10 +30,20 @@ const LEGEND = [
   { label: "Отменена", color: "bg-neutral-soft border-border-dashed" },
 ];
 
-export function AppointmentPanel({ appointment, timeZone, empty, now, onAction, nameRef }: Props) {
+export function AppointmentPanel({
+  appointment,
+  timeZone,
+  empty,
+  now,
+  onAction,
+  onReschedule,
+  nameRef,
+}: Props) {
   const online = useOnline();
   const actions =
     appointment && onAction && now ? { ...panelActions(appointment, now), onAction } : null;
+  const reschedule =
+    appointment && onReschedule && canReschedule(appointment) ? onReschedule : null;
   const rows = appointment && [
     { term: "Когда", value: whenText(appointment, timeZone) },
     { term: "Услуга", value: serviceText(appointment) },
@@ -68,9 +80,19 @@ export function AppointmentPanel({ appointment, timeZone, empty, now, onAction, 
                   </div>
                 ))}
               </dl>
-              {actions && (actions.cancel || actions.noShow) && (
+              {(reschedule || actions?.cancel || actions?.noShow) && (
                 <div className="flex flex-wrap gap-8">
-                  {actions.noShow && (
+                  {reschedule && (
+                    <Button
+                      variant="secondary"
+                      className="grow"
+                      disabled={!online}
+                      onClick={(event) => reschedule(event.currentTarget)}
+                    >
+                      {RESCHEDULE_LABEL}
+                    </Button>
+                  )}
+                  {actions?.noShow && (
                     <Button
                       variant="secondary"
                       className="grow"
@@ -80,7 +102,7 @@ export function AppointmentPanel({ appointment, timeZone, empty, now, onAction, 
                       {NO_SHOW_LABEL}
                     </Button>
                   )}
-                  {actions.cancel && (
+                  {actions?.cancel && (
                     <Button
                       variant="destructive"
                       className="grow"
