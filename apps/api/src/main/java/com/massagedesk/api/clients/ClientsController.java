@@ -66,6 +66,19 @@ class ClientsController {
         return ClientResponse.from(clients.get(id));
     }
 
+    @Operation(summary = "Visit stats of one client")
+    @ApiResponse(responseCode = "200", description = "visit summary of the client")
+    @ApiResponse(responseCode = "400", description = "invalid id",
+            content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                    schema = @Schema(implementation = ApiProblem.class)))
+    @ApiResponse(responseCode = "404", description = "client not found",
+            content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                    schema = @Schema(implementation = ApiProblem.class)))
+    @GetMapping(value = "/{id}/stats", produces = MediaType.APPLICATION_JSON_VALUE)
+    ClientStatsResponse getClientStats(@Parameter(description = "client id") @PathVariable UUID id) {
+        return ClientStatsResponse.from(clients.stats(id));
+    }
+
     @Operation(summary = "Add a client")
     @ApiResponse(responseCode = "201", description = "client created")
     @ApiResponse(responseCode = "400", description = "missing or invalid field, or invalid phone number",

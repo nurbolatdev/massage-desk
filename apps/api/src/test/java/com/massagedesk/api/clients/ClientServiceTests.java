@@ -9,6 +9,8 @@ import com.massagedesk.api.events.EventActor;
 import com.massagedesk.api.persistence.SqlStates;
 import com.massagedesk.api.schedule.FixedClockConfiguration;
 import jakarta.persistence.EntityManager;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
@@ -225,5 +227,17 @@ class ClientServiceTests {
         assertThat(ClientService.phonePattern("+998 (90) 12-3")).isEqualTo("%998901 23%".replace(" ", ""));
         assertThat(ClientService.phonePattern("Ali 2")).isEmpty();
         assertThat(ClientService.phonePattern("+-")).isEmpty();
+    }
+
+    @Test
+    void visitIntervalDaysComputesRoundedAverageWithMinimumOfOne() {
+        Instant t = Instant.parse("2026-10-01T05:00:00Z");
+
+        assertThat(ClientService.visitIntervalDays(0, null, null)).isNull();
+        assertThat(ClientService.visitIntervalDays(1, t, t)).isNull();
+        assertThat(ClientService.visitIntervalDays(2, t, t.plus(Duration.ofHours(3)))).isEqualTo(1);
+        assertThat(ClientService.visitIntervalDays(3, t, t.plus(Duration.ofDays(28)))).isEqualTo(14);
+        assertThat(ClientService.visitIntervalDays(2, t, t.plus(Duration.ofDays(10)).plus(Duration.ofHours(12))))
+                .isEqualTo(11);
     }
 }

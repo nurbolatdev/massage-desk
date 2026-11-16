@@ -6,6 +6,9 @@ import com.massagedesk.api.events.DomainEventType;
 import com.massagedesk.api.events.EventActor;
 import com.massagedesk.api.persistence.SqlStates;
 import com.massagedesk.api.settings.SettingsRepository;
+import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.List;
@@ -26,20 +29,37 @@ public class ClientService {
     public record ClientView(UUID id, String phone, String name, String notes, Instant createdAt, ZoneId zone) {
     }
 
+    /** Visit summary of a client together with the master's time zone. */
+    public record ClientStatsView(
+            int visits,
+            BigDecimal totalSpent,
+            int noShows,
+            Instant lastVisitAt,
+            Instant nextAppointmentAt,
+            Integer visitIntervalDays,
+            ZoneId zone) {
+    }
+
     private final ClientRepository clients;
+    private final ClientDirectory directory;
     private final SettingsRepository settings;
     private final DomainEventRecorder recorder;
     private final PhoneProperties phoneProperties;
+    private final Clock clock;
 
     public ClientService(
             ClientRepository clients,
+            ClientDirectory directory,
             SettingsRepository settings,
             DomainEventRecorder recorder,
-            PhoneProperties phoneProperties) {
+            PhoneProperties phoneProperties,
+            Clock clock) {
         this.clients = clients;
+        this.directory = directory;
         this.settings = settings;
         this.recorder = recorder;
         this.phoneProperties = phoneProperties;
+        this.clock = clock;
     }
 
     @Transactional
@@ -63,6 +83,13 @@ public class ClientService {
     @Transactional(readOnly = true)
     public ClientView get(UUID id) {
         return view(find(id));
+    }
+
+    @Transactional(readOnly = true)
+    public ClientStatsView stats(UUID id) {
+        find(id);
+        ZoneId zone = settings.get().getTimeZone();
+        return statsView(directory.statsOf(id, clock.instant()), zone);
     }
 
     @Transactional
@@ -119,6 +146,25 @@ public class ClientService {
 
     private ClientView view(Client client) {
         return view(client, settings.get().getTimeZone());
+    }
+
+    static Integer visitIntervalDays(int visits, Instant first, Instant last) {
+        if (visits < 2 || first == null || last == null) {
+            return null;
+        }
+        long days = Math.round(Duration.between(first, last).toMinutes() / 1440.0 / (visits - 1));
+        return Math.max(1, Math.toIntExact(days));
+    }
+
+    private static ClientStatsView statsView(ClientDirectory.VisitStats s, ZoneId zone) {
+        return new ClientStatsView(
+                s.visits(),
+                s.totalSpent(),
+                s.noShows(),
+                s.lastVisitAt(),
+                s.nextAppointmentAt(),
+                visitIntervalDays(s.visits(), s.firstVisitAt(), s.lastVisitAt()),
+                zone);
     }
 
     private static ClientView view(Client c, ZoneId zone) {

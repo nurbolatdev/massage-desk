@@ -621,6 +621,55 @@
         "tags" : [ "clients" ]
       }
     },
+    "/clients/{id}/stats" : {
+      "get" : {
+        "operationId" : "getClientStats",
+        "parameters" : [ {
+          "description" : "client id",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ClientStatsResponse"
+                }
+              }
+            },
+            "description" : "visit summary of the client"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "description" : "invalid id"
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "description" : "client not found"
+          }
+        },
+        "summary" : "Visit stats of one client",
+        "tags" : [ "clients" ]
+      }
+    },
     "/services" : {
       "get" : {
         "operationId" : "listServices",
@@ -1310,6 +1359,40 @@
           }
         },
         "required" : [ "createdAt", "id", "name", "notes", "phone" ]
+      },
+      "ClientStatsResponse" : {
+        "type" : "object",
+        "properties" : {
+          "lastVisitAt" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time",
+            "description" : "ISO-8601 with the master's UTC offset; null when none"
+          },
+          "nextAppointmentAt" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time",
+            "description" : "ISO-8601 with the master's UTC offset; null when none"
+          },
+          "noShows" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "totalSpent" : {
+            "type" : "number",
+            "description" : "sum of current service prices over the visits"
+          },
+          "visitIntervalDays" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32",
+            "description" : "average days between visits; null with fewer than two visits"
+          },
+          "visits" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "done appointments and confirmed ones that have ended"
+          }
+        },
+        "required" : [ "lastVisitAt", "nextAppointmentAt", "noShows", "totalSpent", "visitIntervalDays", "visits" ]
       },
       "CreateAppointmentRequest" : {
         "type" : "object",

@@ -126,6 +126,23 @@ export interface paths {
         patch: operations["updateClient"];
         trace?: never;
     };
+    "/clients/{id}/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Visit stats of one client */
+        get: operations["getClientStats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/services": {
         parameters: {
             query?: never;
@@ -361,6 +378,32 @@ export interface components {
             notes: string | null;
             /** @description E.164, for example +998901234567 */
             phone: string;
+        };
+        ClientStatsResponse: {
+            /**
+             * Format: date-time
+             * @description ISO-8601 with the master's UTC offset; null when none
+             */
+            lastVisitAt: string | null;
+            /**
+             * Format: date-time
+             * @description ISO-8601 with the master's UTC offset; null when none
+             */
+            nextAppointmentAt: string | null;
+            /** Format: int32 */
+            noShows: number;
+            /** @description sum of current service prices over the visits */
+            totalSpent: number;
+            /**
+             * Format: int32
+             * @description average days between visits; null with fewer than two visits
+             */
+            visitIntervalDays: number | null;
+            /**
+             * Format: int32
+             * @description done appointments and confirmed ones that have ended
+             */
+            visits: number;
         };
         CreateAppointmentRequest: {
             /**
@@ -982,6 +1025,47 @@ export interface operations {
                 };
             };
             /** @description invalid field or id */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+            /** @description client not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+        };
+    };
+    getClientStats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description client id */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description visit summary of the client */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientStatsResponse"];
+                };
+            };
+            /** @description invalid id */
             400: {
                 headers: {
                     [name: string]: unknown;
