@@ -11,6 +11,7 @@ import type { AppointmentAction } from "@/lib/data/appointmentActions";
 import { daySchedule, gridAppointments, loadErrorText, scheduleView, weekLabel } from "@/lib/data/calendar";
 import { useScheduleRange, useTimeZone } from "@/lib/data/hooks";
 import { weekRange, type Appointment } from "@/lib/data/schedule";
+import { HOURS_TITLE } from "@/lib/data/workingHours";
 import { useNow } from "@/lib/useNow";
 
 import { AppointmentActionDialog } from "./AppointmentActionDialog";
@@ -20,18 +21,23 @@ import { DaySummary } from "./DaySummary";
 import { RescheduleDialog } from "./RescheduleDialog";
 import { RescheduleTimeDialog } from "./RescheduleTimeDialog";
 import { WeekGrid } from "./WeekGrid";
+import { WorkingHoursEditor } from "./WorkingHoursEditor";
 
 const NAV_BUTTON = "flex size-target items-center justify-center rounded-8 text-ink";
 const VIEWS = [
   ["week", "Неделя"],
   ["day", "День"],
+  ["hours", HOURS_TITLE],
 ] as const;
+
+type View = (typeof VIEWS)[number][0];
 
 export function SchedulePage() {
   const timeZone = useTimeZone();
   const now = useNow();
   const today = timeZone ? localDay(now, timeZone) : undefined;
-  const [view, setView] = useState<"week" | "day">("week");
+  const [view, setView] = useState<View>("week");
+  const [hoursOpened, setHoursOpened] = useState(false);
   const [anchor, setAnchor] = useState<string>();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [request, setRequest] = useState<{ appointment: Appointment; start: Date } | null>(null);
@@ -58,10 +64,11 @@ export function SchedulePage() {
     setSelectedId(null);
   };
 
-  const switchView = (next: "week" | "day") => {
+  const switchView = (next: View) => {
     if (next === view) return;
     setView(next);
     setSelectedId(null);
+    if (next === "hours") setHoursOpened(true);
   };
 
   const { appointments, timeOff, error } = schedule;
@@ -107,7 +114,7 @@ export function SchedulePage() {
             </div>
           )}
         </div>
-        <div role="group" aria-label="Вид" className="flex rounded-10 bg-segment-bg p-4">
+        <div role="group" aria-label="Вид" className="flex flex-wrap rounded-10 bg-segment-bg p-4">
           {VIEWS.map(([id, label]) => (
             <button
               key={id}
@@ -121,78 +128,87 @@ export function SchedulePage() {
           ))}
         </div>
       </div>
-      {status === "loading" && <PageSkeleton />}
-      {status === "error" && (
-        <StateCard
-          icon={CircleAlert}
-          title="Не удалось загрузить расписание"
-          text={loadErrorText(error)}
-          action={
-            <Button variant="secondary" onClick={schedule.refetch}>
-              <RefreshCw size={icon.button} strokeWidth={icon.stroke} aria-hidden="true" />
-              Повторить
-            </Button>
-          }
-        />
-      )}
-      {status === "ready" && schedule.timeZone && appointments && timeOff && today && day && (
-        <div className="flex flex-wrap items-start gap-16">
-          <div className="min-w-0 shrink grow-999 basis-calendar-basis">
-            {dayData ? (
-              <DayGrid
-                day={day}
-                today={today}
-                now={now}
-                timeZone={schedule.timeZone}
-                schedule={dayData}
-                timeOff={timeOff}
-                selectedId={selected?.id ?? null}
-                onSelect={setSelectedId}
-                onMove={move}
-                onReschedule={(appointment, start) => setRequest({ appointment, start })}
-              />
-            ) : (
-              <WeekGrid
-                days={days}
-                today={today}
-                timeZone={schedule.timeZone}
-                appointments={appointments}
-                timeOff={timeOff}
-                workingBlocks={schedule.workingBlocks}
-                selectedId={selected?.id ?? null}
-                onSelect={setSelectedId}
-                onReschedule={(appointment, start) => setRequest({ appointment, start })}
-              />
-            )}
-          </div>
-          <div className="flex basis-panel-basis grow flex-col gap-16">
-            {dayData ? (
-              <>
-                {selected && (
+      {view !== "hours" && (
+        <>
+          {status === "loading" && <PageSkeleton />}
+          {status === "error" && (
+            <StateCard
+              icon={CircleAlert}
+              title="Не удалось загрузить расписание"
+              text={loadErrorText(error)}
+              action={
+                <Button variant="secondary" onClick={schedule.refetch}>
+                  <RefreshCw size={icon.button} strokeWidth={icon.stroke} aria-hidden="true" />
+                  Повторить
+                </Button>
+              }
+            />
+          )}
+          {status === "ready" && schedule.timeZone && appointments && timeOff && today && day && (
+            <div className="flex flex-wrap items-start gap-16">
+              <div className="min-w-0 shrink grow-999 basis-calendar-basis">
+                {dayData ? (
+                  <DayGrid
+                    day={day}
+                    today={today}
+                    now={now}
+                    timeZone={schedule.timeZone}
+                    schedule={dayData}
+                    timeOff={timeOff}
+                    selectedId={selected?.id ?? null}
+                    onSelect={setSelectedId}
+                    onMove={move}
+                    onReschedule={(appointment, start) => setRequest({ appointment, start })}
+                  />
+                ) : (
+                  <WeekGrid
+                    days={days}
+                    today={today}
+                    timeZone={schedule.timeZone}
+                    appointments={appointments}
+                    timeOff={timeOff}
+                    workingBlocks={schedule.workingBlocks}
+                    selectedId={selected?.id ?? null}
+                    onSelect={setSelectedId}
+                    onReschedule={(appointment, start) => setRequest({ appointment, start })}
+                  />
+                )}
+              </div>
+              <div className="flex basis-panel-basis grow flex-col gap-16">
+                {dayData ? (
+                  <>
+                    {selected && (
+                      <AppointmentPanel
+                        appointment={selected}
+                        timeZone={schedule.timeZone}
+                        empty={false}
+                        now={now}
+                        nameRef={nameRef}
+                        onAction={startAction}
+                        onReschedule={startReschedule}
+                      />
+                    )}
+                    <DaySummary day={day} timeZone={schedule.timeZone} schedule={dayData} />
+                  </>
+                ) : (
                   <AppointmentPanel
                     appointment={selected}
                     timeZone={schedule.timeZone}
-                    empty={false}
+                    empty={shown.length === 0}
                     now={now}
                     nameRef={nameRef}
                     onAction={startAction}
                     onReschedule={startReschedule}
                   />
                 )}
-                <DaySummary day={day} timeZone={schedule.timeZone} schedule={dayData} />
-              </>
-            ) : (
-              <AppointmentPanel
-                appointment={selected}
-                timeZone={schedule.timeZone}
-                empty={shown.length === 0}
-                now={now}
-                nameRef={nameRef}
-                onAction={startAction}
-                onReschedule={startReschedule}
-              />
-            )}
-          </div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+      {hoursOpened && (
+        <div hidden={view !== "hours"}>
+          <WorkingHoursEditor />
         </div>
       )}
       {request && schedule.timeZone && (
