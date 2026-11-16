@@ -8,6 +8,8 @@ vi.mock("@/lib/auth/roleContext", () => ({ useStaffRole: () => "admin" }));
 
 const schedule = sections.find((s) => s.id === "schedule");
 if (!schedule) throw new Error("schedule section is missing");
+const clients = sections.find((s) => s.id === "clients");
+if (!clients) throw new Error("clients section is missing");
 
 beforeEach(() => {
   vi.resetModules();
@@ -16,6 +18,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.doUnmock("./schedule/SchedulePage");
+  vi.doUnmock("./clients/ClientsPage");
   vi.restoreAllMocks();
 });
 
@@ -38,5 +41,12 @@ describe("SectionPage", () => {
     expect(await screen.findByText("Не удалось открыть раздел")).not.toBeNull();
     expect(screen.getByText("Проверьте связь и обновите страницу.")).not.toBeNull();
     expect(screen.getByRole("button", { name: "Обновить страницу" })).not.toBeNull();
+  });
+
+  it("раздел clients грузит страницу клиентов", async () => {
+    vi.doMock("./clients/ClientsPage", () => ({ ClientsPage: () => <h1>Клиенты</h1> }));
+    const { SectionPage } = await import("./SectionPage");
+    render(<SectionPage section={clients} />);
+    expect(await screen.findByRole("heading", { name: "Клиенты" })).not.toBeNull();
   });
 });

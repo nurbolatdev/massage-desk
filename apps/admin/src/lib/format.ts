@@ -33,6 +33,13 @@ export function formatDayMonthShort(date: Date, timeZone: string): string {
   return cached(`daymonthshort|${timeZone}`, { day: "numeric", month: "short", timeZone }).format(date);
 }
 
+/** "12 окт. 2025 г." for a calendar day (YYYY-MM-DD). */
+export function formatDayMonthYear(day: string): string {
+  return cached("daymonthyear", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(
+    dayDate(day),
+  );
+}
+
 /** Russian plural form for `n`: 1 запись, 2 записи, 5 записей. */
 export function plural(n: number, one: string, few: string, many: string): string {
   const abs = Math.abs(n);

@@ -1,0 +1,107 @@
+import { describe, expect, it } from "vitest";
+
+import {
+  CLIENTS_PAGE_SIZE,
+  type Client,
+  clientInitials,
+  clientName,
+  clientSince,
+  clientsView,
+  hasName,
+  nextOffset,
+  notFoundTitle,
+  uniqueClients,
+} from "./clients";
+
+function makeClient(id: string, overrides: Partial<Client> = {}): Client {
+  return {
+    id,
+    phone: "+77012345678",
+    name: "Айгуль Сапарова",
+    notes: null,
+    createdAt: "2025-10-12T10:00:00+05:00",
+    ...overrides,
+  };
+}
+
+function makePage(prefix: string, count: number): Client[] {
+  return Array.from({ length: count }, (_, i) => makeClient(`${prefix}-${i}`));
+}
+
+describe("nextOffset", () => {
+  it("stops when the last page is shorter than page size", () => {
+    const short = makePage("a", 10);
+    expect(nextOffset(short, [short])).toBeUndefined();
+  });
+
+  it("returns cumulative count while pages are full", () => {
+    const p1 = makePage("a", CLIENTS_PAGE_SIZE);
+    const p2 = makePage("b", CLIENTS_PAGE_SIZE);
+    expect(nextOffset(p1, [p1])).toBe(50);
+    expect(nextOffset(p2, [p1, p2])).toBe(100);
+  });
+
+  it("stops on an empty page after a full page", () => {
+    const p1 = makePage("a", CLIENTS_PAGE_SIZE);
+    expect(nextOffset([], [p1, []])).toBeUndefined();
+  });
+});
+
+describe("uniqueClients", () => {
+  it("drops duplicate ids from later pages and preserves first-seen order", () => {
+    const a = makeClient("1", { name: "Айгуль" });
+    const b = makeClient("2", { name: "Болат" });
+    const bDup = makeClient("2", { name: "Болат (обновлённый)" });
+    const c = makeClient("3", { name: "Гульнар" });
+
+    expect(uniqueClients([[a, b], [bDup, c]])).toEqual([a, b, c]);
+  });
+});
+
+describe("clientName and hasName", () => {
+  it("falls back to phone when name is null or whitespace", () => {
+    expect(clientName({ name: null, phone: "+77010000001" })).toBe("+77010000001");
+    expect(clientName({ name: "  ", phone: "+77010000001" })).toBe("+77010000001");
+    expect(hasName({ name: null })).toBe(false);
+    expect(hasName({ name: "  " })).toBe(false);
+  });
+
+  it("trims whitespace around the name", () => {
+    expect(clientName({ name: "  Айгуль Сапарова  ", phone: "+77010000001" })).toBe("Айгуль Сапарова");
+    expect(hasName({ name: "  Айгуль  " })).toBe(true);
+  });
+});
+
+describe("clientInitials", () => {
+  it("takes up to two uppercase initials or returns empty string", () => {
+    expect(clientInitials("Айгуль Сапарова")).toBe("АС");
+    expect(clientInitials("айгуль")).toBe("А");
+    expect(clientInitials("Анна Мария Ли")).toBe("АМ");
+    expect(clientInitials("  Ержан   Бекенов ")).toBe("ЕБ");
+    expect(clientInitials(null)).toBe("");
+    expect(clientInitials("")).toBe("");
+  });
+});
+
+describe("clientSince", () => {
+  it("uses the calendar day in the master's offset rather than UTC", () => {
+    expect(clientSince("2025-10-13T01:00:00+05:00")).toBe("13 окт. 2025 г.");
+  });
+});
+
+describe("clientsView", () => {
+  it("picks loading, error, empty, notFound, and list states", () => {
+    expect(clientsView({ hasData: false, error: null, count: 0, term: "" })).toBe("loading");
+    expect(clientsView({ hasData: false, error: new Error("boom"), count: 0, term: "" })).toBe("error");
+    expect(clientsView({ hasData: true, error: null, count: 0, term: "" })).toBe("empty");
+    expect(clientsView({ hasData: true, error: null, count: 0, term: "Айг" })).toBe("notFound");
+    expect(clientsView({ hasData: true, error: null, count: 3, term: "" })).toBe("list");
+    expect(clientsView({ hasData: true, error: new Error("bg"), count: 3, term: "" })).toBe("list");
+  });
+});
+
+describe("notFoundTitle", () => {
+  it("formats the query into the empty search title", () => {
+    expect(notFoundTitle("Айдр")).toBe("По запросу «Айдр» ничего нет");
+  });
+});
