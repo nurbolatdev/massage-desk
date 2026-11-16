@@ -26,7 +26,10 @@ describe("ClientsTable", () => {
 
     const table = screen.getByRole("table", { name: "Клиенты" });
     const headers = within(table).getAllByRole("columnheader");
-    expect(headers.map((header) => header.textContent)).toEqual(["Клиент", "Клиент с"]);
+    expect(headers.map((header) => header.textContent)).toEqual([
+      "Клиент",
+      "Клиент с",
+    ]);
   });
 
   it("renders initials, name, phone and formatted join date for named clients", () => {
@@ -61,8 +64,16 @@ describe("ClientsTable", () => {
       <ClientsTable
         clients={[
           makeClient({ id: "c1", name: "Айгуль Сапарова" }),
-          makeClient({ id: "c2", name: "Ержан Бекенов", phone: "+77025550134" }),
-          makeClient({ id: "c3", name: "Светлана Петрова", phone: "+77078801290" }),
+          makeClient({
+            id: "c2",
+            name: "Ержан Бекенов",
+            phone: "+77025550134",
+          }),
+          makeClient({
+            id: "c3",
+            name: "Светлана Петрова",
+            phone: "+77078801290",
+          }),
         ]}
       />,
     );
@@ -75,14 +86,16 @@ describe("ClientsTable", () => {
     ]);
   });
 
-  it("attaches tableRef to the table element and supports programmatic focus", () => {
-    const tableRef = createRef<HTMLTableElement | null>();
+  it("attaches tableRef to the unclipped wrapper and supports programmatic focus", () => {
+    const tableRef = createRef<HTMLElement | null>();
     render(<ClientsTable clients={[makeClient()]} tableRef={tableRef} />);
 
     const table = screen.getByRole("table", { name: "Клиенты" });
-    expect(tableRef.current).toBe(table);
+    expect(tableRef.current).not.toBe(table);
+    expect(tableRef.current?.contains(table)).toBe(true);
+    expect(tableRef.current?.classList.contains("overflow-x-auto")).toBe(false);
 
     tableRef.current?.focus();
-    expect(document.activeElement).toBe(table);
+    expect(document.activeElement).toBe(tableRef.current);
   });
 });

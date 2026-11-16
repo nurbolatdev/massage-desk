@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { CircleAlert, RefreshCw, Search, Users } from "lucide-react";
 
 import { PageMain } from "@/components/PageMain";
@@ -37,7 +37,12 @@ export function ClientsPage() {
   const term = useDebouncedValue(text.trim(), SEARCH_DELAY_MS);
   const clients = useClients(term);
   const online = useOnline();
-  const tableRef = useRef<HTMLTableElement>(null);
+  const tableRef = useRef<HTMLElement>(null);
+  const moreRef = useRef<HTMLButtonElement>(null);
+  const termRef = useRef(term);
+  useEffect(() => {
+    termRef.current = term;
+  }, [term]);
   const searchId = useId();
 
   const rows = clients.data ? uniqueClients(clients.data.pages) : [];
@@ -50,8 +55,21 @@ export function ClientsPage() {
   const searchOffline = !online && Boolean(term) && clients.data === undefined;
 
   const loadMore = async () => {
+    if (clients.isFetchingNextPage || !online) return;
+    const requestedTerm = term;
     const result = await clients.fetchNextPage();
-    if (!result.isError && !result.hasNextPage) {
+    const active = document.activeElement;
+    const focusFree =
+      active === null ||
+      active === document.body ||
+      active === moreRef.current ||
+      active === tableRef.current;
+    if (
+      !result.isError &&
+      !result.hasNextPage &&
+      termRef.current === requestedTerm &&
+      focusFree
+    ) {
       tableRef.current?.focus();
     }
   };
@@ -60,7 +78,7 @@ export function ClientsPage() {
     <PageMain>
       <div className="flex flex-wrap items-center justify-between gap-14">
         <h1 className="text-title text-ink">{CLIENTS_TITLE}</h1>
-        <div className="relative min-w-0 grow basis-panel-basis md:max-w-form md:grow-0">
+        <div className="relative min-w-0 grow basis-panel-basis md:grow-0">
           <Label htmlFor={searchId} className="sr-only">
             {SEARCH_LABEL}
           </Label>
@@ -94,16 +112,30 @@ export function ClientsPage() {
           title={LOAD_FAILED}
           text={loadErrorText(clients.error)}
           action={
-            <Button type="button" variant="secondary" onClick={() => void clients.refetch()}>
-              <RefreshCw size={icon.button} strokeWidth={icon.stroke} aria-hidden="true" />
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => void clients.refetch()}
+            >
+              <RefreshCw
+                size={icon.button}
+                strokeWidth={icon.stroke}
+                aria-hidden="true"
+              />
               Повторить
             </Button>
           }
         />
       )}
-      {view === "empty" && <StateCard icon={Users} title={EMPTY_TITLE} text={EMPTY_TEXT} />}
+      {view === "empty" && (
+        <StateCard icon={Users} title={EMPTY_TITLE} text={EMPTY_TEXT} />
+      )}
       {view === "notFound" && (
-        <StateCard icon={Search} title={notFoundTitle(term)} text={NOT_FOUND_TEXT} />
+        <StateCard
+          icon={Search}
+          title={notFoundTitle(term)}
+          text={NOT_FOUND_TEXT}
+        />
       )}
       {view === "list" && (
         <div className="flex flex-col items-start gap-12">
@@ -112,7 +144,9 @@ export function ClientsPage() {
             <Button
               type="button"
               variant="secondary"
-              disabled={clients.isFetchingNextPage || !online}
+              ref={moreRef}
+              aria-disabled={clients.isFetchingNextPage || !online}
+              className="aria-disabled:bg-disabled-bg aria-disabled:text-neutral-fg aria-disabled:border-disabled-bg"
               onClick={() => void loadMore()}
             >
               {SHOW_MORE}
