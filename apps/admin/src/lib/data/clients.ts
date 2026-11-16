@@ -2,6 +2,7 @@ import type { components } from "@massage-desk/api-types";
 
 import type { createApi } from "@/lib/api/client";
 import { unwrap } from "@/lib/api/client";
+import { ApiError } from "@/lib/api/errors";
 import { formatDayMonthYear } from "@/lib/format";
 
 type Api = ReturnType<typeof createApi>;
@@ -23,6 +24,18 @@ export const LOAD_FAILED = "Не удалось загрузить клиент�
 export const SHOW_MORE = "Показать ещё";
 export const MORE_FAILED = "Не удалось загрузить следующих клиентов. Нажмите «Показать ещё», чтобы попробовать снова.";
 export const SEARCH_OFFLINE = "Найти клиента можно, когда есть интернет.";
+
+export const PROFILE_LABEL = "Карточка клиента";
+export const PICK_CLIENT = "Нажмите на имя клиента в списке — здесь появится его карточка.";
+export const NOTE_FIELD_LABEL = "Заметка";
+export const NOTE_SAVE_LABEL = "Сохранить";
+export const NOTE_SAVED = "Заметка сохранена.";
+export const NOTE_SAVE_FAILED =
+  "Не получилось сохранить заметку. Проверьте интернет и попробуйте ещё раз.";
+export const NOTE_SAVE_OFFLINE = "Сохранить заметку можно, когда есть интернет.";
+export const NOTE_LOAD_FAILED = "Не получилось загрузить заметку.";
+export const NOTE_OFFLINE = "Заметка появится, когда будет интернет.";
+export const NOTE_MAX_LENGTH = 2000;
 
 export function notFoundTitle(term: string): string {
   return `По запросу «${term}» ничего нет`;
@@ -107,4 +120,52 @@ export function clientsView({
   if (!hasData) return error == null ? "loading" : "error";
   if (count === 0) return term ? "notFound" : "empty";
   return "list";
+}
+
+export function fetchClient(api: Api, id: string): Promise<Client> {
+  return unwrap(api.GET("/clients/{id}", { params: { path: { id } } }));
+}
+
+export function saveClientNote(api: Api, id: string, notes: string): Promise<Client> {
+  return unwrap(api.PATCH("/clients/{id}", { params: { path: { id } }, body: { notes } }));
+}
+
+/** Replaces the matching client in every page while keeping untouched rows by reference. */
+export function replaceInPages(
+  pages: readonly (readonly Client[])[],
+  client: Client,
+): Client[][] {
+  return pages.map((page) => page.map((row) => (row.id === client.id ? client : row)));
+}
+
+export function clientSinceText(createdAt: string): string {
+  return `${COLUMN_SINCE} ${clientSince(createdAt)}`;
+}
+
+export function noteSaveErrorText(error: unknown): string {
+  if (error instanceof ApiError) {
+    if (error.kind === "network") return NOTE_SAVE_FAILED;
+    if (error.status !== undefined) {
+      return `Сервер ответил с ошибкой. Код: ${error.status}. Заметка не сохранена.`;
+    }
+  }
+  return "Заметка не сохранена. Попробуйте ещё раз через минуту.";
+}
+
+export type NoteView = "loading" | "error" | "offline" | "note";
+
+/** Picks the body state for the client note block; cached data beats errors and offline pauses. */
+export function noteView({
+  hasData,
+  error,
+  paused,
+}: {
+  hasData: boolean;
+  error: unknown;
+  paused: boolean;
+}): NoteView {
+  if (hasData) return "note";
+  if (error != null) return "error";
+  if (paused) return "offline";
+  return "loading";
 }

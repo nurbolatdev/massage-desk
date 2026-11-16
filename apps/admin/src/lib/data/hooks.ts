@@ -1,9 +1,22 @@
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  type InfiniteData,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 
 import { api, unwrap } from "@/lib/api";
 
 import { type AppointmentAction, postAppointmentAction } from "./appointmentActions";
-import { fetchClients, nextOffset } from "./clients";
+import {
+  type Client,
+  fetchClient,
+  fetchClients,
+  nextOffset,
+  replaceInPages,
+  saveClientNote,
+} from "./clients";
 import { queryKeys } from "./queryKeys";
 import { rescheduleAppointment } from "./reschedule";
 import { daySlotsOptions, fetchSlots } from "./rescheduleTime";
@@ -139,5 +152,29 @@ export function useClients(term: string) {
     queryFn: ({ pageParam }) => fetchClients(api, term, pageParam),
     initialPageParam: 0,
     getNextPageParam: nextOffset,
+  });
+}
+
+export function useClient(id: string) {
+  return useQuery({
+    queryKey: queryKeys.clients.one(id),
+    queryFn: () => fetchClient(api, id),
+  });
+}
+
+export function useSaveClientNote(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    networkMode: "always",
+    mutationFn: (notes: string) => saveClientNote(api, id, notes),
+    onSuccess: async (client) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.clients.one(id) });
+      queryClient.setQueryData(queryKeys.clients.one(id), client);
+      // Update loaded search pages in place; notes do not change client order or search matching.
+      queryClient.setQueriesData<InfiniteData<Client[]>>(
+        { queryKey: queryKeys.clients.lists },
+        (data) => data && { ...data, pages: replaceInPages(data.pages, client) },
+      );
+    },
   });
 }
