@@ -17,6 +17,11 @@ import {
   replaceInPages,
   saveClientNote,
 } from "./clients";
+import {
+  fetchClientHistory,
+  fetchClientStats,
+  nextHistoryOffset,
+} from "./clientVisits";
 import { queryKeys } from "./queryKeys";
 import { rescheduleAppointment } from "./reschedule";
 import { daySlotsOptions, fetchSlots } from "./rescheduleTime";
@@ -159,6 +164,22 @@ export function useClient(id: string) {
   return useQuery({
     queryKey: queryKeys.clients.one(id),
     queryFn: () => fetchClient(api, id),
+  });
+}
+
+export function useClientStats(id: string) {
+  return useQuery({
+    queryKey: queryKeys.clients.stats(id),
+    queryFn: () => fetchClientStats(api, id),
+  });
+}
+
+export function useClientHistory(id: string) {
+  return useInfiniteQuery({
+    queryKey: queryKeys.clients.history(id),
+    queryFn: ({ pageParam }) => fetchClientHistory(api, id, pageParam),
+    initialPageParam: 0,
+    getNextPageParam: nextHistoryOffset,
   });
 }
 

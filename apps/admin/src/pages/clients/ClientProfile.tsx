@@ -1,9 +1,5 @@
 import type { Ref } from "react";
-import { RefreshCw } from "lucide-react";
 
-import { icon } from "@/components/icon";
-import { Button } from "@/components/ui/button";
-import { loadErrorText } from "@/lib/data/calendar";
 import {
   NOTE_LOAD_FAILED,
   NOTE_OFFLINE,
@@ -12,13 +8,16 @@ import {
   clientName,
   clientSinceText,
   hasName,
-  noteView,
+  blockView,
   type Client,
 } from "@/lib/data/clients";
 import { useClient } from "@/lib/data/hooks";
 
 import { ClientAvatar } from "./ClientAvatar";
+import { BlockError, BlockSkeleton } from "./ClientBlockState";
+import { ClientHistory } from "./ClientHistory";
 import { ClientNote } from "./ClientNote";
+import { ClientStats } from "./ClientStats";
 
 function ProfileBody({
   client,
@@ -29,7 +28,7 @@ function ProfileBody({
 }) {
   const query = useClient(client.id);
   const shown = query.data ?? client;
-  const view = noteView({
+  const view = blockView({
     hasData: query.data !== undefined,
     error: query.error,
     paused: query.fetchStatus === "paused",
@@ -48,23 +47,16 @@ function ProfileBody({
         </div>
       </div>
 
-      {view === "loading" && (
-        <div aria-busy="true" className="flex flex-col gap-6">
-          <div aria-hidden="true" className="h-14 w-1/4 rounded-6 bg-segment-bg" />
-          <div aria-hidden="true" className="h-64 rounded-10 bg-segment-bg" />
-          <span className="sr-only">Загрузка…</span>
-        </div>
-      )}
+      <ClientStats clientId={client.id} />
+
+      {view === "loading" && <BlockSkeleton lines="note" />}
 
       {view === "error" && (
-        <div role="alert" className="flex flex-col items-start gap-8">
-          <p className="text-body font-bold text-ink">{NOTE_LOAD_FAILED}</p>
-          <p className="text-secondary font-normal text-muted">{loadErrorText(query.error)}</p>
-          <Button type="button" variant="secondary" onClick={() => void query.refetch()}>
-            <RefreshCw size={icon.button} strokeWidth={icon.stroke} aria-hidden="true" />
-            Повторить
-          </Button>
-        </div>
+        <BlockError
+          title={NOTE_LOAD_FAILED}
+          error={query.error}
+          onRetry={() => void query.refetch()}
+        />
       )}
 
       {view === "offline" && (
@@ -73,7 +65,9 @@ function ProfileBody({
         </p>
       )}
 
-      {view === "note" && query.data && <ClientNote client={query.data} />}
+      {view === "ready" && query.data && <ClientNote client={query.data} />}
+
+      <ClientHistory clientId={client.id} />
     </>
   );
 }

@@ -9,14 +9,15 @@ import {
   clientName,
   clientSince,
   clientSinceText,
+  blockView,
   clientsView,
   hasName,
   nextOffset,
   NOTE_SAVE_FAILED,
   noteSaveErrorText,
-  noteView,
   notFoundTitle,
   replaceInPages,
+  uniqueById,
   uniqueClients,
 } from "./clients";
 
@@ -157,13 +158,23 @@ describe("noteSaveErrorText", () => {
   });
 });
 
-describe("noteView", () => {
-  it("picks loading, error, offline, and note states with data > error > paused", () => {
-    expect(noteView({ hasData: false, error: null, paused: false })).toBe("loading");
-    expect(noteView({ hasData: false, error: new Error("boom"), paused: false })).toBe("error");
-    expect(noteView({ hasData: false, error: null, paused: true })).toBe("offline");
-    expect(noteView({ hasData: true, error: null, paused: false })).toBe("note");
-    expect(noteView({ hasData: true, error: new Error("bg"), paused: false })).toBe("note");
-    expect(noteView({ hasData: false, error: new Error("boom"), paused: true })).toBe("error");
+describe("blockView", () => {
+  it("picks loading, error, offline, and ready states with data > error > paused", () => {
+    expect(blockView({ hasData: false, error: null, paused: false })).toBe("loading");
+    expect(blockView({ hasData: false, error: new Error("boom"), paused: false })).toBe("error");
+    expect(blockView({ hasData: false, error: null, paused: true })).toBe("offline");
+    expect(blockView({ hasData: true, error: null, paused: false })).toBe("ready");
+    expect(blockView({ hasData: true, error: new Error("bg"), paused: false })).toBe("ready");
+    expect(blockView({ hasData: false, error: new Error("boom"), paused: true })).toBe("error");
+  });
+});
+
+describe("uniqueById", () => {
+  it("drops repeated ids and keeps first-seen order", () => {
+    expect(uniqueById([[{ id: "a" }, { id: "b" }], [{ id: "a" }, { id: "c" }]])).toEqual([
+      { id: "a" },
+      { id: "b" },
+      { id: "c" },
+    ]);
   });
 });
