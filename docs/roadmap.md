@@ -529,9 +529,10 @@ Split into eight pull requests.
 
 ### M1-18 · Admin: clients
 
-Split into four pull requests: the clients table, the client profile with notes, client visits and stats in the API, and visits and stats in the admin.
+Split into five pull requests: the clients table, the client profile with notes, client visits and stats in the API, the client history and stats in the client card, and the remaining pieces in the admin (visit columns, filters and subtitle in the clients table, and Show more in the history; tracked in issue #108).
 
-**Pull request 1 of 4**
+
+**Pull request 1 of 5**
 
 - **Branch:** `feature/admin-clients`
 - **Pull request:** `feat(admin): clients`
@@ -544,11 +545,11 @@ Split into four pull requests: the clients table, the client profile with notes,
   1. `fix(admin): clients table review fixes`
   1. `fix(admin): clients table layout and formatting`
 
-**Pull request 2 of 4**
+**Pull request 2 of 5**
 
 - **Branch:** `feature/admin-client-profile`
 - **Pull request:** `feat(admin): client profile with notes`
-- **Depends on:** pull request 1 of 4
+- **Depends on:** pull request 1 of 5
 - **Commits:**
   1. `feat(admin): client note data`
   1. `feat(admin): client note editor`
@@ -556,7 +557,7 @@ Split into four pull requests: the clients table, the client profile with notes,
   1. `feat(admin): select a client in the table`
   1. `docs: admin client profile`
 
-**Pull request 3 of 4**
+**Pull request 3 of 5**
 
 - **Branch:** `feature/api-client-visits`
 - **Pull request:** `feat(api): client visits and stats`
@@ -567,15 +568,27 @@ Split into four pull requests: the clients table, the client profile with notes,
   1. `feat(api): client stats in the list`
   1. `docs: client visits api`
 
-**Pull request 4 of 4**
+**Pull request 4 of 5 (4a)**
 
 - **Branch:** `feature/admin-client-history`
-- **Pull request:** `feat(admin): client visits and stats`
+- **Pull request:** `feat(admin): client history and stats`
 - **Depends on:** pull requests 2 and 3
-- **Commits (planned):**
+- **Commits:**
   1. `feat(admin): client visits data`
-  1. `feat(admin): client history and stats`
-  1. `feat(admin): clients table columns and filters`
+  1. `feat(admin): client stats tiles`
+  1. `feat(admin): client visit history`
+  1. `docs: admin client history and stats`
+
+**Pull request 5 of 5 (remaining pieces, issue #108)**
+
+- **Branch:** `feature/admin-clients-filters`
+- **Pull request:** `feat(admin): clients table columns and filters`
+- **Depends on:** pull request 4 of 5
+- **Commits (planned):**
+  1. `feat(admin): clients list stats data`
+  1. `feat(admin): clients table columns`
+  1. `feat(admin): clients filters and summary`
+  1. `feat(admin): client history show more`
   1. `docs: admin client visits`
 
 ### M1-19 · Admin: services and settings
