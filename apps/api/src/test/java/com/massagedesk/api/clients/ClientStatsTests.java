@@ -255,6 +255,29 @@ class ClientStatsTests {
     }
 
     @Test
+    void sixtyDayBoundaryDecidesBetweenRegularAndLapsed() throws Exception {
+        Client onBoundary = clients.saveAndFlush(new Client("+998900000951", "Edge On"));
+        save(onBoundary, classic, "2026-07-01T05:00:00Z", "2026-07-01T06:00:00Z");
+        save(onBoundary, classic, "2026-08-01T05:00:00Z", "2026-08-01T06:00:00Z");
+        save(onBoundary, classic, "2026-09-03T05:15:00Z", "2026-09-03T06:15:00Z");
+
+        Client justBefore = clients.saveAndFlush(new Client("+998900000952", "Edge Off"));
+        save(justBefore, classic, "2026-07-02T05:00:00Z", "2026-07-02T06:00:00Z");
+        save(justBefore, classic, "2026-08-02T05:00:00Z", "2026-08-02T06:00:00Z");
+        save(justBefore, classic, "2026-09-03T04:14:00Z", "2026-09-03T05:14:00Z");
+
+        assertThat(listPhones("0000095", "regular")).containsExactly("+998900000951");
+        assertThat(listPhones("0000095", "lapsed")).containsExactly("+998900000952");
+    }
+
+    @Test
+    void emptySegmentListsEveryone() throws Exception {
+        clients.saveAndFlush(new Client("+998900000961", "Empty Segment"));
+
+        assertThat(listPhones("0000096", "")).containsExactly("+998900000961");
+    }
+
+    @Test
     void summaryCountsTotalAndRecentClientsWithoutCollidingWithGetById() throws Exception {
         String beforeBody = send(get("/clients/summary"))
                 .andExpect(status().isOk())

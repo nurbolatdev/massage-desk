@@ -348,7 +348,7 @@
           "schema" : {
             "type" : "string",
             "enum" : [ "regular", "lapsed", "no_shows" ],
-            "pattern" : "regular|lapsed|no_shows"
+            "pattern" : "^(regular|lapsed|no_shows)?$"
           }
         }, {
           "description" : "page size, 1..200",

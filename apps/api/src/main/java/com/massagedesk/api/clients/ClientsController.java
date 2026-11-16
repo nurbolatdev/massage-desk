@@ -54,7 +54,7 @@ class ClientsController {
                             + "lapsed: visited, not seen in 60 days, not booked; "
                             + "no_shows: at least one no-show",
                     schema = @Schema(allowableValues = {"regular", "lapsed", "no_shows"}))
-            @RequestParam(required = false) @Pattern(regexp = "regular|lapsed|no_shows") String segment,
+            @RequestParam(required = false) @Pattern(regexp = "^(regular|lapsed|no_shows)?$") String segment,
             @Parameter(description = "page size, 1..200") @RequestParam(defaultValue = "50") @Min(1) @Max(200) int limit,
             @Parameter(description = "rows to skip") @RequestParam(defaultValue = "0") @Min(0) int offset) {
         return clients.list(q, ClientSegment.fromParam(segment), limit, offset)

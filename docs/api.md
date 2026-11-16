@@ -154,7 +154,7 @@ All three return the updated appointment (same shape as the create response). An
 
 ## Clients
 
-`GET /clients` returns a JSON array of clients. `q` (at most 100 characters) filters by name (case-insensitive substring) and, when it consists only of phone characters (digits, `+`, spaces, brackets, dashes), also by phone digits. A blank `q` lists everyone. Order: by name alphabetically, clients without a name last, then by phone. Paging: `limit` 1..200 (default 50), `offset` from 0 (default 0); there is no total count in the list; see `GET /clients/summary`. `segment` (optional: `regular`, `lapsed` or `no_shows`) keeps only clients of that segment; any other value gives `400`.
+`GET /clients` returns a JSON array of clients. `q` (at most 100 characters) filters by name (case-insensitive substring) and, when it consists only of phone characters (digits, `+`, spaces, brackets, dashes), also by phone digits. A blank `q` lists everyone. Order: by name alphabetically, clients without a name last, then by phone. Paging: `limit` 1..200 (default 50), `offset` from 0 (default 0); there is no total count in the list; see `GET /clients/summary`. `segment` (optional: `regular`, `lapsed` or `no_shows`) keeps only clients of that segment; an empty value lists everyone; any other value gives `400`.
 
 ```json
 {"id":"<uuid>","phone":"+998901234567","name":"Aziza","notes":null,"createdAt":"2026-11-02T10:15:00+05:00","stats":{"visits":3,"totalSpent":280000,"noShows":1,"lastVisitAt":"2026-10-12T10:00:00+05:00","nextAppointmentAt":"2026-11-03T10:00:00+05:00","visitIntervalDays":14}}
