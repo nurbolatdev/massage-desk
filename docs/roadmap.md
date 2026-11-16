@@ -577,6 +577,7 @@ Split into five pull requests: the clients table, the client profile with notes,
   1. `feat(admin): client stats tiles`
   1. `feat(admin): client visit history`
   1. `docs: admin client history and stats`
+  1. `fix(admin): client card review fixes`
 
 **Pull request 5 of 5**
 
