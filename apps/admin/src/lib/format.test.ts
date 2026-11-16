@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { formatDayMonth, formatDayMonthShort, formatTime, plural } from "./format";
+import { formatDayMonth, formatDayMonthShort, formatDayMonthYear, formatTime, plural } from "./format";
 
 const TZ = "Asia/Tashkent";
 
@@ -15,6 +15,7 @@ describe("day formats", () => {
   it("formats a day and a short date", () => {
     expect(formatDayMonth("2026-11-08")).toBe("8 ноября");
     expect(formatDayMonthShort(new Date("2026-11-02T05:00:00Z"), TZ)).toBe("2 нояб.");
+    expect(formatDayMonthYear("2025-10-12")).toBe("12 окт. 2025 г.");
   });
 });
 

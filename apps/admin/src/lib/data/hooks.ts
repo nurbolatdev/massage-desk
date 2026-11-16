@@ -1,8 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api, unwrap } from "@/lib/api";
 
 import { type AppointmentAction, postAppointmentAction } from "./appointmentActions";
+import { fetchClients, nextOffset } from "./clients";
 import { queryKeys } from "./queryKeys";
 import { rescheduleAppointment } from "./reschedule";
 import { daySlotsOptions, fetchSlots } from "./rescheduleTime";
@@ -129,5 +130,14 @@ export function useSaveWorkingHours() {
       queryClient.setQueryData(queryKeys.workingHours, week);
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.slots.all }),
+  });
+}
+
+export function useClients(term: string) {
+  return useInfiniteQuery({
+    queryKey: queryKeys.clients.list(term),
+    queryFn: ({ pageParam }) => fetchClients(api, term, pageParam),
+    initialPageParam: 0,
+    getNextPageParam: nextOffset,
   });
 }

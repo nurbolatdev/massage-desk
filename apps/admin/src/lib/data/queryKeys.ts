@@ -13,4 +13,8 @@ export const queryKeys = {
     all: ["slots"] as const,
     one: (serviceId: string, day: string) => ["slots", serviceId, day] as const,
   },
+  clients: {
+    all: ["clients"] as const,
+    list: (term: string) => ["clients", "list", term] as const,
+  },
 };
