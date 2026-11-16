@@ -1,32 +1,19 @@
 import type { RefObject } from "react";
-import { User } from "lucide-react";
 
-import { icon } from "@/components/icon";
 import {
   CLIENTS_TITLE,
   COLUMN_CLIENT,
   COLUMN_SINCE,
-  clientInitials,
   clientName,
   clientSince,
   hasName,
   type Client,
 } from "@/lib/data/clients";
 
+import { ClientAvatar } from "./ClientAvatar";
+
 const TH = "border-b border-line px-16 py-14 text-left text-secondary text-muted";
 const TD = "border-b border-divider px-16 py-12";
-
-function ClientAvatar({ name }: { name: string | null }) {
-  const initials = clientInitials(name);
-  return (
-    <span
-      aria-hidden="true"
-      className="flex size-skeleton-avatar shrink-0 items-center justify-center rounded-full bg-primary-soft text-secondary font-extrabold text-primary-strong"
-    >
-      {initials || <User size={icon.button} strokeWidth={icon.stroke} />}
-    </span>
-  );
-}
 
 /** Alphabetical clients table showing avatar, name, phone and the date the client joined. */
 export function ClientsTable({
