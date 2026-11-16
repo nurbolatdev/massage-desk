@@ -1,15 +1,22 @@
 import { describe, expect, it } from "vitest";
 
+import { ApiError } from "@/lib/api/errors";
+
 import {
   CLIENTS_PAGE_SIZE,
   type Client,
   clientInitials,
   clientName,
   clientSince,
+  clientSinceText,
   clientsView,
   hasName,
   nextOffset,
+  NOTE_SAVE_FAILED,
+  noteSaveErrorText,
+  noteView,
   notFoundTitle,
+  replaceInPages,
   uniqueClients,
 } from "./clients";
 
@@ -103,5 +110,60 @@ describe("clientsView", () => {
 describe("notFoundTitle", () => {
   it("formats the query into the empty search title", () => {
     expect(notFoundTitle("Айдр")).toBe("По запросу «Айдр» ничего нет");
+  });
+});
+
+describe("replaceInPages", () => {
+  it("replaces the matching client in the second page and preserves other row references", () => {
+    const c1 = makeClient("1");
+    const c2 = makeClient("2");
+    const c3 = makeClient("3", { notes: "старая" });
+    const updated = makeClient("3", { notes: "новая" });
+
+    const next = replaceInPages([[c1], [c2, c3]], updated);
+
+    expect(next).toEqual([[c1], [c2, updated]]);
+    expect(next[0]?.[0]).toBe(c1);
+    expect(next[1]?.[0]).toBe(c2);
+    expect(next[1]?.[1]).toBe(updated);
+  });
+
+  it("keeps page contents unchanged when no client matches the id", () => {
+    const c1 = makeClient("1");
+    const c2 = makeClient("2");
+    const next = replaceInPages([[c1], [c2]], makeClient("99"));
+
+    expect(next).toEqual([[c1], [c2]]);
+    expect(next[0]?.[0]).toBe(c1);
+    expect(next[1]?.[0]).toBe(c2);
+  });
+});
+
+describe("clientSinceText", () => {
+  it("formats the prefix and date in Russian", () => {
+    expect(clientSinceText("2025-10-12T10:00:00+05:00")).toBe("Клиент с 12 окт. 2025 г.");
+  });
+});
+
+describe("noteSaveErrorText", () => {
+  it("formats network, server status, and unknown errors", () => {
+    expect(noteSaveErrorText(new ApiError("network"))).toBe(NOTE_SAVE_FAILED);
+    expect(noteSaveErrorText(new ApiError("server", { status: 500 }))).toBe(
+      "Сервер ответил с ошибкой. Код: 500. Заметка не сохранена.",
+    );
+    expect(noteSaveErrorText(new Error("x"))).toBe(
+      "Заметка не сохранена. Попробуйте ещё раз через минуту.",
+    );
+  });
+});
+
+describe("noteView", () => {
+  it("picks loading, error, offline, and note states with data > error > paused", () => {
+    expect(noteView({ hasData: false, error: null, paused: false })).toBe("loading");
+    expect(noteView({ hasData: false, error: new Error("boom"), paused: false })).toBe("error");
+    expect(noteView({ hasData: false, error: null, paused: true })).toBe("offline");
+    expect(noteView({ hasData: true, error: null, paused: false })).toBe("note");
+    expect(noteView({ hasData: true, error: new Error("bg"), paused: false })).toBe("note");
+    expect(noteView({ hasData: false, error: new Error("boom"), paused: true })).toBe("error");
   });
 });

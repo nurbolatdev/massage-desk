@@ -548,9 +548,12 @@ Split into four pull requests: the clients table, the client profile with notes,
 
 - **Branch:** `feature/admin-client-profile`
 - **Pull request:** `feat(admin): client profile with notes`
-- **Commits (planned):**
+- **Depends on:** pull request 1 of 4
+- **Commits:**
   1. `feat(admin): client note data`
+  1. `feat(admin): client note editor`
   1. `feat(admin): client profile panel`
+  1. `feat(admin): select a client in the table`
   1. `docs: admin client profile`
 
 **Pull request 3 of 4**

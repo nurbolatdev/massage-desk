@@ -1,13 +1,15 @@
 // @vitest-environment jsdom
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { onlineManager, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createApi, unwrap } from "@/lib/api/client";
+import { ApiError } from "@/lib/api/errors";
 
 import type { Client } from "./clients";
-import { useClients } from "./hooks";
+import { useClient, useClients, useSaveClientNote } from "./hooks";
+import { queryKeys } from "./queryKeys";
 
 const respond = vi.hoisted(() => vi.fn<(r: Request) => Promise<Response>>());
 
@@ -55,6 +57,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  onlineManager.setOnline(true);
   cleanup();
 });
 
@@ -103,5 +106,74 @@ describe("useClients", () => {
     const url2 = new URL(respond.mock.calls[1]?.[0].url ?? "");
     expect(url2.searchParams.get("offset")).toBe("50");
     expect(result.current.hasNextPage).toBe(false);
+  });
+});
+
+describe("useClient", () => {
+  it("requests GET /clients/{id} and returns the client", async () => {
+    const client = { ...makeRow("c1"), notes: "Болит шея" };
+    respond.mockResolvedValueOnce(jsonResponse(client));
+
+    const { result } = renderHook(() => useClient("c1"), { wrapper: makeWrapper(makeClient()) });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toEqual(client);
+    expect(respond.mock.calls[0]?.[0].url).toBe("https://api.test/clients/c1");
+    expect(respond.mock.calls[0]?.[0].method).toBe("GET");
+  });
+});
+
+describe("useSaveClientNote", () => {
+  it("sends PATCH /clients/{id} and updates one and all cached list queries", async () => {
+    const c0 = makeRow("c0");
+    const c1 = makeRow("c1");
+    const saved = { ...c1, notes: "Болит шея" };
+    respond.mockResolvedValueOnce(jsonResponse(saved));
+
+    const qc = makeClient();
+    qc.setQueryData(queryKeys.clients.list(""), { pages: [[c0, c1]], pageParams: [0] });
+    qc.setQueryData(queryKeys.clients.list("Айг"), { pages: [[c0, c1]], pageParams: [0] });
+
+    const { result } = renderHook(() => useSaveClientNote("c1"), { wrapper: makeWrapper(qc) });
+
+    await act(async () => {
+      await result.current.mutateAsync("Болит шея  ");
+    });
+
+    const req = respond.mock.calls[0]?.[0];
+    expect(req?.url).toBe("https://api.test/clients/c1");
+    expect(req?.method).toBe("PATCH");
+    expect(await req?.json()).toEqual({ notes: "Болит шея  " });
+
+    expect(qc.getQueryData(queryKeys.clients.one("c1"))).toEqual(saved);
+
+    for (const term of ["", "Айг"]) {
+      const cached = qc.getQueryData<{ pages: Client[][] }>(queryKeys.clients.list(term));
+      expect(cached?.pages[0]?.[0]).toBe(c0);
+      expect(cached?.pages[0]?.[1]).toEqual(saved);
+    }
+  });
+
+  it("rejects with a network ApiError even while offlineManager is offline", async () => {
+    onlineManager.setOnline(false);
+    respond.mockRejectedValueOnce(new TypeError("offline"));
+
+    const { result } = renderHook(() => useSaveClientNote("c1"), {
+      wrapper: makeWrapper(makeClient()),
+    });
+
+    let caught: unknown;
+    await act(async () => {
+      try {
+        await result.current.mutateAsync("Текст");
+      } catch (err) {
+        caught = err;
+      }
+    });
+
+    expect(caught).toBeInstanceOf(ApiError);
+    if (caught instanceof ApiError) {
+      expect(caught.kind).toBe("network");
+    }
   });
 });

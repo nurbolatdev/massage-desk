@@ -29,23 +29,30 @@ import { useClients } from "@/lib/data/hooks";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
 import { useOnline } from "@/lib/useOnline";
 
+import { ClientProfile } from "./ClientProfile";
 import { ClientsTable } from "./ClientsTable";
 
 /** Clients directory with debounced search, pagination and empty/offline/error states. */
 export function ClientsPage() {
   const [text, setText] = useState("");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const term = useDebouncedValue(text.trim(), SEARCH_DELAY_MS);
   const clients = useClients(term);
   const online = useOnline();
   const tableRef = useRef<HTMLElement>(null);
   const moreRef = useRef<HTMLButtonElement>(null);
+  const nameRef = useRef<HTMLHeadingElement>(null);
   const termRef = useRef(term);
   useEffect(() => {
     termRef.current = term;
   }, [term]);
+  useEffect(() => {
+    if (selectedId) nameRef.current?.focus();
+  }, [selectedId]);
   const searchId = useId();
 
   const rows = clients.data ? uniqueClients(clients.data.pages) : [];
+  const selected = rows.find((c) => c.id === selectedId) ?? null;
   const view = clientsView({
     hasData: clients.data !== undefined,
     error: clients.error,
@@ -124,25 +131,33 @@ export function ClientsPage() {
         <StateCard icon={Search} title={notFoundTitle(term)} text={NOT_FOUND_TEXT} />
       )}
       {view === "list" && (
-        <div className="flex flex-col items-start gap-12">
-          <ClientsTable clients={rows} tableRef={tableRef} />
-          {clients.hasNextPage && (
-            <Button
-              type="button"
-              variant="secondary"
-              ref={moreRef}
-              aria-disabled={clients.isFetchingNextPage || !online}
-              className="aria-disabled:bg-disabled-bg aria-disabled:text-neutral-fg aria-disabled:border-disabled-bg"
-              onClick={() => void loadMore()}
-            >
-              {SHOW_MORE}
-            </Button>
-          )}
-          {clients.isFetchNextPageError && (
-            <p role="alert" className="text-secondary text-danger">
-              {MORE_FAILED}
-            </p>
-          )}
+        <div className="flex flex-wrap items-start gap-16">
+          <div className="flex min-w-0 shrink grow-999 basis-content flex-col items-start gap-12">
+            <ClientsTable
+              clients={rows}
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+              tableRef={tableRef}
+            />
+            {clients.hasNextPage && (
+              <Button
+                type="button"
+                variant="secondary"
+                ref={moreRef}
+                aria-disabled={clients.isFetchingNextPage || !online}
+                className="aria-disabled:bg-disabled-bg aria-disabled:text-neutral-fg aria-disabled:border-disabled-bg"
+                onClick={() => void loadMore()}
+              >
+                {SHOW_MORE}
+              </Button>
+            )}
+            {clients.isFetchNextPageError && (
+              <p role="alert" className="text-secondary text-danger">
+                {MORE_FAILED}
+              </p>
+            )}
+          </div>
+          <ClientProfile client={selected} nameRef={nameRef} />
         </div>
       )}
     </PageMain>
