@@ -541,6 +541,8 @@ Split into four pull requests: the clients table, the client profile with notes,
   1. `feat(admin): clients table`
   1. `feat(admin): clients table with search`
   1. `docs: admin clients table`
+  1. `fix(admin): clients table review fixes`
+  1. `fix(admin): clients table layout and formatting`
 
 **Pull request 2 of 4**
 
