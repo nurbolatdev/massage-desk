@@ -341,6 +341,16 @@
             "minLength" : 0
           }
         }, {
+          "description" : "regular: 3+ visits, seen in 60 days or booked; lapsed: visited, not seen in 60 days, not booked; no_shows: at least one no-show",
+          "in" : "query",
+          "name" : "segment",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "regular", "lapsed", "no_shows" ],
+            "pattern" : "regular|lapsed|no_shows"
+          }
+        }, {
           "description" : "page size, 1..200",
           "in" : "query",
           "name" : "limit",
@@ -371,12 +381,12 @@
                 "schema" : {
                   "type" : "array",
                   "items" : {
-                    "$ref" : "#/components/schemas/ClientResponse"
+                    "$ref" : "#/components/schemas/ClientListItem"
                   }
                 }
               }
             },
-            "description" : "clients, alphabetically by name"
+            "description" : "clients with visit stats, alphabetically by name"
           },
           "400" : {
             "content" : {
@@ -437,6 +447,25 @@
           }
         },
         "summary" : "Add a client",
+        "tags" : [ "clients" ]
+      }
+    },
+    "/clients/summary" : {
+      "get" : {
+        "operationId" : "getClientsSummary",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ClientsSummaryResponse"
+                }
+              }
+            },
+            "description" : "client count summary"
+          }
+        },
+        "summary" : "Number of clients and new ones in the last 30 days",
         "tags" : [ "clients" ]
       }
     },
@@ -1335,6 +1364,34 @@
         },
         "required" : [ "clientId", "end", "id", "serviceId", "source", "start", "status" ]
       },
+      "ClientListItem" : {
+        "type" : "object",
+        "properties" : {
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "ISO-8601 with the master's UTC offset"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "name" : {
+            "type" : [ "string", "null" ]
+          },
+          "notes" : {
+            "type" : [ "string", "null" ]
+          },
+          "phone" : {
+            "type" : "string",
+            "description" : "E.164, for example +998901234567"
+          },
+          "stats" : {
+            "$ref" : "#/components/schemas/ClientStatsResponse"
+          }
+        },
+        "required" : [ "createdAt", "id", "name", "notes", "phone", "stats" ]
+      },
       "ClientResponse" : {
         "type" : "object",
         "properties" : {
@@ -1393,6 +1450,22 @@
           }
         },
         "required" : [ "lastVisitAt", "nextAppointmentAt", "noShows", "totalSpent", "visitIntervalDays", "visits" ]
+      },
+      "ClientsSummaryResponse" : {
+        "type" : "object",
+        "properties" : {
+          "newLast30Days" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "clients added in the last 30 days"
+          },
+          "total" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "all clients"
+          }
+        },
+        "required" : [ "newLast30Days", "total" ]
       },
       "CreateAppointmentRequest" : {
         "type" : "object",

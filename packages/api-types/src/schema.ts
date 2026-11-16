@@ -91,6 +91,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/clients/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Number of clients and new ones in the last 30 days */
+        get: operations["getClientsSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/clients/{clientId}/appointments": {
         parameters: {
             query?: never;
@@ -366,6 +383,20 @@ export interface components {
             /** @enum {string} */
             status: "confirmed" | "cancelled" | "no_show" | "done";
         };
+        ClientListItem: {
+            /**
+             * Format: date-time
+             * @description ISO-8601 with the master's UTC offset
+             */
+            createdAt: string;
+            /** Format: uuid */
+            id: string;
+            name: string | null;
+            notes: string | null;
+            /** @description E.164, for example +998901234567 */
+            phone: string;
+            stats: components["schemas"]["ClientStatsResponse"];
+        };
         ClientResponse: {
             /**
              * Format: date-time
@@ -404,6 +435,18 @@ export interface components {
              * @description done appointments and confirmed ones that have ended
              */
             visits: number;
+        };
+        ClientsSummaryResponse: {
+            /**
+             * Format: int64
+             * @description clients added in the last 30 days
+             */
+            newLast30Days: number;
+            /**
+             * Format: int64
+             * @description all clients
+             */
+            total: number;
         };
         CreateAppointmentRequest: {
             /**
@@ -839,6 +882,8 @@ export interface operations {
             query?: {
                 /** @description name fragment or phone digits; blank lists everyone */
                 q?: string;
+                /** @description regular: 3+ visits, seen in 60 days or booked; lapsed: visited, not seen in 60 days, not booked; no_shows: at least one no-show */
+                segment?: "regular" | "lapsed" | "no_shows";
                 /** @description page size, 1..200 */
                 limit?: number;
                 /** @description rows to skip */
@@ -850,13 +895,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description clients, alphabetically by name */
+            /** @description clients with visit stats, alphabetically by name */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ClientResponse"][];
+                    "application/json": components["schemas"]["ClientListItem"][];
                 };
             };
             /** @description invalid query parameter */
@@ -908,6 +953,26 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+        };
+    };
+    getClientsSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description client count summary */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientsSummaryResponse"];
                 };
             };
         };

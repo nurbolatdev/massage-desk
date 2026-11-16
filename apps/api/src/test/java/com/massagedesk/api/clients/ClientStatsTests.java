@@ -20,6 +20,7 @@ import com.massagedesk.api.schedule.TimeRange;
 import com.massagedesk.api.security.StaffRole;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -178,5 +179,113 @@ class ClientStatsTests {
     void requiresToken() throws Exception {
         mvc.perform(get("/clients/{id}/stats", clientA.getId()))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void listIncludesVisitStatsMatchingStatsEndpoint() throws Exception {
+        clients.saveAndFlush(new Client("+998900000915", "No Visits"));
+
+        String listBody = send(get("/clients").param("q", "00000911"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].stats.visits").value(3))
+                .andExpect(jsonPath("$[0].stats.noShows").value(1))
+                .andExpect(jsonPath("$[0].stats.lastVisitAt").value("2026-10-12T10:00:00+05:00"))
+                .andExpect(jsonPath("$[0].stats.nextAppointmentAt").value("2026-11-03T10:00:00+05:00"))
+                .andExpect(jsonPath("$[0].stats.visitIntervalDays").value(14))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        BigDecimal listSpent = new BigDecimal(JsonPath.read(listBody, "$[0].stats.totalSpent").toString());
+        assertThat(listSpent).isEqualByComparingTo("280000.00");
+
+        String statsBody = send(get("/clients/{id}/stats", clientA.getId()))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        Map<String, Object> listStats = JsonPath.read(listBody, "$[0].stats");
+        Map<String, Object> oneStats = JsonPath.read(statsBody, "$");
+        assertThat(listStats).isEqualTo(oneStats);
+
+        send(get("/clients").param("q", "00000915"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].stats.visits").value(0))
+                .andExpect(jsonPath("$[0].stats.lastVisitAt").value(nullValue()));
+    }
+
+    @Test
+    void filtersBySegmentAndPreservesNameOrder() throws Exception {
+        Client regular = clients.saveAndFlush(new Client("+998900000931", "Boris"));
+        save(regular, classic, "2026-09-10T05:00:00Z", "2026-09-10T06:00:00Z");
+        save(regular, classic, "2026-10-01T05:00:00Z", "2026-10-01T06:00:00Z");
+        save(regular, classic, "2026-10-20T05:00:00Z", "2026-10-20T06:00:00Z");
+
+        Client regularBooked = clients.saveAndFlush(new Client("+998900000932", "Anna"));
+        save(regularBooked, classic, "2026-07-01T05:00:00Z", "2026-07-01T06:00:00Z");
+        save(regularBooked, classic, "2026-07-08T05:00:00Z", "2026-07-08T06:00:00Z");
+        save(regularBooked, classic, "2026-07-15T05:00:00Z", "2026-07-15T06:00:00Z");
+        save(regularBooked, classic, "2026-07-22T05:00:00Z", "2026-07-22T06:00:00Z");
+        save(regularBooked, classic, "2026-08-01T05:00:00Z", "2026-08-01T06:00:00Z");
+        save(regularBooked, classic, "2026-11-20T05:00:00Z", "2026-11-20T06:00:00Z");
+
+        Client lapsed = clients.saveAndFlush(new Client("+998900000933", "Clara"));
+        save(lapsed, classic, "2026-07-02T05:00:00Z", "2026-07-02T06:00:00Z");
+        save(lapsed, classic, "2026-08-01T07:00:00Z", "2026-08-01T08:00:00Z");
+
+        Client withNoShow = clients.saveAndFlush(new Client("+998900000934", "Dina"));
+        save(withNoShow, classic, "2026-10-25T05:00:00Z", "2026-10-25T06:00:00Z");
+        Appointment noShow = save(withNoShow, classic, "2026-10-26T05:00:00Z", "2026-10-26T06:00:00Z");
+        noShow.markNoShow(FixedClockConfiguration.NOW);
+        appointments.saveAndFlush(noShow);
+
+        clients.saveAndFlush(new Client("+998900000935", "Elena"));
+
+        assertThat(listPhones("0000093", null))
+                .containsExactlyInAnyOrder(
+                        "+998900000931", "+998900000932", "+998900000933", "+998900000934", "+998900000935");
+        assertThat(listPhones("0000093", "regular"))
+                .containsExactly("+998900000932", "+998900000931");
+        assertThat(listPhones("0000093", "lapsed"))
+                .containsExactlyInAnyOrder("+998900000933");
+        assertThat(listPhones("0000093", "no_shows"))
+                .containsExactlyInAnyOrder("+998900000934");
+    }
+
+    @Test
+    void summaryCountsTotalAndRecentClientsWithoutCollidingWithGetById() throws Exception {
+        String beforeBody = send(get("/clients/summary"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").isNumber())
+                .andExpect(jsonPath("$.newLast30Days").isNumber())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        long totalBefore = ((Number) JsonPath.read(beforeBody, "$.total")).longValue();
+        long newBefore = ((Number) JsonPath.read(beforeBody, "$.newLast30Days")).longValue();
+
+        Client oldClient = clients.saveAndFlush(new Client("+998900000941", "Old Client"));
+        jdbc.update("update clients set created_at = '2026-09-01T00:00:00Z' where id = ?", oldClient.getId());
+        clients.saveAndFlush(new Client("+998900000942", "New Client"));
+
+        send(get("/clients/summary"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(totalBefore + 2))
+                .andExpect(jsonPath("$.newLast30Days").value(newBefore + 1));
+    }
+
+    private List<String> listPhones(String q, String segment) throws Exception {
+        MockHttpServletRequestBuilder req = get("/clients").param("q", q);
+        if (segment != null) {
+            req = req.param("segment", segment);
+        }
+        String body = send(req)
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        return JsonPath.read(body, "$[*].phone");
     }
 }

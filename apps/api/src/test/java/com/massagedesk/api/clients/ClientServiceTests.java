@@ -44,8 +44,8 @@ class ClientServiceTests {
     }
 
     private List<String> phonesFound(String q) {
-        return service.list(q, 200, 0).stream()
-                .map(ClientView::phone)
+        return service.list(q, null, 200, 0).stream()
+                .map(v -> v.client().phone())
                 .filter(p -> p.startsWith("+9989000008"))
                 .toList();
     }
@@ -209,12 +209,12 @@ class ClientServiceTests {
         create("+998900000802", "B");
         create("+998900000803", "C");
 
-        List<String> all = service.list("", 200, 0).stream().map(ClientView::phone).toList();
+        List<String> all = service.list("", null, 200, 0).stream().map(v -> v.client().phone()).toList();
         int first = all.indexOf("+998900000801");
 
-        List<String> page = service.list(null, 2, first).stream().map(ClientView::phone).toList();
+        List<String> page = service.list(null, null, 2, first).stream().map(v -> v.client().phone()).toList();
         assertThat(page).containsExactly("+998900000801", "+998900000802");
-        assertThat(service.list(null, 1, first + 2).get(0).phone()).isEqualTo("+998900000803");
+        assertThat(service.list(null, null, 1, first + 2).get(0).client().phone()).isEqualTo("+998900000803");
     }
 
     @Test

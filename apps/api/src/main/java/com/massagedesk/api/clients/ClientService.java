@@ -24,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ClientService {
 
     private static final Pattern PHONE_CHARACTERS = Pattern.compile("^[0-9+()\\-\\s]+$");
+    private static final Duration NEW_CLIENT_WINDOW = Duration.ofDays(30);
 
     /** A client together with the master's time zone, safe to use outside the transaction. */
     public record ClientView(UUID id, String phone, String name, String notes, Instant createdAt, ZoneId zone) {
@@ -38,6 +39,14 @@ public class ClientService {
             Instant nextAppointmentAt,
             Integer visitIntervalDays,
             ZoneId zone) {
+    }
+
+    /** A client row together with visit stats for the list endpoint. */
+    public record ClientListView(ClientView client, ClientStatsView stats) {
+    }
+
+    /** Total number of clients and how many were added in the last 30 days. */
+    public record ClientsSummaryView(long total, long newLast30Days) {
     }
 
     private final ClientRepository clients;
@@ -114,13 +123,20 @@ public class ClientService {
     }
 
     @Transactional(readOnly = true)
-    public List<ClientView> list(String q, int limit, int offset) {
+    public List<ClientListView> list(String q, ClientSegment segment, int limit, int offset) {
         String query = q == null ? "" : q.trim();
-        List<Client> found = query.isEmpty()
-                ? clients.list(limit, offset)
-                : clients.search(containsPattern(query), phonePattern(query), limit, offset);
+        String namePattern = query.isEmpty() ? null : containsPattern(query);
+        String phonePattern = query.isEmpty() ? null : phonePattern(query);
+        List<ClientDirectory.Row> found =
+                directory.page(namePattern, phonePattern, segment, clock.instant(), limit, offset);
         ZoneId zone = settings.get().getTimeZone();
-        return found.stream().map(c -> view(c, zone)).toList();
+        return found.stream().map(row -> listView(row, zone)).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public ClientsSummaryView summary() {
+        ClientDirectory.Summary s = directory.summary(clock.instant().minus(NEW_CLIENT_WINDOW));
+        return new ClientsSummaryView(s.total(), s.newClients());
     }
 
     /** {@code %q%} with the LIKE metacharacters {@code \}, {@code %} and {@code _} escaped. */
@@ -165,6 +181,12 @@ public class ClientService {
                 s.nextAppointmentAt(),
                 visitIntervalDays(s.visits(), s.firstVisitAt(), s.lastVisitAt()),
                 zone);
+    }
+
+    private static ClientListView listView(ClientDirectory.Row row, ZoneId zone) {
+        ClientView client = new ClientView(
+                row.id(), row.phone(), row.name(), row.notes(), row.createdAt(), zone);
+        return new ClientListView(client, statsView(row.stats(), zone));
     }
 
     private static ClientView view(Client c, ZoneId zone) {
