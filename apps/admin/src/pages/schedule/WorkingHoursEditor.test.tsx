@@ -92,11 +92,8 @@ afterEach(() => {
 describe("WorkingHoursEditor", () => {
   it("shows loading skeleton while initial queries are pending", () => {
     respond.mockImplementation(() => new Promise(() => {}));
-    const { container } = (() => {
-      renderEditor();
-      return { container: document.body };
-    })();
-    expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
+    renderEditor();
+    expect(document.body.querySelector('[aria-busy="true"]')).not.toBeNull();
   });
 
   it("shows load error on 500, retries on click, and shows network error when fetch rejects", async () => {
@@ -310,6 +307,22 @@ describe("WorkingHoursEditor", () => {
     );
   });
 
+  it("clears form alert on the next edit after a save error", async () => {
+    mockDefaultGets(async () => json({ code: "INVALID_HOURS" }, 422, "application/problem+json"));
+
+    renderEditor();
+    await screen.findByRole("heading", { name: HOURS_TITLE });
+
+    const monEnd1 = screen.getByLabelText<HTMLInputElement>("Понедельник, время 1: конец");
+    fireEvent.change(monEnd1, { target: { value: "12:00" } });
+    fireEvent.click(screen.getByRole("button", { name: "Сохранить" }));
+
+    await waitFor(() => expect(screen.getByRole("alert")).toBeTruthy());
+
+    fireEvent.change(monEnd1, { target: { value: "12:30" } });
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
   it("keeps Save disabled and shows offline hint after edits when offline, while fields stay editable", async () => {
     vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
     mockDefaultGets();
@@ -326,6 +339,24 @@ describe("WorkingHoursEditor", () => {
     expect(screen.getByText(SAVE_OFFLINE_HINT)).toBeTruthy();
   });
 
+  it("updates draft and keeps Save disabled when workingHours cache updates and there are no unsaved edits", async () => {
+    mockDefaultGets();
+    const { queryClient } = renderEditor();
+    await screen.findByRole("heading", { name: HOURS_TITLE });
+
+    act(() => {
+      queryClient.setQueryData(queryKeys.workingHours, {
+        blocks: [{ weekday: 1, start: "08:00", end: "16:00" }],
+      });
+    });
+
+    await waitFor(() =>
+      expect(screen.getByLabelText<HTMLInputElement>("Понедельник, время 1: начало").value).toBe("08:00"),
+    );
+    expect(screen.getByLabelText<HTMLInputElement>("Понедельник, время 1: конец").value).toBe("16:00");
+    expect(screen.getByRole<HTMLButtonElement>("button", { name: "Сохранить" }).disabled).toBe(true);
+  });
+
   it("preserves unsaved edits when workingHours query cache updates in the background", async () => {
     mockDefaultGets();
     const { queryClient } = renderEditor();
@@ -334,10 +365,11 @@ describe("WorkingHoursEditor", () => {
     const monEnd1 = screen.getByLabelText<HTMLInputElement>("Понедельник, время 1: конец");
     fireEvent.change(monEnd1, { target: { value: "12:00" } });
 
-    act(() => {
+    await act(async () => {
       queryClient.setQueryData(queryKeys.workingHours, {
         blocks: [{ weekday: 1, start: "08:00", end: "16:00" }],
       });
+      await new Promise((resolve) => setTimeout(resolve, 0));
     });
 
     expect(monEnd1.value).toBe("12:00");

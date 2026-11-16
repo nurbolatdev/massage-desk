@@ -24,9 +24,17 @@ function HoursForm({ saved, timeZone }: { saved: readonly WorkingBlock[]; timeZo
   const titleRef = useRef<HTMLHeadingElement>(null);
   const saveRef = useRef<HTMLButtonElement>(null);
 
+  const [base, setBase] = useState<readonly WorkingBlock[]>(saved);
   const [draft, setDraft] = useState<wh.WeekDraft>(() => wh.toDraft(saved));
   const [conflicts, setConflicts] = useState<AppointmentConflict[] | null>(null);
   const [done, setDone] = useState(false);
+
+  if (saved !== base) {
+    setBase(saved);
+    if (wh.sameWeek(draft, base)) {
+      setDraft(wh.toDraft(saved));
+    }
+  }
 
   const online = useOnline();
   const save = useSaveWorkingHours();
@@ -34,6 +42,7 @@ function HoursForm({ saved, timeZone }: { saved: readonly WorkingBlock[]; timeZo
   const edit = (update: (current: wh.WeekDraft) => wh.WeekDraft) => {
     setDraft(update);
     setDone(false);
+    if (save.isError) save.reset();
   };
 
   const dirty = !wh.sameWeek(draft, saved);
@@ -44,6 +53,7 @@ function HoursForm({ saved, timeZone }: { saved: readonly WorkingBlock[]; timeZo
       { blocks: wh.toBlocks(draft), force },
       {
         onSuccess: (week) => {
+          setBase(week.blocks);
           setDraft(wh.toDraft(week.blocks));
           setConflicts(null);
           setDone(true);

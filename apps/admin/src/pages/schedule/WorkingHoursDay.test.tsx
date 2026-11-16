@@ -70,14 +70,18 @@ describe("WorkingHoursDay", () => {
     expect(addButton.disabled).toBe(false);
 
     fireEvent.click(addButton);
-    expect(group.getByLabelText<HTMLInputElement>("Понедельник, время 3: начало").value).toBe("20:00");
+    const start3 = group.getByLabelText<HTMLInputElement>("Понедельник, время 3: начало");
+    expect(start3.value).toBe("20:00");
     expect(group.getByLabelText<HTMLInputElement>("Понедельник, время 3: конец").value).toBe("21:00");
     expect(addButton.disabled).toBe(false);
+    expect(document.activeElement).toBe(start3);
 
     fireEvent.click(addButton);
-    expect(group.getByLabelText<HTMLInputElement>("Понедельник, время 4: начало").value).toBe("22:00");
+    const start4 = group.getByLabelText<HTMLInputElement>("Понедельник, время 4: начало");
+    expect(start4.value).toBe("22:00");
     expect(group.getByLabelText<HTMLInputElement>("Понедельник, время 4: конец").value).toBe("23:00");
     expect(addButton.disabled).toBe(true);
+    expect(document.activeElement).toBe(start4);
   });
 
   it("removes ranges and turns the day into a day off when removing the last range", () => {
@@ -94,11 +98,31 @@ describe("WorkingHoursDay", () => {
     fireEvent.click(group.getByRole("button", { name: "Удалить: Понедельник, время 2" }));
     expect(group.queryByLabelText("Понедельник, время 2: начало")).toBeNull();
     expect(group.getByLabelText<HTMLInputElement>("Понедельник, время 1: начало").value).toBe("09:00");
+    const remove1 = group.getByRole("button", { name: "Удалить: Понедельник, время 1" });
+    expect(document.activeElement).toBe(remove1);
 
-    fireEvent.click(group.getByRole("button", { name: "Удалить: Понедельник, время 1" }));
-    expect(group.getByRole("checkbox", { name: "Выходной" }).getAttribute("aria-checked")).toBe("true");
+    fireEvent.click(remove1);
+    const dayOff = group.getByRole("checkbox", { name: "Выходной" });
+    expect(dayOff.getAttribute("aria-checked")).toBe("true");
+    expect(document.activeElement).toBe(dayOff);
     expect(group.queryByLabelText("Понедельник, время 1: начало")).toBeNull();
     expect(group.queryByRole("button", { name: "Добавить время" })).toBeNull();
+  });
+
+  it("moves focus to the remaining remove button when removing the first of two ranges", () => {
+    render(
+      <DayHarness
+        initial={[
+          { start: "09:00", end: "13:00" },
+          { start: "14:00", end: "19:00" },
+        ]}
+      />,
+    );
+
+    const group = mondayGroup();
+    fireEvent.click(group.getByRole("button", { name: "Удалить: Понедельник, время 1" }));
+    expect(group.getByLabelText<HTMLInputElement>("Понедельник, время 1: начало").value).toBe("14:00");
+    expect(document.activeElement).toBe(group.getByRole("button", { name: "Удалить: Понедельник, время 1" }));
   });
 
   it("toggles day off on and off", () => {
