@@ -75,9 +75,12 @@ insert into profiles (user_id, role, display_name) values ('<auth user id>', 'ma
 | POST | `/appointments/{id}/reschedule` | ✅ M1 | Move, keeping the booked length |
 | POST | `/appointments/{id}/cancel` | ✅ M1 | Cancel; frees the time |
 | POST | `/appointments/{id}/no-show` | ✅ M1 | Mark a no-show after the start |
-| GET | `/clients?q&limit&offset` | ✅ M1 | List and search clients |
+| GET | `/clients?q&segment&limit&offset` | ✅ M1 | List and search clients with visit stats |
+| GET | `/clients/summary` | ✅ M1 | Number of clients and new ones in the last 30 days |
 | POST | `/clients` | ✅ M1 | Add a client; `409` when the phone exists |
 | GET | `/clients/{id}` | ✅ M1 | One client |
+| GET | `/clients/{id}/stats` | ✅ M1 | Visit stats of one client |
+| GET | `/clients/{id}/appointments?limit&offset` | ✅ M1 | A client's appointments, newest first |
 | PATCH | `/clients/{id}` | ✅ M1 | Change name or notes |
 | GET | `/services` | ✅ M1 | All services, active and inactive |
 | POST | `/services` | ✅ M1 | Add a service |
@@ -151,11 +154,32 @@ All three return the updated appointment (same shape as the create response). An
 
 ## Clients
 
-`GET /clients` returns a JSON array of clients. `q` (at most 100 characters) filters by name (case-insensitive substring) and, when it consists only of phone characters (digits, `+`, spaces, brackets, dashes), also by phone digits. A blank `q` lists everyone. Order: by name alphabetically, clients without a name last, then by phone. Paging: `limit` 1..200 (default 50), `offset` from 0 (default 0); there is no total count.
+`GET /clients` returns a JSON array of clients. `q` (at most 100 characters) filters by name (case-insensitive substring) and, when it consists only of phone characters (digits, `+`, spaces, brackets, dashes), also by phone digits. A blank `q` lists everyone. Order: by name alphabetically, clients without a name last, then by phone. Paging: `limit` 1..200 (default 50), `offset` from 0 (default 0); there is no total count in the list; see `GET /clients/summary`. `segment` (optional: `regular`, `lapsed` or `no_shows`) keeps only clients of that segment; any other value gives `400`.
 
 ```json
-{"id":"<uuid>","phone":"+998901234567","name":"Aziza","notes":null,"createdAt":"2026-11-02T10:15:00+05:00"}
+{"id":"<uuid>","phone":"+998901234567","name":"Aziza","notes":null,"createdAt":"2026-11-02T10:15:00+05:00","stats":{"visits":3,"totalSpent":280000,"noShows":1,"lastVisitAt":"2026-10-12T10:00:00+05:00","nextAppointmentAt":"2026-11-03T10:00:00+05:00","visitIntervalDays":14}}
 ```
+
+`POST`, `PATCH` and `GET /clients/{id}` return the same client without `stats`.
+
+**Visit stats.** A visit is an appointment that is `done`, or `confirmed` and already ended; an appointment in progress is not counted. `GET /clients/{id}/stats` returns the same `stats` object for one client:
+
+- `visits`: the number of visits.
+- `totalSpent`: the sum of the current service prices over the visits (`0` without visits).
+- `noShows`: appointments marked `no_show`.
+- `lastVisitAt`: the start of the last visit, or `null`.
+- `nextAppointmentAt`: the start of the earliest `confirmed` appointment that starts no earlier than now, or `null`.
+- `visitIntervalDays`: how often the client comes, in days: the time between the first and the last visit divided by `visits - 1`, rounded, at least `1`; `null` with fewer than two visits.
+
+**Segments.** `regular`: 3 or more visits, and the last visit is at most 60 days ago or the client has a next appointment. `lapsed`: at least one visit, no next appointment, and the last visit is more than 60 days ago. `no_shows`: at least one no-show. `regular` and `lapsed` never overlap; `no_shows` can overlap with either.
+
+**Summary.** `GET /clients/summary` returns the counts of all clients, regardless of search and segment; "new" means added within the last 30 days (a rolling window, not a calendar month).
+
+```json
+{"total":142,"newLast30Days":9}
+```
+
+**History.** `GET /clients/{id}/appointments?limit&offset` returns the client's appointments of all statuses, newest first, in the same shape as `GET /appointments`. Paging is the same as in the list (`limit` 1..200, default 50; `offset` from 0), without a total count. `404` `client not found` for an unknown client.
 
 `POST /clients` takes `{"phone":"+998 90 123-45-67","name":"Aziza","notes":"..."}`; only `phone` is required. The phone is parsed with phone number rules (same as the apps): a number without `+` is read as a number of the default country (`app.phone.default-region`, `UZ`), only valid numbers are accepted, and the result is stored as E.164 (9 to 15 digits) and cannot be changed later, because chats are matched by it. Response `201`.
 
@@ -166,6 +190,12 @@ All three return the updated appointment (same shape as the create response). An
 - `409` (`application/problem+json`): `client with this phone already exists`.
 
 Clients cannot be deleted: appointments and chats refer to them.
+
+Known gaps:
+
+- `totalSpent` uses the current service prices: an appointment does not store its price, so changing a price changes the sum of past visits.
+- There is no index on `appointments (client_id, …)`; add one when appointments become numerous.
+- The segment thresholds (3 visits, 60 days) are fixed in the code.
 
 ## Services
 
