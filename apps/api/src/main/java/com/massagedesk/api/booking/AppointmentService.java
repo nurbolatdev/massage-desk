@@ -157,6 +157,19 @@ public class AppointmentService {
         Instant windowStart = from.atStartOfDay(zone).toInstant();
         Instant windowEnd = to.plusDays(1).atStartOfDay(zone).toInstant();
         List<Appointment> found = appointments.findOverlapping(windowStart, windowEnd);
+        return listViews(found, zone);
+    }
+
+    /** Appointments of one client across all statuses, newest first. */
+    @Transactional(readOnly = true)
+    public List<AppointmentListView> ofClient(UUID clientId, int limit, int offset) {
+        if (!clients.existsById(clientId)) {
+            throw new BookingException(Reason.CLIENT_NOT_FOUND, "client not found");
+        }
+        return listViews(appointments.findByClient(clientId, limit, offset), settings.get().getTimeZone());
+    }
+
+    private List<AppointmentListView> listViews(List<Appointment> found, ZoneId zone) {
         Map<UUID, Client> clientsById = new HashMap<>();
         clients.findAllById(found.stream().map(a -> a.getClient().getId()).collect(Collectors.toSet()))
                 .forEach(c -> clientsById.put(c.getId(), c));

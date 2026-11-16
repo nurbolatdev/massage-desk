@@ -91,6 +91,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/clients/{clientId}/appointments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A client's appointments, newest first */
+        get: operations["listClientAppointments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/clients/{id}": {
         parameters: {
             query?: never;
@@ -843,6 +860,52 @@ export interface operations {
             };
             /** @description a client with this phone already exists */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+        };
+    };
+    listClientAppointments: {
+        parameters: {
+            query?: {
+                /** @description page size, 1..200 */
+                limit?: number;
+                /** @description rows to skip */
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                /** @description client id */
+                clientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description appointments of all statuses, newest first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppointmentListItem"][];
+                };
+            };
+            /** @description invalid id or query parameter */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+            /** @description client not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

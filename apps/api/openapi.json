@@ -440,6 +440,81 @@
         "tags" : [ "clients" ]
       }
     },
+    "/clients/{clientId}/appointments" : {
+      "get" : {
+        "operationId" : "listClientAppointments",
+        "parameters" : [ {
+          "description" : "client id",
+          "in" : "path",
+          "name" : "clientId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "description" : "page size, 1..200",
+          "in" : "query",
+          "name" : "limit",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 50,
+            "maximum" : 200,
+            "minimum" : 1
+          }
+        }, {
+          "description" : "rows to skip",
+          "in" : "query",
+          "name" : "offset",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 0,
+            "minimum" : 0
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/AppointmentListItem"
+                  }
+                }
+              }
+            },
+            "description" : "appointments of all statuses, newest first"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "description" : "invalid id or query parameter"
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "description" : "client not found"
+          }
+        },
+        "summary" : "A client's appointments, newest first",
+        "tags" : [ "booking" ]
+      }
+    },
     "/clients/{id}" : {
       "get" : {
         "operationId" : "getClient",

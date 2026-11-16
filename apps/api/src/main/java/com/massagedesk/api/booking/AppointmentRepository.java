@@ -53,4 +53,14 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID> 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select a from Appointment a where a.id = :id")
     Optional<Appointment> findByIdForUpdate(@Param("id") UUID id);
+
+    /** All statuses, newest first. */
+    @Query(nativeQuery = true, value = """
+            select a.* from appointments a
+            where a.client_id = :clientId
+            order by lower(a.period) desc, a.id desc
+            limit :limit offset :offset
+            """)
+    List<Appointment> findByClient(
+            @Param("clientId") UUID clientId, @Param("limit") int limit, @Param("offset") int offset);
 }
