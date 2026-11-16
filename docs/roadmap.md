@@ -525,6 +525,7 @@ Split into eight pull requests.
   1. `feat(admin): working hours editor`
   1. `feat(admin): working hours view on the schedule page`
   1. `docs: admin working hours editor`
+  1. `fix(admin): working hours editor review fixes`
 
 ### M1-18 · Admin: clients
 
