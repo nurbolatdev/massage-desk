@@ -23,6 +23,7 @@ export function ClientNote({ client }: { client: Client }) {
   const fieldRef = useRef<HTMLTextAreaElement>(null);
   const [edited, setEdited] = useState<string | null>(null);
   const [propNotes, setPropNotes] = useState(client.notes);
+  // The field shows the server response until the parent re-renders after setQueryData.
   const [savedOverride, setSavedOverride] = useState<string | null>(null);
 
   if (client.notes !== propNotes) {
@@ -57,7 +58,10 @@ export function ClientNote({ client }: { client: Client }) {
         maxLength={NOTE_MAX_LENGTH}
         readOnly={save.isPending}
         value={draft}
-        onChange={(e) => setEdited(e.target.value)}
+        onChange={(e) => {
+          if (save.isSuccess) save.reset();
+          setEdited(e.target.value);
+        }}
         className="w-full resize-y rounded-10 border border-line bg-note px-12 py-10 text-body text-ink"
       />
       {dirty && (

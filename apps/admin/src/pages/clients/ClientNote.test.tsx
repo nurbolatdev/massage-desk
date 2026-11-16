@@ -129,6 +129,24 @@ describe("ClientNote", () => {
     expect(document.activeElement).toBe(field);
   });
 
+  it("does not show the saved status again after typing and reverting", async () => {
+    respond.mockResolvedValueOnce(jsonResponse(makeClient("Болит шея")));
+
+    renderNote(makeClient(null));
+    const field = screen.getByLabelText(NOTE_FIELD_LABEL) as HTMLTextAreaElement;
+
+    fireEvent.change(field, { target: { value: "Болит шея" } });
+    fireEvent.click(screen.getByRole("button", { name: NOTE_SAVE_LABEL }));
+    await waitFor(() => {
+      expect(screen.getByRole("status").textContent).toBe(NOTE_SAVED);
+    });
+
+    fireEvent.change(field, { target: { value: "Болит шея!" } });
+    fireEvent.change(field, { target: { value: "Болит шея" } });
+
+    expect(screen.getByRole("status").textContent).toBe("");
+  });
+
   it("clears note when saving empty string and server returns notes: null", async () => {
     respond.mockResolvedValueOnce(jsonResponse(makeClient(null)));
 
