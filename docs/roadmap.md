@@ -561,8 +561,9 @@ Split into four pull requests: the clients table, the client profile with notes,
 - **Branch:** `feature/api-client-visits`
 - **Pull request:** `feat(api): client visits and stats`
 - **Depends on:** M1-8
-- **Commits (planned):**
+- **Commits:**
   1. `feat(api): client visits`
+  1. `feat(api): client stats`
   1. `feat(api): client stats in the list`
   1. `docs: client visits api`
 

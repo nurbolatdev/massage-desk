@@ -6,6 +6,9 @@ import com.massagedesk.api.events.DomainEventType;
 import com.massagedesk.api.events.EventActor;
 import com.massagedesk.api.persistence.SqlStates;
 import com.massagedesk.api.settings.SettingsRepository;
+import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.List;
@@ -21,25 +24,51 @@ import org.springframework.transaction.annotation.Transactional;
 public class ClientService {
 
     private static final Pattern PHONE_CHARACTERS = Pattern.compile("^[0-9+()\\-\\s]+$");
+    private static final Duration NEW_CLIENT_WINDOW = Duration.ofDays(30);
 
     /** A client together with the master's time zone, safe to use outside the transaction. */
     public record ClientView(UUID id, String phone, String name, String notes, Instant createdAt, ZoneId zone) {
     }
 
+    /** Visit summary of a client together with the master's time zone. */
+    public record ClientStatsView(
+            int visits,
+            BigDecimal totalSpent,
+            int noShows,
+            Instant lastVisitAt,
+            Instant nextAppointmentAt,
+            Integer visitIntervalDays,
+            ZoneId zone) {
+    }
+
+    /** A client row together with visit stats for the list endpoint. */
+    public record ClientListView(ClientView client, ClientStatsView stats) {
+    }
+
+    /** Total number of clients and how many were added in the last 30 days. */
+    public record ClientsSummaryView(long total, long newLast30Days) {
+    }
+
     private final ClientRepository clients;
+    private final ClientDirectory directory;
     private final SettingsRepository settings;
     private final DomainEventRecorder recorder;
     private final PhoneProperties phoneProperties;
+    private final Clock clock;
 
     public ClientService(
             ClientRepository clients,
+            ClientDirectory directory,
             SettingsRepository settings,
             DomainEventRecorder recorder,
-            PhoneProperties phoneProperties) {
+            PhoneProperties phoneProperties,
+            Clock clock) {
         this.clients = clients;
+        this.directory = directory;
         this.settings = settings;
         this.recorder = recorder;
         this.phoneProperties = phoneProperties;
+        this.clock = clock;
     }
 
     @Transactional
@@ -65,6 +94,13 @@ public class ClientService {
         return view(find(id));
     }
 
+    @Transactional(readOnly = true)
+    public ClientStatsView stats(UUID id) {
+        find(id);
+        ZoneId zone = settings.get().getTimeZone();
+        return statsView(directory.statsOf(id, clock.instant()), zone);
+    }
+
     @Transactional
     public ClientView update(UUID id, String name, String notes, EventActor actor) {
         Client client = find(id);
@@ -87,13 +123,20 @@ public class ClientService {
     }
 
     @Transactional(readOnly = true)
-    public List<ClientView> list(String q, int limit, int offset) {
+    public List<ClientListView> list(String q, ClientSegment segment, int limit, int offset) {
         String query = q == null ? "" : q.trim();
-        List<Client> found = query.isEmpty()
-                ? clients.list(limit, offset)
-                : clients.search(containsPattern(query), phonePattern(query), limit, offset);
+        String namePattern = query.isEmpty() ? null : containsPattern(query);
+        String phonePattern = query.isEmpty() ? null : phonePattern(query);
+        List<ClientDirectory.Row> found =
+                directory.page(namePattern, phonePattern, segment, clock.instant(), limit, offset);
         ZoneId zone = settings.get().getTimeZone();
-        return found.stream().map(c -> view(c, zone)).toList();
+        return found.stream().map(row -> listView(row, zone)).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public ClientsSummaryView summary() {
+        ClientDirectory.Summary s = directory.summary(clock.instant().minus(NEW_CLIENT_WINDOW));
+        return new ClientsSummaryView(s.total(), s.newClients());
     }
 
     /** {@code %q%} with the LIKE metacharacters {@code \}, {@code %} and {@code _} escaped. */
@@ -119,6 +162,31 @@ public class ClientService {
 
     private ClientView view(Client client) {
         return view(client, settings.get().getTimeZone());
+    }
+
+    static Integer visitIntervalDays(int visits, Instant first, Instant last) {
+        if (visits < 2 || first == null || last == null) {
+            return null;
+        }
+        long days = Math.round(Duration.between(first, last).toMinutes() / 1440.0 / (visits - 1));
+        return Math.max(1, Math.toIntExact(days));
+    }
+
+    private static ClientStatsView statsView(ClientDirectory.VisitStats s, ZoneId zone) {
+        return new ClientStatsView(
+                s.visits(),
+                s.totalSpent(),
+                s.noShows(),
+                s.lastVisitAt(),
+                s.nextAppointmentAt(),
+                visitIntervalDays(s.visits(), s.firstVisitAt(), s.lastVisitAt()),
+                zone);
+    }
+
+    private static ClientListView listView(ClientDirectory.Row row, ZoneId zone) {
+        ClientView client = new ClientView(
+                row.id(), row.phone(), row.name(), row.notes(), row.createdAt(), zone);
+        return new ClientListView(client, statsView(row.stats(), zone));
     }
 
     private static ClientView view(Client c, ZoneId zone) {

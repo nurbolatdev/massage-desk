@@ -187,11 +187,20 @@ class ClientsControllerTests {
     @Test
     void invalidListParametersAreBadRequest() throws Exception {
         String longQuery = "a".repeat(101);
-        for (String[] p : new String[][] {{"limit", "0"}, {"limit", "201"}, {"offset", "-1"}, {"q", longQuery}}) {
+        for (String[] p : new String[][] {
+            {"limit", "0"}, {"limit", "201"}, {"offset", "-1"}, {"q", longQuery}, {"segment", "vip"}
+        }) {
             send(get("/clients").param(p[0], p[1]), StaffRole.MASTER)
                     .andExpect(status().isBadRequest())
                     .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
         }
+    }
+
+    @Test
+    void validSegmentParameterReturnsArray() throws Exception {
+        send(get("/clients").param("segment", "regular"), StaffRole.MASTER)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray());
     }
 
     @Test
