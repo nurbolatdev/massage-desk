@@ -520,11 +520,12 @@ Split into eight pull requests.
 
 - **Branch:** `feature/admin-working-hours-editor`
 - **Pull request:** `feat(admin): working hours editor`
-- **Commits (planned):**
+- **Commits:**
   1. `feat(admin): working hours day row`
   1. `feat(admin): working hours editor`
   1. `feat(admin): working hours view on the schedule page`
   1. `docs: admin working hours editor`
+  1. `fix(admin): working hours editor review fixes`
 
 ### M1-18 · Admin: clients
 
