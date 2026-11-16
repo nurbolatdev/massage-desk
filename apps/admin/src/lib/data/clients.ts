@@ -64,19 +64,21 @@ export function nextOffset(
   return pages.reduce((sum, page) => sum + page.length, 0);
 }
 
-/** Flattens pages while deduplicating clients by `id` in first-seen order. */
-export function uniqueClients(pages: readonly (readonly Client[])[]): Client[] {
+/** Flattens pages while deduplicating rows by `id` in first-seen order. */
+export function uniqueById<T extends { id: string }>(pages: readonly (readonly T[])[]): T[] {
   const seen = new Set<string>();
-  const result: Client[] = [];
+  const result: T[] = [];
   for (const page of pages) {
-    for (const client of page) {
-      if (seen.has(client.id)) continue;
-      seen.add(client.id);
-      result.push(client);
+    for (const row of page) {
+      if (seen.has(row.id)) continue;
+      seen.add(row.id);
+      result.push(row);
     }
   }
   return result;
 }
+
+export const uniqueClients: (pages: readonly (readonly Client[])[]) => Client[] = uniqueById;
 
 export function hasName(client: Pick<Client, "name">): boolean {
   return Boolean(client.name?.trim());
@@ -152,10 +154,10 @@ export function noteSaveErrorText(error: unknown): string {
   return "Заметка не сохранена. Попробуйте ещё раз через минуту.";
 }
 
-export type NoteView = "loading" | "error" | "offline" | "note";
+export type BlockView = "loading" | "error" | "offline" | "ready";
 
-/** Picks the body state for the client note block; cached data beats errors and offline pauses. */
-export function noteView({
+/** Picks the body state for a client card block; cached data beats errors and offline pauses. */
+export function blockView({
   hasData,
   error,
   paused,
@@ -163,8 +165,8 @@ export function noteView({
   hasData: boolean;
   error: unknown;
   paused: boolean;
-}): NoteView {
-  if (hasData) return "note";
+}): BlockView {
+  if (hasData) return "ready";
   if (error != null) return "error";
   if (paused) return "offline";
   return "loading";

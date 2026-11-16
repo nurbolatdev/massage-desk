@@ -12,7 +12,7 @@ import {
   clientName,
   clientSinceText,
   hasName,
-  noteView,
+  blockView,
   type Client,
 } from "@/lib/data/clients";
 import { useClient } from "@/lib/data/hooks";
@@ -29,7 +29,7 @@ function ProfileBody({
 }) {
   const query = useClient(client.id);
   const shown = query.data ?? client;
-  const view = noteView({
+  const view = blockView({
     hasData: query.data !== undefined,
     error: query.error,
     paused: query.fetchStatus === "paused",
@@ -73,7 +73,7 @@ function ProfileBody({
         </p>
       )}
 
-      {view === "note" && query.data && <ClientNote client={query.data} />}
+      {view === "ready" && query.data && <ClientNote client={query.data} />}
     </>
   );
 }
