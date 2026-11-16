@@ -15,6 +15,7 @@ import { useClient } from "@/lib/data/hooks";
 
 import { ClientAvatar } from "./ClientAvatar";
 import { BlockError, BlockSkeleton } from "./ClientBlockState";
+import { ClientHistory } from "./ClientHistory";
 import { ClientNote } from "./ClientNote";
 import { ClientStats } from "./ClientStats";
 
@@ -65,6 +66,8 @@ function ProfileBody({
       )}
 
       {view === "ready" && query.data && <ClientNote client={query.data} />}
+
+      <ClientHistory clientId={client.id} />
     </>
   );
 }

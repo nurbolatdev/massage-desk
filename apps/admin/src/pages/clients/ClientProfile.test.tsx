@@ -221,7 +221,6 @@ describe("ClientProfile", () => {
     nameRef.current?.focus();
     expect(document.activeElement).toBe(nameRef.current);
 
-    expect(container.textContent).not.toContain("История");
     expect(container.textContent).not.toContain("Открыть переписку");
   });
 });
