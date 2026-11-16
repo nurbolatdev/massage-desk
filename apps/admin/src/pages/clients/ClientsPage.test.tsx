@@ -337,7 +337,9 @@ describe("ClientsPage", () => {
     const showMore = await screen.findByRole("button", { name: SHOW_MORE });
     expect(showMore.getAttribute("aria-disabled")).toBe("true");
     fireEvent.click(showMore);
+    await new Promise((resolve) => setTimeout(resolve, 50));
     expect(requestParams()).toHaveLength(1);
+    expect(showMore.getAttribute("aria-disabled")).toBe("true");
   });
 
   it("shows offline search status and sends no q request when searching offline", async () => {

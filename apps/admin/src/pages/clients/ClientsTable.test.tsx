@@ -94,6 +94,7 @@ describe("ClientsTable", () => {
     expect(tableRef.current).not.toBe(table);
     expect(tableRef.current?.contains(table)).toBe(true);
     expect(tableRef.current?.classList.contains("overflow-x-auto")).toBe(false);
+    expect(tableRef.current?.classList.contains("overflow-hidden")).toBe(true);
 
     tableRef.current?.focus();
     expect(document.activeElement).toBe(tableRef.current);

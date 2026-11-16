@@ -112,30 +112,16 @@ export function ClientsPage() {
           title={LOAD_FAILED}
           text={loadErrorText(clients.error)}
           action={
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => void clients.refetch()}
-            >
-              <RefreshCw
-                size={icon.button}
-                strokeWidth={icon.stroke}
-                aria-hidden="true"
-              />
+            <Button type="button" variant="secondary" onClick={() => void clients.refetch()}>
+              <RefreshCw size={icon.button} strokeWidth={icon.stroke} aria-hidden="true" />
               Повторить
             </Button>
           }
         />
       )}
-      {view === "empty" && (
-        <StateCard icon={Users} title={EMPTY_TITLE} text={EMPTY_TEXT} />
-      )}
+      {view === "empty" && <StateCard icon={Users} title={EMPTY_TITLE} text={EMPTY_TEXT} />}
       {view === "notFound" && (
-        <StateCard
-          icon={Search}
-          title={notFoundTitle(term)}
-          text={NOT_FOUND_TEXT}
-        />
+        <StateCard icon={Search} title={notFoundTitle(term)} text={NOT_FOUND_TEXT} />
       )}
       {view === "list" && (
         <div className="flex flex-col items-start gap-12">

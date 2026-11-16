@@ -13,8 +13,7 @@ import {
   type Client,
 } from "@/lib/data/clients";
 
-const TH =
-  "border-b border-line px-16 py-14 text-left text-secondary text-muted";
+const TH = "border-b border-line px-16 py-14 text-left text-secondary text-muted";
 const TD = "border-b border-divider px-16 py-12";
 
 function ClientAvatar({ name }: { name: string | null }) {
@@ -42,7 +41,7 @@ export function ClientsTable({
       ref={tableRef}
       tabIndex={-1}
       aria-label={CLIENTS_TITLE}
-      className="w-full min-w-0 rounded-16 border border-line bg-surface"
+      className="w-full min-w-0 overflow-hidden rounded-16 border border-line bg-surface"
     >
       <div className="overflow-x-auto">
         <table className="w-full border-collapse">
@@ -64,20 +63,14 @@ export function ClientsTable({
                   <div className="flex items-center gap-10">
                     <ClientAvatar name={client.name} />
                     <div className="flex min-w-0 flex-col">
-                      <span className="text-body font-bold text-ink">
-                        {clientName(client)}
-                      </span>
+                      <span className="text-body font-bold text-ink">{clientName(client)}</span>
                       {hasName(client) && (
-                        <span className="text-secondary font-medium text-muted">
-                          {client.phone}
-                        </span>
+                        <span className="text-secondary font-medium text-muted">{client.phone}</span>
                       )}
                     </div>
                   </div>
                 </td>
-                <td
-                  className={`${TD} text-body text-text-strong whitespace-nowrap`}
-                >
+                <td className={`${TD} text-body text-text-strong whitespace-nowrap`}>
                   {clientSince(client.createdAt)}
                 </td>
               </tr>
