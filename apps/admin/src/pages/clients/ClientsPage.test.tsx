@@ -3,6 +3,7 @@ import {
   QueryClient,
   QueryClientProvider,
   onlineManager,
+  type InfiniteData,
 } from "@tanstack/react-query";
 import {
   cleanup,
@@ -21,12 +22,18 @@ import {
   LOAD_FAILED,
   MORE_FAILED,
   NOT_FOUND_TEXT,
+  NOTE_FIELD_LABEL,
+  NOTE_SAVED,
+  NOTE_SAVE_LABEL,
+  PICK_CLIENT,
+  PROFILE_LABEL,
   SEARCH_LABEL,
   SEARCH_OFFLINE,
   SEARCH_PLACEHOLDER,
   SHOW_MORE,
   type Client,
 } from "@/lib/data/clients";
+import { queryKeys } from "@/lib/data/queryKeys";
 
 import { ClientsPage } from "./ClientsPage";
 
@@ -63,11 +70,14 @@ function renderPage() {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
-  return render(
-    <QueryClientProvider client={client}>
-      <ClientsPage />
-    </QueryClientProvider>,
-  );
+  return {
+    ...render(
+      <QueryClientProvider client={client}>
+        <ClientsPage />
+      </QueryClientProvider>,
+    ),
+    queryClient: client,
+  };
 }
 
 function requestParams(): Array<{
@@ -358,5 +368,184 @@ describe("ClientsPage", () => {
     const status = await screen.findByRole("status");
     expect(status.textContent).toBe(SEARCH_OFFLINE);
     expect(requestParams().every((p) => p.q === null)).toBe(true);
+  });
+
+  it("shows the profile prompt with no selected row after loading", async () => {
+    const rows = [
+      makeClient("c1", "Айгуль Сапарова"),
+      makeClient("c2", "Ержан Бекенов"),
+    ];
+    respond.mockResolvedValueOnce(jsonResponse(rows));
+
+    renderPage();
+    const table = await screen.findByRole("table", { name: "Клиенты" });
+    const panel = screen.getByRole("complementary", { name: PROFILE_LABEL });
+    expect(within(panel).getByText(PICK_CLIENT)).not.toBeNull();
+
+    for (const button of within(table).getAllByRole("button")) {
+      expect(button.getAttribute("aria-current")).toBeNull();
+    }
+  });
+
+  it("selects a client, focuses the profile heading, and loads a fresh note", async () => {
+    const rows = [
+      { ...makeClient("c1", "Айгуль Сапарова"), notes: "Старая заметка" },
+      makeClient("c2", "Ержан Бекенов"),
+    ];
+    const fresh = { ...rows[0]!, notes: "Свежая заметка" };
+    respond.mockImplementation(async (req) => {
+      const path = new URL(req.url).pathname;
+      if (path === "/clients/c1") return jsonResponse(fresh);
+      return jsonResponse(rows);
+    });
+
+    renderPage();
+    const table = await screen.findByRole("table", { name: "Клиенты" });
+    const rowButton = within(table).getByRole("button", {
+      name: /Айгуль Сапарова/,
+    });
+    fireEvent.click(rowButton);
+
+    expect(rowButton.getAttribute("aria-current")).toBe("true");
+    const panel = screen.getByRole("complementary", { name: PROFILE_LABEL });
+    const heading = within(panel).getByRole("heading", {
+      name: "Айгуль Сапарова",
+    });
+    expect(document.activeElement).toBe(heading);
+
+    const noteField = (await within(panel).findByLabelText(
+      NOTE_FIELD_LABEL,
+    )) as HTMLTextAreaElement;
+    expect(noteField.value).toBe("Свежая заметка");
+    expect(
+      respond.mock.calls.some(
+        ([req]) =>
+          req.method === "GET" && new URL(req.url).pathname === "/clients/c1",
+      ),
+    ).toBe(true);
+  });
+
+  it("saves a note, updates the list cache, and preserves it when switching back", async () => {
+    const store = new Map<string, Client>([
+      ["c1", makeClient("c1", "Айгуль Сапарова")],
+      ["c2", { ...makeClient("c2", "Ержан Бекенов"), notes: "Заметка Ержана" }],
+    ]);
+    respond.mockImplementation(async (req) => {
+      const path = new URL(req.url).pathname;
+      if (req.method === "PATCH" && path === "/clients/c1") {
+        const body = (await req.json()) as { notes: string };
+        const updated = { ...store.get("c1")!, notes: body.notes };
+        store.set("c1", updated);
+        return jsonResponse(updated);
+      }
+      if (path === "/clients/c1") return jsonResponse(store.get("c1"));
+      if (path === "/clients/c2") return jsonResponse(store.get("c2"));
+      return jsonResponse([...store.values()]);
+    });
+
+    const { queryClient } = renderPage();
+    const table = await screen.findByRole("table", { name: "Клиенты" });
+
+    fireEvent.click(
+      within(table).getByRole("button", { name: /Айгуль Сапарова/ }),
+    );
+    const panel = screen.getByRole("complementary", { name: PROFILE_LABEL });
+    const noteField = (await within(panel).findByLabelText(
+      NOTE_FIELD_LABEL,
+    )) as HTMLTextAreaElement;
+
+    fireEvent.change(noteField, { target: { value: "Любит тёплое масло" } });
+    fireEvent.click(
+      within(panel).getByRole("button", { name: NOTE_SAVE_LABEL }),
+    );
+
+    await waitFor(() => {
+      expect(within(panel).getByRole("status").textContent).toBe(NOTE_SAVED);
+    });
+
+    const cached = queryClient.getQueryData<InfiniteData<Client[]>>(
+      queryKeys.clients.list(""),
+    );
+    expect(cached?.pages[0]?.find((c) => c.id === "c1")?.notes).toBe(
+      "Любит тёплое масло",
+    );
+
+    fireEvent.click(
+      within(table).getByRole("button", { name: /Ержан Бекенов/ }),
+    );
+    await waitFor(() => {
+      const field = within(panel).getByLabelText(
+        NOTE_FIELD_LABEL,
+      ) as HTMLTextAreaElement;
+      expect(field.value).toBe("Заметка Ержана");
+    });
+
+    fireEvent.click(
+      within(table).getByRole("button", { name: /Айгуль Сапарова/ }),
+    );
+    await waitFor(() => {
+      const field = within(panel).getByLabelText(
+        NOTE_FIELD_LABEL,
+      ) as HTMLTextAreaElement;
+      expect(field.value).toBe("Любит тёплое масло");
+    });
+  });
+
+  it("hides the card when search is empty, restores selection on clear, and prompts when filtered out", async () => {
+    const c1 = makeClient("c1", "Айгуль Сапарова");
+    const c2 = makeClient("c2", "Ержан Бекенов");
+    respond.mockImplementation(async (req) => {
+      const url = new URL(req.url);
+      if (url.pathname === "/clients/c1") return jsonResponse(c1);
+      const q = url.searchParams.get("q");
+      if (q === "zzz") return jsonResponse([]);
+      if (q === "Ерж") return jsonResponse([c2]);
+      return jsonResponse([c1, c2]);
+    });
+
+    renderPage();
+    const table = await screen.findByRole("table", { name: "Клиенты" });
+    fireEvent.click(
+      within(table).getByRole("button", { name: /Айгуль Сапарова/ }),
+    );
+    await screen.findByLabelText(NOTE_FIELD_LABEL);
+
+    const searchbox = screen.getByRole("searchbox", { name: SEARCH_LABEL });
+    fireEvent.change(searchbox, { target: { value: "zzz" } });
+    expect(await screen.findByText(NOT_FOUND_TEXT)).not.toBeNull();
+    expect(
+      screen.queryByRole("complementary", { name: PROFILE_LABEL }),
+    ).toBeNull();
+
+    fireEvent.change(searchbox, { target: { value: "" } });
+    const restoredPanel = await screen.findByRole("complementary", {
+      name: PROFILE_LABEL,
+    });
+    expect(
+      within(restoredPanel).getByRole("heading", { name: "Айгуль Сапарова" }),
+    ).not.toBeNull();
+
+    fireEvent.change(searchbox, { target: { value: "Ерж" } });
+    await waitFor(() => {
+      const panel = screen.getByRole("complementary", { name: PROFILE_LABEL });
+      expect(within(panel).getByText(PICK_CLIENT)).not.toBeNull();
+    });
+  });
+
+  it("does not render the profile panel on empty list or initial load error", async () => {
+    respond.mockResolvedValueOnce(jsonResponse([]));
+    renderPage();
+    expect(await screen.findByText(EMPTY_TITLE)).not.toBeNull();
+    expect(
+      screen.queryByRole("complementary", { name: PROFILE_LABEL }),
+    ).toBeNull();
+
+    cleanup();
+    respond.mockResolvedValueOnce(jsonResponse({ message: "err" }, 500));
+    renderPage();
+    expect(await screen.findByText(LOAD_FAILED)).not.toBeNull();
+    expect(
+      screen.queryByRole("complementary", { name: PROFILE_LABEL }),
+    ).toBeNull();
   });
 });
