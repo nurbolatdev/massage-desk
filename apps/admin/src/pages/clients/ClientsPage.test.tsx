@@ -38,6 +38,7 @@ import { queryKeys } from "@/lib/data/queryKeys";
 import { ClientsPage } from "./ClientsPage";
 
 const respond = vi.hoisted(() => vi.fn<(r: Request) => Promise<Response>>());
+const listReply = vi.hoisted(() => vi.fn<(r: Request) => Promise<Response>>());
 
 vi.mock("@/lib/api", () => ({
   api: createApi({
@@ -85,7 +86,7 @@ function requestParams(): Array<{
   limit: string | null;
   offset: string | null;
 }> {
-  return respond.mock.calls.map(([req]) => {
+  return listReply.mock.calls.map(([req]) => {
     const url = new URL(req.url);
     return {
       q: url.searchParams.get("q"),
@@ -96,7 +97,25 @@ function requestParams(): Array<{
 }
 
 beforeEach(() => {
+  listReply.mockReset();
   respond.mockReset();
+  respond.mockImplementation((req) => {
+    const path = new URL(req.url).pathname;
+    if (path.endsWith("/stats")) {
+      return Promise.resolve(
+        jsonResponse({
+          visits: 0,
+          totalSpent: 0,
+          noShows: 0,
+          lastVisitAt: null,
+          nextAppointmentAt: null,
+          visitIntervalDays: null,
+        }),
+      );
+    }
+    if (path.endsWith("/appointments")) return Promise.resolve(jsonResponse([]));
+    return listReply(req);
+  });
 });
 
 afterEach(() => {
@@ -112,7 +131,7 @@ describe("ClientsPage", () => {
       makeClient("c2", "Ержан Бекенов"),
       makeClient("c3", "Марат Каримов"),
     ];
-    respond.mockResolvedValueOnce(jsonResponse(rows));
+    listReply.mockResolvedValueOnce(jsonResponse(rows));
 
     const { container } = renderPage();
     expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
@@ -127,7 +146,7 @@ describe("ClientsPage", () => {
   });
 
   it("shows empty state when API returns no clients without search", async () => {
-    respond.mockResolvedValueOnce(jsonResponse([]));
+    listReply.mockResolvedValueOnce(jsonResponse([]));
 
     renderPage();
 
@@ -141,7 +160,7 @@ describe("ClientsPage", () => {
       makeClient("c2", "Ержан Бекенов"),
     ];
     const filtered = [makeClient("c1", "Айгуль Сапарова")];
-    respond.mockImplementation(async (req) => {
+    listReply.mockImplementation(async (req) => {
       const q = new URL(req.url).searchParams.get("q");
       return jsonResponse(q === "Айг" ? filtered : initial);
     });
@@ -172,7 +191,7 @@ describe("ClientsPage", () => {
       makeClient("c1", "Айгуль Сапарова"),
       makeClient("c2", "Ержан Бекенов"),
     ];
-    respond.mockImplementation(async (req) => {
+    listReply.mockImplementation(async (req) => {
       const q = new URL(req.url).searchParams.get("q");
       return jsonResponse(q ? [] : initial);
     });
@@ -197,7 +216,7 @@ describe("ClientsPage", () => {
   it("loads next page on Show more and focuses table when list ends", async () => {
     const page1 = Array.from({ length: 50 }, (_, i) => makeClient(`p1-${i}`));
     const page2 = Array.from({ length: 10 }, (_, i) => makeClient(`p2-${i}`));
-    respond.mockImplementation(async (req) => {
+    listReply.mockImplementation(async (req) => {
       const offset = new URL(req.url).searchParams.get("offset");
       return jsonResponse(offset === "50" ? page2 : page1);
     });
@@ -222,7 +241,7 @@ describe("ClientsPage", () => {
     const page1 = Array.from({ length: 50 }, (_, i) => makeClient(`p1-${i}`));
     const page2 = Array.from({ length: 10 }, (_, i) => makeClient(`p2-${i}`));
     let nextCalls = 0;
-    respond.mockImplementation(async (req) => {
+    listReply.mockImplementation(async (req) => {
       const offset = new URL(req.url).searchParams.get("offset");
       if (offset !== "50") return jsonResponse(page1);
       nextCalls += 1;
@@ -249,7 +268,7 @@ describe("ClientsPage", () => {
 
   it("shows error state with retry on 500 and network failure", async () => {
     const rows = [makeClient("c1", "Айгуль Сапарова")];
-    respond
+    listReply
       .mockResolvedValueOnce(jsonResponse({ message: "err" }, 500))
       .mockResolvedValueOnce(jsonResponse(rows));
 
@@ -265,7 +284,7 @@ describe("ClientsPage", () => {
     ).not.toBeNull();
 
     cleanup();
-    respond.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    listReply.mockRejectedValueOnce(new TypeError("Failed to fetch"));
     renderPage();
     expect(await screen.findByText(LOAD_FAILED)).not.toBeNull();
     expect(
@@ -279,7 +298,7 @@ describe("ClientsPage", () => {
     const page1 = Array.from({ length: 50 }, (_, i) => makeClient(`p1-${i}`));
     const page2 = Array.from({ length: 50 }, (_, i) => makeClient(`p2-${i}`));
     let release: (r: Response) => void = () => {};
-    respond.mockImplementation((req) => {
+    listReply.mockImplementation((req) => {
       if (new URL(req.url).searchParams.get("offset") === "50") {
         return new Promise<Response>((resolve) => {
           release = resolve;
@@ -308,7 +327,7 @@ describe("ClientsPage", () => {
   it("does not steal focus from the search field when the term changes during loading more", async () => {
     const page1 = Array.from({ length: 50 }, (_, i) => makeClient(`p1-${i}`));
     let release: (r: Response) => void = () => {};
-    respond.mockImplementation((req) => {
+    listReply.mockImplementation((req) => {
       const params = new URL(req.url).searchParams;
       if (params.get("offset") === "50") {
         return new Promise<Response>((resolve) => {
@@ -341,7 +360,7 @@ describe("ClientsPage", () => {
   it("marks Show more unavailable when offline", async () => {
     vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
     const page1 = Array.from({ length: 50 }, (_, i) => makeClient(`p1-${i}`));
-    respond.mockResolvedValueOnce(jsonResponse(page1));
+    listReply.mockResolvedValueOnce(jsonResponse(page1));
 
     renderPage();
     const showMore = await screen.findByRole("button", { name: SHOW_MORE });
@@ -354,7 +373,7 @@ describe("ClientsPage", () => {
 
   it("shows offline search status and sends no q request when searching offline", async () => {
     const rows = [makeClient("c1", "Айгуль Сапарова")];
-    respond.mockResolvedValueOnce(jsonResponse(rows));
+    listReply.mockResolvedValueOnce(jsonResponse(rows));
 
     renderPage();
     await screen.findByRole("table", { name: "Клиенты" });
@@ -375,7 +394,7 @@ describe("ClientsPage", () => {
       makeClient("c1", "Айгуль Сапарова"),
       makeClient("c2", "Ержан Бекенов"),
     ];
-    respond.mockResolvedValueOnce(jsonResponse(rows));
+    listReply.mockResolvedValueOnce(jsonResponse(rows));
 
     renderPage();
     const table = await screen.findByRole("table", { name: "Клиенты" });
@@ -393,7 +412,7 @@ describe("ClientsPage", () => {
       makeClient("c2", "Ержан Бекенов"),
     ];
     const fresh = { ...rows[0]!, notes: "Свежая заметка" };
-    respond.mockImplementation(async (req) => {
+    listReply.mockImplementation(async (req) => {
       const path = new URL(req.url).pathname;
       if (path === "/clients/c1") return jsonResponse(fresh);
       return jsonResponse(rows);
@@ -418,7 +437,7 @@ describe("ClientsPage", () => {
     )) as HTMLTextAreaElement;
     expect(noteField.value).toBe("Свежая заметка");
     expect(
-      respond.mock.calls.some(
+      listReply.mock.calls.some(
         ([req]) =>
           req.method === "GET" && new URL(req.url).pathname === "/clients/c1",
       ),
@@ -430,7 +449,7 @@ describe("ClientsPage", () => {
       ["c1", makeClient("c1", "Айгуль Сапарова")],
       ["c2", { ...makeClient("c2", "Ержан Бекенов"), notes: "Заметка Ержана" }],
     ]);
-    respond.mockImplementation(async (req) => {
+    listReply.mockImplementation(async (req) => {
       const path = new URL(req.url).pathname;
       if (req.method === "PATCH" && path === "/clients/c1") {
         const body = (await req.json()) as { notes: string };
@@ -494,7 +513,7 @@ describe("ClientsPage", () => {
   it("hides the card when search is empty, restores selection on clear, and prompts when filtered out", async () => {
     const c1 = makeClient("c1", "Айгуль Сапарова");
     const c2 = makeClient("c2", "Ержан Бекенов");
-    respond.mockImplementation(async (req) => {
+    listReply.mockImplementation(async (req) => {
       const url = new URL(req.url);
       if (url.pathname === "/clients/c1") return jsonResponse(c1);
       const q = url.searchParams.get("q");
@@ -533,7 +552,7 @@ describe("ClientsPage", () => {
   });
 
   it("does not render the profile panel on empty list or initial load error", async () => {
-    respond.mockResolvedValueOnce(jsonResponse([]));
+    listReply.mockResolvedValueOnce(jsonResponse([]));
     renderPage();
     expect(await screen.findByText(EMPTY_TITLE)).not.toBeNull();
     expect(
@@ -541,7 +560,7 @@ describe("ClientsPage", () => {
     ).toBeNull();
 
     cleanup();
-    respond.mockResolvedValueOnce(jsonResponse({ message: "err" }, 500));
+    listReply.mockResolvedValueOnce(jsonResponse({ message: "err" }, 500));
     renderPage();
     expect(await screen.findByText(LOAD_FAILED)).not.toBeNull();
     expect(

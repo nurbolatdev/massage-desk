@@ -17,6 +17,7 @@ import {
 import { ClientProfile } from "./ClientProfile";
 
 const respond = vi.hoisted(() => vi.fn<(r: Request) => Promise<Response>>());
+const clientReply = vi.hoisted(() => vi.fn<(r: Request) => Promise<Response>>());
 
 vi.mock("@/lib/api", () => ({
   api: createApi({
@@ -67,7 +68,25 @@ function renderProfile(client: Client | null, nameRef?: Ref<HTMLHeadingElement>)
 }
 
 beforeEach(() => {
+  clientReply.mockReset();
   respond.mockReset();
+  respond.mockImplementation((req) => {
+    const path = new URL(req.url).pathname;
+    if (path.endsWith("/stats")) {
+      return Promise.resolve(
+        jsonResponse({
+          visits: 0,
+          totalSpent: 0,
+          noShows: 0,
+          lastVisitAt: null,
+          nextAppointmentAt: null,
+          visitIntervalDays: null,
+        }),
+      );
+    }
+    if (path.endsWith("/appointments")) return Promise.resolve(jsonResponse([]));
+    return clientReply(req);
+  });
 });
 
 afterEach(() => {
@@ -82,12 +101,12 @@ describe("ClientProfile", () => {
 
     const aside = screen.getByRole("complementary", { name: PROFILE_LABEL });
     expect(aside.textContent).toContain(PICK_CLIENT);
-    expect(respond).not.toHaveBeenCalled();
+    expect(clientReply).not.toHaveBeenCalled();
   });
 
   it("renders header immediately from row, shows skeleton while loading, then displays fresh note from GET", async () => {
     let resolveGet!: (res: Response) => void;
-    respond.mockImplementationOnce(
+    clientReply.mockImplementationOnce(
       () =>
         new Promise<Response>((resolve) => {
           resolveGet = resolve;
@@ -105,20 +124,20 @@ describe("ClientProfile", () => {
     expect(screen.getByText("АС")).toBeDefined();
     expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
 
-    await waitFor(() => expect(respond).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(clientReply).toHaveBeenCalledTimes(1));
     resolveGet(jsonResponse(makeClient({ name: "Айгуль Сапарова", notes: "свежая" })));
 
     const field = (await screen.findByLabelText(NOTE_FIELD_LABEL)) as HTMLTextAreaElement;
     expect(field.value).toBe("свежая");
     expect(container.querySelector('[aria-busy="true"]')).toBeNull();
-    expect(respond).toHaveBeenCalledTimes(1);
-    expect(respond.mock.calls[0]?.[0].method).toBe("GET");
-    expect(respond.mock.calls[0]?.[0].url).toBe("https://api.test/clients/c1");
+    expect(clientReply).toHaveBeenCalledTimes(1);
+    expect(clientReply.mock.calls[0]?.[0].method).toBe("GET");
+    expect(clientReply.mock.calls[0]?.[0].url).toBe("https://api.test/clients/c1");
   });
 
   it("shows phone once as heading and renders fallback icon instead of initials when name is null", async () => {
     const client = makeClient({ id: "c-null", name: null, phone: "+77025550134", notes: "" });
-    respond.mockResolvedValueOnce(jsonResponse(client));
+    clientReply.mockResolvedValueOnce(jsonResponse(client));
 
     const { container } = renderProfile(client);
 
@@ -129,7 +148,7 @@ describe("ClientProfile", () => {
   });
 
   it("shows server error alert with retry button that reloads the note, and network error text on rejected fetch", async () => {
-    respond.mockResolvedValueOnce(jsonResponse({ message: "fail" }, 500));
+    clientReply.mockResolvedValueOnce(jsonResponse({ message: "fail" }, 500));
 
     renderProfile(makeClient());
 
@@ -137,14 +156,14 @@ describe("ClientProfile", () => {
     expect(alert.textContent).toContain(NOTE_LOAD_FAILED);
     expect(alert.textContent).toContain("Сервер ответил с ошибкой. Код: 500.");
 
-    respond.mockResolvedValueOnce(jsonResponse(makeClient({ notes: "после повтора" })));
+    clientReply.mockResolvedValueOnce(jsonResponse(makeClient({ notes: "после повтора" })));
     fireEvent.click(screen.getByRole("button", { name: "Повторить" }));
 
     const field = (await screen.findByLabelText(NOTE_FIELD_LABEL)) as HTMLTextAreaElement;
     expect(field.value).toBe("после повтора");
 
     cleanup();
-    respond.mockRejectedValueOnce(new TypeError("network down"));
+    clientReply.mockRejectedValueOnce(new TypeError("network down"));
 
     renderProfile(makeClient({ id: "c2" }));
     const networkAlert = await screen.findByRole("alert");
@@ -160,28 +179,28 @@ describe("ClientProfile", () => {
 
     renderProfile(makeClient());
 
-    expect(screen.getByRole("status").textContent).toBe(NOTE_OFFLINE);
-    expect(respond).not.toHaveBeenCalled();
+    expect(screen.getAllByRole("status").map((el) => el.textContent)).toContain(NOTE_OFFLINE);
+    expect(clientReply).not.toHaveBeenCalled();
 
-    respond.mockResolvedValueOnce(jsonResponse(makeClient({ notes: "онлайн заметка" })));
+    clientReply.mockResolvedValueOnce(jsonResponse(makeClient({ notes: "онлайн заметка" })));
     onLineSpy.mockReturnValue(true);
     onlineManager.setOnline(true);
 
     const field = (await screen.findByLabelText(NOTE_FIELD_LABEL)) as HTMLTextAreaElement;
     expect(field.value).toBe("онлайн заметка");
-    expect(respond).toHaveBeenCalledTimes(1);
+    expect(clientReply).toHaveBeenCalledTimes(1);
   });
 
   it("resets unsaved note draft when switching to another client", async () => {
     const c1 = makeClient({ id: "c1", name: "Айгуль Сапарова", notes: "первая" });
     const c2 = makeClient({ id: "c2", name: "Ержан Бекенов", notes: "вторая" });
-    respond.mockResolvedValueOnce(jsonResponse(c1));
+    clientReply.mockResolvedValueOnce(jsonResponse(c1));
 
     const { rerenderProfile } = renderProfile(c1);
     const firstField = (await screen.findByLabelText(NOTE_FIELD_LABEL)) as HTMLTextAreaElement;
     fireEvent.change(firstField, { target: { value: "несохранённый черновик" } });
 
-    respond.mockResolvedValueOnce(jsonResponse(c2));
+    clientReply.mockResolvedValueOnce(jsonResponse(c2));
     rerenderProfile(c2);
 
     await waitFor(async () => {
@@ -192,7 +211,7 @@ describe("ClientProfile", () => {
 
   it("forwards nameRef to h2 heading so it can receive focus, and omits future sections", async () => {
     const client = makeClient({ notes: "заметка" });
-    respond.mockResolvedValueOnce(jsonResponse(client));
+    clientReply.mockResolvedValueOnce(jsonResponse(client));
     const nameRef = createRef<HTMLHeadingElement>();
 
     const { container } = renderProfile(client, nameRef);
@@ -203,7 +222,6 @@ describe("ClientProfile", () => {
     expect(document.activeElement).toBe(nameRef.current);
 
     expect(container.textContent).not.toContain("История");
-    expect(container.textContent).not.toContain("визитов");
     expect(container.textContent).not.toContain("Открыть переписку");
   });
 });
