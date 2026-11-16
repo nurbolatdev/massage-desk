@@ -156,8 +156,13 @@ describe("ClientProfile", () => {
     expect(alert.textContent).toContain(NOTE_LOAD_FAILED);
     expect(alert.textContent).toContain("Сервер ответил с ошибкой. Код: 500.");
 
+    const retry = screen.getByRole("button", { name: "Повторить" });
+    expect(document.getElementById(retry.getAttribute("aria-describedby") ?? "")?.textContent).toBe(
+      NOTE_LOAD_FAILED,
+    );
+
     clientReply.mockResolvedValueOnce(jsonResponse(makeClient({ notes: "после повтора" })));
-    fireEvent.click(screen.getByRole("button", { name: "Повторить" }));
+    fireEvent.click(retry);
 
     const field = (await screen.findByLabelText(NOTE_FIELD_LABEL)) as HTMLTextAreaElement;
     expect(field.value).toBe("после повтора");
@@ -209,7 +214,7 @@ describe("ClientProfile", () => {
     });
   });
 
-  it("forwards nameRef to h2 heading so it can receive focus, and omits future sections", async () => {
+  it("forwards nameRef to h2 heading so it can receive focus, and omits the chat link", async () => {
     const client = makeClient({ notes: "заметка" });
     clientReply.mockResolvedValueOnce(jsonResponse(client));
     const nameRef = createRef<HTMLHeadingElement>();

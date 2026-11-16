@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { RefreshCw } from "lucide-react";
 
 import { icon } from "@/components/icon";
@@ -40,11 +41,14 @@ export function BlockError({
   error: unknown;
   onRetry: () => void;
 }) {
+  const titleId = useId();
   return (
     <div role="alert" className="flex flex-col items-start gap-8">
-      <p className="text-body font-bold text-ink">{title}</p>
+      <p id={titleId} className="text-body font-bold text-ink">
+        {title}
+      </p>
       <p className="text-secondary font-normal text-muted">{loadErrorText(error)}</p>
-      <Button type="button" variant="secondary" onClick={onRetry}>
+      <Button type="button" variant="secondary" aria-describedby={titleId} onClick={onRetry}>
         <RefreshCw size={icon.button} strokeWidth={icon.stroke} aria-hidden="true" />
         Повторить
       </Button>
