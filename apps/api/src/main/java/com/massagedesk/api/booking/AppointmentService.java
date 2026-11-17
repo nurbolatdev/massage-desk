@@ -17,6 +17,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -116,6 +117,7 @@ public class AppointmentService {
             AppointmentSource source,
             EventActor actor,
             @Nullable RequestKey requestKey) {
+        start = start.truncatedTo(ChronoUnit.MICROS);
         scheduleLock.acquire();
         if (requestKey != null) {
             keys.deleteCreatedBefore(clock.instant().minus(KEY_LIFETIME));
