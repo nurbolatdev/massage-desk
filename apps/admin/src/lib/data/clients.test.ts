@@ -123,10 +123,28 @@ describe("replaceInPages", () => {
 
     const next = replaceInPages([[c1], [c2, c3]], updated);
 
-    expect(next).toEqual([[c1], [c2, updated]]);
+    expect(next).toEqual([[c1], [c2, { ...c3, ...updated }]]);
     expect(next[0]?.[0]).toBe(c1);
     expect(next[1]?.[0]).toBe(c2);
-    expect(next[1]?.[1]).toBe(updated);
+  });
+
+  it("keeps the stats of a list row when the saved client has none", () => {
+    const stats = {
+      visits: 6,
+      lastVisitAt: null,
+      nextAppointmentAt: null,
+      noShows: 1,
+      totalSpent: 0,
+      visitIntervalDays: null,
+    };
+    const row = { ...makeClient("1", { notes: "старая" }), stats };
+    const other = { ...makeClient("2"), stats };
+
+    const next = replaceInPages([[row, other]], makeClient("1", { notes: "новая" }));
+
+    expect(next[0]?.[0]).toEqual({ ...row, notes: "новая" });
+    expect(next[0]?.[0]?.stats).toBe(stats);
+    expect(next[0]?.[1]).toBe(other);
   });
 
   it("keeps page contents unchanged when no client matches the id", () => {

@@ -1,3 +1,5 @@
+import type { SegmentFilter } from "./clients";
+
 export const queryKeys = {
   settings: ["settings"] as const,
   workingHours: ["workingHours"] as const,
@@ -16,7 +18,8 @@ export const queryKeys = {
   clients: {
     all: ["clients"] as const,
     lists: ["clients", "list"] as const,
-    list: (term: string) => ["clients", "list", term] as const,
+    list: (term: string, segment: SegmentFilter) => ["clients", "list", term, segment] as const,
+    summary: ["clients", "summary"] as const,
     one: (id: string) => ["clients", "one", id] as const,
     stats: (id: string) => ["clients", "stats", id] as const,
     history: (id: string) => ["clients", "history", id] as const,

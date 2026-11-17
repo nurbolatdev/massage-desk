@@ -8,7 +8,7 @@ import { createApi, unwrap } from "@/lib/api/client";
 import { ApiError } from "@/lib/api/errors";
 
 import type { Client } from "./clients";
-import { useClient, useClients, useSaveClientNote } from "./hooks";
+import { useClient, useClients, useClientsSummary, useSaveClientNote } from "./hooks";
 import { queryKeys } from "./queryKeys";
 
 const respond = vi.hoisted(() => vi.fn<(r: Request) => Promise<Response>>());
@@ -66,7 +66,7 @@ describe("useClients", () => {
     const rows = [makeRow("c1")];
     respond.mockResolvedValueOnce(jsonResponse(rows));
 
-    const { result } = renderHook(() => useClients(""), { wrapper: makeWrapper(makeClient()) });
+    const { result } = renderHook(() => useClients("", "all"), { wrapper: makeWrapper(makeClient()) });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data?.pages).toEqual([rows]);
@@ -81,11 +81,27 @@ describe("useClients", () => {
   it("passes q when term is non-empty", async () => {
     respond.mockResolvedValueOnce(jsonResponse([]));
 
-    const { result } = renderHook(() => useClients("Айг"), { wrapper: makeWrapper(makeClient()) });
+    const { result } = renderHook(() => useClients("Айг", "all"), { wrapper: makeWrapper(makeClient()) });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     const url = new URL(respond.mock.calls[0]?.[0].url ?? "");
     expect(url.searchParams.get("q")).toBe("Айг");
+  });
+
+  it("sends segment only when it is not all", async () => {
+    respond.mockResolvedValueOnce(jsonResponse([])).mockResolvedValueOnce(jsonResponse([]));
+
+    const all = renderHook(() => useClients("", "all"), { wrapper: makeWrapper(makeClient()) });
+    await waitFor(() => expect(all.result.current.isSuccess).toBe(true));
+    expect(new URL(respond.mock.calls[0]?.[0].url ?? "").searchParams.has("segment")).toBe(false);
+
+    const seg = renderHook(() => useClients("Айг", "no_shows"), {
+      wrapper: makeWrapper(makeClient()),
+    });
+    await waitFor(() => expect(seg.result.current.isSuccess).toBe(true));
+    const url = new URL(respond.mock.calls[1]?.[0].url ?? "");
+    expect(url.searchParams.get("q")).toBe("Айг");
+    expect(url.searchParams.get("segment")).toBe("no_shows");
   });
 
   it("loads next page at offset=50 and stops when page has fewer than 50 rows", async () => {
@@ -93,7 +109,7 @@ describe("useClients", () => {
     const page2 = Array.from({ length: 10 }, (_, i) => makeRow(`p2-${i}`));
     respond.mockResolvedValueOnce(jsonResponse(page1)).mockResolvedValueOnce(jsonResponse(page2));
 
-    const { result } = renderHook(() => useClients(""), { wrapper: makeWrapper(makeClient()) });
+    const { result } = renderHook(() => useClients("", "all"), { wrapper: makeWrapper(makeClient()) });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.hasNextPage).toBe(true);
@@ -123,6 +139,21 @@ describe("useClient", () => {
   });
 });
 
+describe("useClientsSummary", () => {
+  it("requests GET /clients/summary", async () => {
+    const summary = { total: 142, newLast30Days: 9 };
+    respond.mockResolvedValueOnce(jsonResponse(summary));
+
+    const { result } = renderHook(() => useClientsSummary(), {
+      wrapper: makeWrapper(makeClient()),
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toEqual(summary);
+    expect(respond.mock.calls[0]?.[0].url).toBe("https://api.test/clients/summary");
+  });
+});
+
 describe("useSaveClientNote", () => {
   it("sends PATCH /clients/{id} and updates one and all cached list queries", async () => {
     const c0 = makeRow("c0");
@@ -131,8 +162,8 @@ describe("useSaveClientNote", () => {
     respond.mockResolvedValueOnce(jsonResponse(saved));
 
     const qc = makeClient();
-    qc.setQueryData(queryKeys.clients.list(""), { pages: [[c0, c1]], pageParams: [0] });
-    qc.setQueryData(queryKeys.clients.list("Айг"), { pages: [[c0, c1]], pageParams: [0] });
+    qc.setQueryData(queryKeys.clients.list("", "all"), { pages: [[c0, c1]], pageParams: [0] });
+    qc.setQueryData(queryKeys.clients.list("Айг", "all"), { pages: [[c0, c1]], pageParams: [0] });
 
     const { result } = renderHook(() => useSaveClientNote("c1"), { wrapper: makeWrapper(qc) });
 
@@ -148,10 +179,34 @@ describe("useSaveClientNote", () => {
     expect(qc.getQueryData(queryKeys.clients.one("c1"))).toEqual(saved);
 
     for (const term of ["", "Айг"]) {
-      const cached = qc.getQueryData<{ pages: Client[][] }>(queryKeys.clients.list(term));
+      const cached = qc.getQueryData<{ pages: Client[][] }>(queryKeys.clients.list(term, "all"));
       expect(cached?.pages[0]?.[0]).toBe(c0);
       expect(cached?.pages[0]?.[1]).toEqual(saved);
     }
+  });
+
+  it("keeps the stats of cached list rows", async () => {
+    const stats = {
+      visits: 3,
+      lastVisitAt: null,
+      nextAppointmentAt: null,
+      noShows: 0,
+      totalSpent: 0,
+      visitIntervalDays: null,
+    };
+    const row = { ...makeRow("c1"), stats };
+    respond.mockResolvedValueOnce(jsonResponse({ ...makeRow("c1"), notes: "Новая" }));
+
+    const qc = makeClient();
+    qc.setQueryData(queryKeys.clients.list("", "all"), { pages: [[row]], pageParams: [0] });
+
+    const { result } = renderHook(() => useSaveClientNote("c1"), { wrapper: makeWrapper(qc) });
+    await act(async () => {
+      await result.current.mutateAsync("Новая");
+    });
+
+    const cached = qc.getQueryData<{ pages: (typeof row)[][] }>(queryKeys.clients.list("", "all"));
+    expect(cached?.pages[0]?.[0]).toEqual({ ...row, notes: "Новая" });
   });
 
   it("rejects with a network ApiError even while offlineManager is offline", async () => {

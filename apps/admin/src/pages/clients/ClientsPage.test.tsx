@@ -483,7 +483,7 @@ describe("ClientsPage", () => {
     });
 
     const cached = queryClient.getQueryData<InfiniteData<Client[]>>(
-      queryKeys.clients.list(""),
+      queryKeys.clients.list("", "all"),
     );
     expect(cached?.pages[0]?.find((c) => c.id === "c1")?.notes).toBe(
       "Любит тёплое масло",

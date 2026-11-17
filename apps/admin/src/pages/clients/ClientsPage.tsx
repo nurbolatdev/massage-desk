@@ -37,7 +37,7 @@ export function ClientsPage() {
   const [text, setText] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const term = useDebouncedValue(text.trim(), SEARCH_DELAY_MS);
-  const clients = useClients(term);
+  const clients = useClients(term, "all");
   const online = useOnline();
   const tableRef = useRef<HTMLElement>(null);
   const moreRef = useRef<HTMLButtonElement>(null);

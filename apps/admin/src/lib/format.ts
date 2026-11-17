@@ -38,6 +38,16 @@ export function formatDayMonthAbbr(day: string): string {
   return cached("daymonthabbr", { day: "numeric", month: "short", timeZone: "UTC" }).format(dayDate(day));
 }
 
+/** "пн, 2 нояб." for a calendar day (YYYY-MM-DD). */
+export function formatWeekdayDayMonth(day: string): string {
+  return cached("weekdaydaymonth", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    timeZone: "UTC",
+  }).format(dayDate(day));
+}
+
 /** "12 окт. 2025 г." for a calendar day (YYYY-MM-DD). */
 export function formatDayMonthYear(day: string): string {
   return cached("daymonthyear", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(
