@@ -91,6 +91,18 @@ describe("generated GET /appointments types", () => {
   });
 });
 
+describe("generated GET /appointments/{id} types", () => {
+  type OneGet = paths["/appointments/{id}"]["get"];
+
+  it("types the path id and the list item response", () => {
+    expectTypeOf<OneGet["parameters"]["path"]["id"]>().toEqualTypeOf<string>();
+    expectTypeOf<OneGet["responses"][200]["content"]["application/json"]>().toEqualTypeOf<
+      components["schemas"]["AppointmentListItem"]
+    >();
+    expect(true).toBe(true);
+  });
+});
+
 describe("generated appointment command types", () => {
   type Status = "confirmed" | "cancelled" | "no_show" | "done";
   type Reschedule = paths["/appointments/{id}/reschedule"]["post"];
@@ -336,6 +348,8 @@ describe("error types", () => {
     expectTypeOf<Problem<paths["/appointments"]["post"], 404>>().toEqualTypeOf<ApiProblem>();
     expectTypeOf<Problem<paths["/appointments"]["post"], 409>>().toEqualTypeOf<ApiProblem>();
     expectTypeOf<Problem<paths["/appointments"]["post"], 422>>().toEqualTypeOf<ApiProblem>();
+    expectTypeOf<Problem<paths["/appointments/{id}"]["get"], 400>>().toEqualTypeOf<ApiProblem>();
+    expectTypeOf<Problem<paths["/appointments/{id}"]["get"], 404>>().toEqualTypeOf<ApiProblem>();
     expectTypeOf<Problem<paths["/appointments/{id}/reschedule"]["post"], 400>>().toEqualTypeOf<ApiProblem>();
     expectTypeOf<Problem<paths["/appointments/{id}/reschedule"]["post"], 404>>().toEqualTypeOf<ApiProblem>();
     expectTypeOf<Problem<paths["/appointments/{id}/reschedule"]["post"], 409>>().toEqualTypeOf<ApiProblem>();

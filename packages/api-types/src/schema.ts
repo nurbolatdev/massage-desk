@@ -22,6 +22,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/appointments/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One appointment with client and service names */
+        get: operations["getAppointment"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/appointments/{id}/cancel": {
         parameters: {
             query?: never;
@@ -708,6 +725,47 @@ export interface operations {
             };
             /** @description outside working hours, in time off or in the past, or the Idempotency-Key was already used with another request */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+        };
+    };
+    getAppointment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description appointment id */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description the appointment, any status, in the same shape as a list item */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppointmentListItem"];
+                };
+            };
+            /** @description invalid id */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+            /** @description appointment not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

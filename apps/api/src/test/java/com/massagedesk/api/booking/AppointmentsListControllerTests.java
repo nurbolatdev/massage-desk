@@ -1,10 +1,12 @@
 package com.massagedesk.api.booking;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.jayway.jsonpath.JsonPath;
 import com.massagedesk.api.TestcontainersConfiguration;
 import com.massagedesk.api.clients.Client;
 import com.massagedesk.api.clients.ClientRepository;
@@ -15,6 +17,8 @@ import com.massagedesk.api.schedule.TimeRange;
 import com.massagedesk.api.security.StaffRole;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,18 +48,25 @@ class AppointmentsListControllerTests {
     @Autowired
     private MassageServiceRepository services;
 
+    private Appointment booked;
+
     @BeforeEach
     void setUp() {
         Client client = clients.saveAndFlush(new Client("+998900000801", "Aigul"));
         MassageService classic = services.saveAndFlush(
                 new MassageService("Classic", 60, new BigDecimal("100000.00"), 1));
-        appointments.saveAndFlush(new Appointment(client, classic,
+        booked = appointments.saveAndFlush(new Appointment(client, classic,
                 new TimeRange(Instant.parse("2026-11-03T05:00:00Z"), Instant.parse("2026-11-03T06:00:00Z")),
                 AppointmentSource.BOT));
     }
 
     private ResultActions list(String query) throws Exception {
         return mvc.perform(get("/appointments" + query)
+                .with(jwt().authorities(new SimpleGrantedAuthority(StaffRole.MASTER.authority()))));
+    }
+
+    private ResultActions one(String id) throws Exception {
+        return mvc.perform(get("/appointments/" + id)
                 .with(jwt().authorities(new SimpleGrantedAuthority(StaffRole.MASTER.authority()))));
     }
 
@@ -123,5 +134,54 @@ class AppointmentsListControllerTests {
     @Test
     void noTokenIsUnauthorized() throws Exception {
         mvc.perform(get("/appointments?from=2026-11-03&to=2026-11-03")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void getsOneAppointmentWithNames() throws Exception {
+        one(booked.getId().toString())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(booked.getId().toString()))
+                .andExpect(jsonPath("$.clientName").value("Aigul"))
+                .andExpect(jsonPath("$.clientPhone").value("+998900000801"))
+                .andExpect(jsonPath("$.serviceName").value("Classic"))
+                .andExpect(jsonPath("$.start").value("2026-11-03T10:00:00+05:00"))
+                .andExpect(jsonPath("$.end").value("2026-11-03T11:00:00+05:00"))
+                .andExpect(jsonPath("$.status").value("confirmed"))
+                .andExpect(jsonPath("$.source").value("bot"));
+    }
+
+    @Test
+    void oneAppointmentMatchesTheListItem() throws Exception {
+        String single = one(booked.getId().toString()).andReturn().getResponse().getContentAsString();
+        String listed = list("?from=2026-11-03&to=2026-11-03").andReturn().getResponse().getContentAsString();
+        Map<String, Object> singleItem = JsonPath.read(single, "$");
+        Map<String, Object> listedItem = JsonPath.read(listed, "$[0]");
+        assertThat(singleItem).isEqualTo(listedItem);
+    }
+
+    @Test
+    void getsACancelledAppointment() throws Exception {
+        booked.cancel();
+        appointments.saveAndFlush(booked);
+        one(booked.getId().toString())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("cancelled"));
+    }
+
+    @Test
+    void unknownIdIs404() throws Exception {
+        one(UUID.randomUUID().toString())
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("APPOINTMENT_NOT_FOUND"));
+    }
+
+    @Test
+    void oneWithoutTokenIsUnauthorized() throws Exception {
+        mvc.perform(get("/appointments/" + booked.getId())).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void oneWithoutStaffRoleIsForbidden() throws Exception {
+        mvc.perform(get("/appointments/" + booked.getId()).with(jwt())).andExpect(status().isForbidden());
     }
 }

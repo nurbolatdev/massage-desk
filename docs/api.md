@@ -72,6 +72,7 @@ insert into profiles (user_id, role, display_name) values ('<auth user id>', 'ma
 | POST | `/webhook/whatsapp` | M2 | Incoming messages |
 | GET | `/slots?serviceId&day` | ✅ M1 | Free start times for a service on a day |
 | GET | `/appointments?from&to` | ✅ M1 | Appointments touching the local days |
+| GET | `/appointments/{id}` | ✅ M1 | One appointment with names, any status |
 | POST | `/appointments` | ✅ M1 | Create; `409` when the time is taken; optional `Idempotency-Key` |
 | POST | `/appointments/{id}/reschedule` | ✅ M1 | Move, keeping the booked length |
 | POST | `/appointments/{id}/cancel` | ✅ M1 | Cancel; frees the time |
@@ -152,6 +153,13 @@ Response `201`:
 All statuses are returned (`confirmed`, `cancelled`, `no_show`, `done`), ordered by start. An appointment that crosses midnight is listed for both days. `clientName` may be `null`. The range is at most 62 days.
 
 - `400` (`application/problem+json`, `INVALID_REQUEST`): a date is missing or invalid; `dates must be within 2000-01-01..2100-12-31`; `from must not be after to`; `range must be at most 62 days`.
+
+### One appointment
+
+`GET /appointments/{id}` returns one appointment of any status in the same shape as a list item (`clientName` may be `null`, times carry the master's offset). It serves links without a day, for example from notifications.
+
+- `400` (`application/problem+json`, `INVALID_REQUEST`): the id is not a UUID.
+- `404` (`application/problem+json`, `APPOINTMENT_NOT_FOUND`): `appointment not found`.
 
 ### Reschedule, cancel and no-show
 

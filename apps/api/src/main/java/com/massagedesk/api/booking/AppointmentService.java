@@ -239,6 +239,14 @@ public class AppointmentService {
         return listViews(appointments.findByClient(clientId, limit, offset), settings.get().getTimeZone());
     }
 
+    /** One appointment of any status with the client and service names, the same shape as a list item. */
+    @Transactional(readOnly = true)
+    public AppointmentListView byId(UUID id) {
+        Appointment found = appointments.findById(id)
+                .orElseThrow(() -> new BookingException(Reason.APPOINTMENT_NOT_FOUND, "appointment not found"));
+        return listViews(List.of(found), settings.get().getTimeZone()).getFirst();
+    }
+
     private List<AppointmentListView> listViews(List<Appointment> found, ZoneId zone) {
         Map<UUID, Client> clientsById = new HashMap<>();
         clients.findAllById(found.stream().map(a -> a.getClient().getId()).collect(Collectors.toSet()))
