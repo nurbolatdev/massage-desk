@@ -12,7 +12,12 @@ import { canOpen, type Section } from "@/sections";
 // Sections that already have a real page; the rest show the placeholder.
 const SchedulePage = lazy(() => import("./schedule/SchedulePage").then((m) => ({ default: m.SchedulePage })));
 const ClientsPage = lazy(() => import("./clients/ClientsPage").then((m) => ({ default: m.ClientsPage })));
-const pages: Partial<Record<string, ComponentType>> = { schedule: SchedulePage, clients: ClientsPage };
+const SettingsPage = lazy(() => import("./settings/SettingsPage").then((m) => ({ default: m.SettingsPage })));
+const pages: Partial<Record<string, ComponentType>> = {
+  schedule: SchedulePage,
+  clients: ClientsPage,
+  settings: SettingsPage,
+};
 
 // Shown when a page chunk cannot be loaded (for example, the connection dropped).
 class ChunkErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
