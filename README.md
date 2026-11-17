@@ -96,7 +96,7 @@ flowchart LR
 | [`packages/shared`](packages/shared) | TypeScript helpers shared by the app and the admin panel | TypeScript, zod |
 | [`packages/api-types`](packages/api-types) | TypeScript types generated from the API contract | openapi-typescript |
 | [`assets/brand`](assets/brand) | Logo sources and generated images | SVG, `npm run brand` |
-| [`docs`](docs) | Architecture, data model, API, design language, roadmap | Markdown |
+| [`docs`](docs) | Architecture, data model, API, design language, deploy, roadmap | Markdown |
 
 ## Getting started
 

@@ -1,0 +1,10 @@
+# Keep secrets, build output and tests out of the image build context.
+target/
+.env
+.env.*
+src/test/
+.idea/
+*.iml
+.vscode/
+.DS_Store
+compose.yaml
