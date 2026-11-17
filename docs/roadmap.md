@@ -625,8 +625,10 @@ Split into three pull requests: the services list, adding and editing services, 
 - **Branch:** `feature/admin-business-settings`
 - **Pull request:** `feat(admin): business settings and time zone`
 - **Depends on:** pull request 2 of 3
-- **Commits (planned):**
+- **Commits:**
   1. `feat(admin): business settings data`
+  1. `feat(admin): conflict dialog with custom copy`
+  1. `feat(admin): address and time zone form`
   1. `feat(admin): business settings and time zone`
   1. `docs: admin settings`
 
