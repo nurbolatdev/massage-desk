@@ -247,6 +247,13 @@ class ProblemResponsesTests {
     }
 
     @Test
+    void bookingAppointmentNotFoundById() throws Exception {
+        String id = UUID.randomUUID().toString();
+        problem(send(get("/appointments/" + id), null),
+                404, "Not Found", "appointment not found", "/appointments/" + id, "APPOINTMENT_NOT_FOUND");
+    }
+
+    @Test
     void bookingNotStarted() throws Exception {
         String id = book(TUESDAY_10);
         problem(send(post("/appointments/" + id + "/no-show"), null),
@@ -268,6 +275,12 @@ class ProblemResponsesTests {
     void invalidId() throws Exception {
         frameworkProblem(send(post("/appointments/not-a-uuid/cancel"), null), 400, "Bad Request",
                 "/appointments/not-a-uuid/cancel");
+    }
+
+    @Test
+    void invalidIdOnRead() throws Exception {
+        frameworkProblem(send(get("/appointments/not-a-uuid"), null), 400, "Bad Request",
+                "/appointments/not-a-uuid");
     }
 
     @Test

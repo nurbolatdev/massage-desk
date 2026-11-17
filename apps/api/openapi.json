@@ -140,6 +140,55 @@
         "tags" : [ "booking" ]
       }
     },
+    "/appointments/{id}" : {
+      "get" : {
+        "operationId" : "getAppointment",
+        "parameters" : [ {
+          "description" : "appointment id",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AppointmentListItem"
+                }
+              }
+            },
+            "description" : "the appointment, any status, in the same shape as a list item"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "description" : "invalid id"
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "description" : "appointment not found"
+          }
+        },
+        "summary" : "One appointment with client and service names",
+        "tags" : [ "booking" ]
+      }
+    },
     "/appointments/{id}/cancel" : {
       "post" : {
         "operationId" : "cancelAppointment",

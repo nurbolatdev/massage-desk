@@ -68,6 +68,19 @@ class AppointmentsController {
         return appointments.between(from, to).stream().map(AppointmentListItem::from).toList();
     }
 
+    @Operation(summary = "One appointment with client and service names")
+    @ApiResponse(responseCode = "200", description = "the appointment, any status, in the same shape as a list item")
+    @ApiResponse(responseCode = "400", description = "invalid id",
+            content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                    schema = @Schema(implementation = ApiProblem.class)))
+    @ApiResponse(responseCode = "404", description = "appointment not found",
+            content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                    schema = @Schema(implementation = ApiProblem.class)))
+    @GetMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
+    AppointmentListItem getAppointment(@Parameter(description = "appointment id") @PathVariable UUID id) {
+        return AppointmentListItem.from(appointments.byId(id));
+    }
+
     @Operation(summary = "Book a service for a client")
     @ApiResponse(responseCode = "201",
             description = "appointment created; a repeat with the same Idempotency-Key returns the appointment as it was created")
