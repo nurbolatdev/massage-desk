@@ -109,6 +109,62 @@ describe("SettingsPage", () => {
     expect(screen.getByRole("status").textContent).toBe(SERVICES_OFFLINE);
     expect(respond).not.toHaveBeenCalled();
   });
+  describe("tabs", () => {
+    const settings = { timeZone: "Asia/Almaty", address: "ул. Абая, 1", botEnabled: true };
+    function serveTabs() {
+      respond.mockImplementation(async (r) =>
+        r.url.endsWith("/settings") ? json(settings) : json([back, legs]),
+      );
+    }
+    const first = () => screen.getByRole("tab", { name: "Услуги и цены" });
+    const second = () => screen.getByRole("tab", { name: "Адрес и часовой пояс" });
+
+    it("shows two tabs with the services tab selected and no settings request", async () => {
+      serveTabs();
+      renderPage();
+      expect(screen.getByRole("tablist", { name: "Разделы настроек" })).not.toBeNull();
+      const panel = screen.getByRole("tabpanel", { name: "Услуги и цены" });
+      expect(first().getAttribute("aria-selected")).toBe("true");
+      expect(first().tabIndex).toBe(0);
+      expect(first().getAttribute("aria-controls")).toBe(panel.id);
+      expect(second().getAttribute("aria-selected")).toBe("false");
+      expect(second().tabIndex).toBe(-1);
+      expect(second().hasAttribute("aria-controls")).toBe(false);
+      await screen.findByRole("table", { name: "Услуги и цены" });
+      expect(respond.mock.calls.some(([r]) => r.url.endsWith("/settings"))).toBe(false);
+    });
+
+    it("opens the address and time zone tab on click", async () => {
+      serveTabs();
+      renderPage();
+      fireEvent.click(second());
+      expect(second().getAttribute("aria-selected")).toBe("true");
+      const panel = screen.getByRole("tabpanel", { name: "Адрес и часовой пояс" });
+      expect(within(panel).getByRole("heading", { level: 2, name: "Адрес и часовой пояс" })).not.toBeNull();
+      expect(await within(panel).findByLabelText("Адрес")).not.toBeNull();
+      expect(screen.queryByRole("table")).toBeNull();
+    });
+
+    it("moves between tabs with the arrow, Home and End keys", () => {
+      serveTabs();
+      renderPage();
+      first().focus();
+      fireEvent.keyDown(first(), { key: "ArrowRight" });
+      expect(second().getAttribute("aria-selected")).toBe("true");
+      expect(document.activeElement).toBe(second());
+      fireEvent.keyDown(second(), { key: "ArrowRight" });
+      expect(first().getAttribute("aria-selected")).toBe("true");
+      expect(document.activeElement).toBe(first());
+      fireEvent.keyDown(first(), { key: "End" });
+      expect(document.activeElement).toBe(second());
+      fireEvent.keyDown(second(), { key: "Home" });
+      expect(document.activeElement).toBe(first());
+      fireEvent.keyDown(first(), { key: "ArrowLeft" });
+      expect(document.activeElement).toBe(second());
+      expect(second().getAttribute("aria-selected")).toBe("true");
+    });
+  });
+
   describe("editing", () => {
     function serve(initial: unknown[]) {
       const list = [...initial] as { id: string }[];
