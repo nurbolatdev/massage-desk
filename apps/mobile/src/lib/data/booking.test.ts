@@ -6,6 +6,7 @@ import { ApiError } from "@/lib/api/errors";
 import { bookAppointment, fetchSlots, searchClients } from "./booking";
 
 const START = "2026-11-03T15:00:00+05:00";
+const KEY = "6f1c2a8e-3b4d-4e5f-9a0b-1c2d3e4f5a6b";
 const PHONE = "+998901234567";
 const appointment = {
   id: "a1",
@@ -38,7 +39,7 @@ function setup(routes: Record<string, Reply>) {
   });
   const sent = () => fetch.mock.calls.map(([r]) => `${r.method} ${r.url}`);
   const bodyOf = async (index: number) => fetch.mock.calls[index]?.[0].clone().json();
-  return { api, sent, bodyOf };
+  return { api, sent, bodyOf, fetch };
 }
 
 describe("fetchSlots", () => {
@@ -67,10 +68,29 @@ describe("bookAppointment", () => {
       client: { kind: "existing", id: "c1", name: "Айгуль" },
       serviceId: "s1",
       start: START,
+      idempotencyKey: KEY,
     });
     expect(sent()).toEqual(["POST https://api.test/appointments"]);
     expect(await bodyOf(0)).toEqual({ clientId: "c1", serviceId: "s1", start: START });
     expect(result).toEqual({ appointment, clientId: "c1", clientName: "Айгуль" });
+  });
+
+  it("sends the idempotency key with POST /appointments only", async () => {
+    const { api, fetch } = setup({
+      "POST /clients": { status: 201, body: client },
+      "POST /appointments": { status: 201, body: appointment },
+    });
+    await bookAppointment(api, {
+      client: { kind: "new", phone: PHONE, name: "Айгуль" },
+      serviceId: "s1",
+      start: START,
+      idempotencyKey: KEY,
+    });
+    const clientsRequest = fetch.mock.calls[0]?.[0];
+    const appointmentsRequest = fetch.mock.calls[1]?.[0];
+    expect(clientsRequest?.headers.get("Idempotency-Key")).toBeNull();
+    expect(appointmentsRequest?.headers.get("Idempotency-Key")).toBe(KEY);
+    expect(appointmentsRequest?.headers.get("Authorization")).toBe("Bearer tok");
   });
 
   it("creates a new client first and books with the new id", async () => {
@@ -82,6 +102,7 @@ describe("bookAppointment", () => {
       client: { kind: "new", phone: PHONE, name: "Айгуль" },
       serviceId: "s1",
       start: START,
+      idempotencyKey: KEY,
     });
     expect(sent()).toEqual(["POST https://api.test/clients", "POST https://api.test/appointments"]);
     expect(await bodyOf(0)).toEqual({ phone: PHONE, name: "Айгуль" });
@@ -98,6 +119,7 @@ describe("bookAppointment", () => {
       client: { kind: "new", phone: PHONE, name: "Айгуль" },
       serviceId: "s1",
       start: START,
+      idempotencyKey: KEY,
     });
     expect(sent()).toEqual([
       "POST https://api.test/clients",
@@ -117,6 +139,7 @@ describe("bookAppointment", () => {
       client: { kind: "new", phone: PHONE, name: "Айгуль" },
       serviceId: "s1",
       start: START,
+      idempotencyKey: KEY,
     });
     expect(result.clientName).toBe("Гульнара");
   });
@@ -130,6 +153,7 @@ describe("bookAppointment", () => {
       client: { kind: "new", phone: PHONE, name: "Айгуль" },
       serviceId: "s1",
       start: START,
+      idempotencyKey: KEY,
     });
     expect(result.clientName).toBe("Айгуль Сапарова");
   });
@@ -144,6 +168,7 @@ describe("bookAppointment", () => {
       client: { kind: "new", phone: PHONE, name: "Айгуль" },
       serviceId: "s1",
       start: START,
+      idempotencyKey: KEY,
     });
     expect(result.clientName).toBe(PHONE);
   });
@@ -157,6 +182,7 @@ describe("bookAppointment", () => {
       client: { kind: "new", phone: PHONE, name: "Айгуль" },
       serviceId: "s1",
       start: START,
+      idempotencyKey: KEY,
     }).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(ApiError);
     expect((error as ApiError).code).toBe("PHONE_TAKEN");
@@ -168,6 +194,7 @@ describe("bookAppointment", () => {
       client: { kind: "existing", id: "c1", name: "Айгуль" },
       serviceId: "s1",
       start: START,
+      idempotencyKey: KEY,
     }).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(ApiError);
     expect(error).toMatchObject({ status: 409, code: "TIME_TAKEN" });
