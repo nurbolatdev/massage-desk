@@ -137,4 +137,44 @@ describe("WorkingHoursConflictDialog", () => {
     expect(description).toContain("1 запись не попадает в новые часы.");
     expect(description).toContain(`Айгуль Сапарова — ${day}, ${time}`);
   });
+
+  it("supports custom title, text, button labels and list name", () => {
+    render(
+      <WorkingHoursConflictDialog
+        conflicts={[makeConflict(0, "Айгуль")]}
+        timeZone={TZ}
+        title="Сменить?"
+        text="Свой текст."
+        confirmLabel="Да"
+        cancelLabel="Нет"
+        listLabel="Свой список"
+        onConfirm={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+    const dialog = screen.getByRole("dialog", { name: "Сменить?" });
+    expect(dialog.textContent).toContain("Свой текст.");
+    expect(within(dialog).getByRole("list", { name: "Свой список" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Да" })).toBeTruthy();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Нет" }));
+  });
+
+  it("renders no list for empty conflicts and describes the dialog by the custom text", () => {
+    render(
+      <WorkingHoursConflictDialog
+        conflicts={[]}
+        timeZone={TZ}
+        title="Сменить?"
+        text="Свой текст."
+        onConfirm={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+    const dialog = screen.getByRole("dialog", { name: "Сменить?" });
+    expect(screen.queryByRole("list")).toBeNull();
+    const ids = (dialog.getAttribute("aria-describedby") ?? "").split(/\s+/).filter(Boolean);
+    const description = ids.map((id) => document.getElementById(id)?.textContent ?? "").join(" ");
+    expect(description).toContain("Свой текст.");
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Изменить часы" }));
+  });
 });
