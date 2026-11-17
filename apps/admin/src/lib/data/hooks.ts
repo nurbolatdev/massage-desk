@@ -10,13 +10,15 @@ import { api, unwrap } from "@/lib/api";
 
 import { type AppointmentAction, postAppointmentAction } from "./appointmentActions";
 import {
-  type Client,
+  type ClientListItem,
   fetchClient,
   fetchClients,
   nextOffset,
   replaceInPages,
   saveClientNote,
+  type SegmentFilter,
 } from "./clients";
+import { fetchClientsSummary } from "./clientList";
 import {
   fetchClientHistory,
   fetchClientStats,
@@ -151,12 +153,19 @@ export function useSaveWorkingHours() {
   });
 }
 
-export function useClients(term: string) {
+export function useClients(term: string, segment: SegmentFilter) {
   return useInfiniteQuery({
-    queryKey: queryKeys.clients.list(term),
-    queryFn: ({ pageParam }) => fetchClients(api, term, pageParam),
+    queryKey: queryKeys.clients.list(term, segment),
+    queryFn: ({ pageParam }) => fetchClients(api, term, segment, pageParam),
     initialPageParam: 0,
     getNextPageParam: nextOffset,
+  });
+}
+
+export function useClientsSummary() {
+  return useQuery({
+    queryKey: queryKeys.clients.summary,
+    queryFn: () => fetchClientsSummary(api),
   });
 }
 
@@ -192,7 +201,7 @@ export function useSaveClientNote(id: string) {
       await queryClient.cancelQueries({ queryKey: queryKeys.clients.one(id) });
       queryClient.setQueryData(queryKeys.clients.one(id), client);
       // Update loaded search pages in place; notes do not change client order or search matching.
-      queryClient.setQueriesData<InfiniteData<Client[]>>(
+      queryClient.setQueriesData<InfiniteData<ClientListItem[]>>(
         { queryKey: queryKeys.clients.lists },
         (data) => data && { ...data, pages: replaceInPages(data.pages, client) },
       );

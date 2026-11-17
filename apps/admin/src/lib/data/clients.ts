@@ -8,6 +8,9 @@ import { formatDayMonthYear } from "@/lib/format";
 type Api = ReturnType<typeof createApi>;
 
 export type Client = components["schemas"]["ClientResponse"];
+export type ClientListItem = components["schemas"]["ClientListItem"];
+export type ClientSegment = "regular" | "lapsed" | "no_shows";
+export type SegmentFilter = "all" | ClientSegment;
 
 export const CLIENTS_PAGE_SIZE = 50;
 export const SEARCH_DELAY_MS = 300;
@@ -41,12 +44,18 @@ export function notFoundTitle(term: string): string {
   return `По запросу «${term}» ничего нет`;
 }
 
-export function fetchClients(api: Api, term: string, offset: number): Promise<Client[]> {
+export function fetchClients(
+  api: Api,
+  term: string,
+  segment: SegmentFilter,
+  offset: number,
+): Promise<ClientListItem[]> {
   return unwrap(
     api.GET("/clients", {
       params: {
         query: {
           ...(term ? { q: term } : {}),
+          ...(segment !== "all" ? { segment } : {}),
           limit: CLIENTS_PAGE_SIZE,
           offset,
         },
@@ -78,8 +87,6 @@ export function uniqueById<T extends { id: string }>(pages: readonly (readonly T
   return result;
 }
 
-export const uniqueClients: (pages: readonly (readonly Client[])[]) => Client[] = uniqueById;
-
 export function hasName(client: Pick<Client, "name">): boolean {
   return Boolean(client.name?.trim());
 }
@@ -105,7 +112,7 @@ export function clientSince(createdAt: string): string {
   return formatDayMonthYear(createdAt.slice(0, 10));
 }
 
-export type ClientsView = "loading" | "error" | "empty" | "notFound" | "list";
+export type ClientsView = "loading" | "error" | "empty" | "notFound" | "emptySegment" | "list";
 
 /** Picks the body state for the clients page; existing data takes precedence over background errors. */
 export function clientsView({
@@ -113,14 +120,19 @@ export function clientsView({
   error,
   count,
   term,
+  segment,
 }: {
   hasData: boolean;
   error: unknown;
   count: number;
   term: string;
+  segment: SegmentFilter;
 }): ClientsView {
   if (!hasData) return error == null ? "loading" : "error";
-  if (count === 0) return term ? "notFound" : "empty";
+  if (count === 0) {
+    if (term) return "notFound";
+    return segment !== "all" ? "emptySegment" : "empty";
+  }
   return "list";
 }
 
@@ -132,12 +144,12 @@ export function saveClientNote(api: Api, id: string, notes: string): Promise<Cli
   return unwrap(api.PATCH("/clients/{id}", { params: { path: { id } }, body: { notes } }));
 }
 
-/** Replaces the matching client in every page while keeping untouched rows by reference. */
-export function replaceInPages(
-  pages: readonly (readonly Client[])[],
+/** Merges the client into the matching row of every page; other rows stay by reference and keep their extra fields. */
+export function replaceInPages<T extends Client>(
+  pages: readonly (readonly T[])[],
   client: Client,
-): Client[][] {
-  return pages.map((page) => page.map((row) => (row.id === client.id ? client : row)));
+): T[][] {
+  return pages.map((page) => page.map((row) => (row.id === client.id ? { ...row, ...client } : row)));
 }
 
 export function clientSinceText(createdAt: string): string {

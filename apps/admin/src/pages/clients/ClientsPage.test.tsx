@@ -31,8 +31,9 @@ import {
   SEARCH_OFFLINE,
   SEARCH_PLACEHOLDER,
   SHOW_MORE,
-  type Client,
+  type ClientListItem,
 } from "@/lib/data/clients";
+import { FILTER_OFFLINE, SEGMENT_EMPTY } from "@/lib/data/clientList";
 import { queryKeys } from "@/lib/data/queryKeys";
 
 import { ClientsPage } from "./ClientsPage";
@@ -50,13 +51,26 @@ vi.mock("@/lib/api", () => ({
   unwrap,
 }));
 
-function makeClient(id: string, name: string | null = `Клиент ${id}`): Client {
+function makeClient(
+  id: string,
+  name: string | null = `Клиент ${id}`,
+  stats: Partial<ClientListItem["stats"]> = {},
+): ClientListItem {
   return {
     id,
     phone: `+7701000${id.slice(-4).padStart(4, "0")}`,
     name,
     notes: null,
     createdAt: "2025-10-12T10:00:00+05:00",
+    stats: {
+      visits: 0,
+      totalSpent: 0,
+      noShows: 0,
+      lastVisitAt: null,
+      nextAppointmentAt: null,
+      visitIntervalDays: null,
+      ...stats,
+    },
   };
 }
 
@@ -79,6 +93,10 @@ function renderPage() {
     ),
     queryClient: client,
   };
+}
+
+function segmentParams(): Array<string | null> {
+  return listReply.mock.calls.map(([req]) => new URL(req.url).searchParams.get("segment"));
 }
 
 function requestParams(): Array<{
@@ -114,6 +132,12 @@ beforeEach(() => {
       );
     }
     if (path.endsWith("/appointments")) return Promise.resolve(jsonResponse([]));
+    if (path.endsWith("/clients/summary")) {
+      return Promise.resolve(jsonResponse({ total: 3, newLast30Days: 1 }));
+    }
+    if (path.endsWith("/settings")) {
+      return Promise.resolve(jsonResponse({ timeZone: "Asia/Almaty" }));
+    }
     return listReply(req);
   });
 });
@@ -125,6 +149,149 @@ afterEach(() => {
 });
 
 describe("ClientsPage", () => {
+  it("shows the summary under the title", async () => {
+    listReply.mockResolvedValueOnce(jsonResponse([makeClient("c1")]));
+    renderPage();
+    expect(await screen.findByText("3 клиента · 1 новый за месяц")).not.toBeNull();
+  });
+
+  it("hides the subtitle when the summary fails or there are no clients", async () => {
+    respond.mockImplementation((req) => {
+      if (new URL(req.url).pathname.endsWith("/clients/summary")) {
+        return Promise.resolve(jsonResponse({ title: "error" }, 500));
+      }
+      return listReply(req);
+    });
+    listReply.mockImplementation(async () => jsonResponse([makeClient("c1")]));
+    const { container } = renderPage();
+    await screen.findByRole("table", { name: "Клиенты" });
+    expect(container.querySelector("h1 + p")).toBeNull();
+
+    cleanup();
+    respond.mockImplementation((req) => {
+      if (new URL(req.url).pathname.endsWith("/clients/summary")) {
+        return Promise.resolve(jsonResponse({ total: 0, newLast30Days: 0 }));
+      }
+      return listReply(req);
+    });
+    const second = renderPage();
+    await screen.findByRole("table", { name: "Клиенты" });
+    expect(second.container.querySelector("h1 + p")).toBeNull();
+  });
+
+  it("loads a segment, searches inside it and returns to all", async () => {
+    const c1 = makeClient("c1", "Айгуль Сапарова");
+    const c2 = makeClient("c2", "Ержан Бекенов");
+    listReply.mockImplementation(async (req) => {
+      const params = new URL(req.url).searchParams;
+      if (params.get("segment") === "no_shows") {
+        return jsonResponse(params.get("q") ? [] : [c2]);
+      }
+      return jsonResponse([c1, c2]);
+    });
+
+    renderPage();
+    expect(
+      within(await screen.findByRole("table", { name: "Клиенты" })).getAllByRole("row"),
+    ).toHaveLength(3);
+
+    const chip = screen.getByRole("button", { name: "С неявками" });
+    fireEvent.click(chip);
+    await waitFor(() =>
+      expect(within(screen.getByRole("table", { name: "Клиенты" })).getAllByRole("row")).toHaveLength(2),
+    );
+    expect(chip.getAttribute("aria-pressed")).toBe("true");
+    expect(segmentParams().at(-1)).toBe("no_shows");
+    expect(requestParams().at(-1)).toEqual({ q: null, limit: "50", offset: "0" });
+
+    fireEvent.change(screen.getByRole("searchbox", { name: SEARCH_LABEL }), {
+      target: { value: "zzz" },
+    });
+    expect(await screen.findByText("По запросу «zzz» ничего нет")).not.toBeNull();
+    const last = new URL(listReply.mock.calls.at(-1)![0].url).searchParams;
+    expect(last.get("q")).toBe("zzz");
+    expect(last.get("segment")).toBe("no_shows");
+
+    fireEvent.change(screen.getByRole("searchbox", { name: SEARCH_LABEL }), {
+      target: { value: "" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Все" }));
+    await waitFor(() => expect(segmentParams().at(-1)).toBeNull());
+    expect(
+      await screen.findByRole("table", { name: "Клиенты" }),
+    ).not.toBeNull();
+  });
+
+  it("shows the empty state of a segment", async () => {
+    listReply.mockImplementation(async (req) => {
+      const segment = new URL(req.url).searchParams.get("segment");
+      return jsonResponse(segment === null ? [makeClient("c1")] : []);
+    });
+    renderPage();
+    await screen.findByRole("table", { name: "Клиенты" });
+    fireEvent.click(screen.getByRole("button", { name: "С неявками" }));
+    expect(await screen.findByText(SEGMENT_EMPTY.no_shows.title)).not.toBeNull();
+    expect(screen.getByText(SEGMENT_EMPTY.no_shows.text)).not.toBeNull();
+  });
+
+  it("clears the selection when the client leaves the segment and does not bring it back", async () => {
+    const c1 = makeClient("c1", "Айгуль Сапарова");
+    const c2 = makeClient("c2", "Ержан Бекенов");
+    listReply.mockImplementation(async (req) => {
+      const url = new URL(req.url);
+      if (url.pathname === "/clients/c1") return jsonResponse(c1);
+      return jsonResponse(url.searchParams.get("segment") === "lapsed" ? [c2] : [c1, c2]);
+    });
+    renderPage();
+    const table = await screen.findByRole("table", { name: "Клиенты" });
+    fireEvent.click(within(table).getByRole("button", { name: /Айгуль Сапарова/ }));
+    await screen.findByLabelText(NOTE_FIELD_LABEL);
+
+    fireEvent.click(screen.getByRole("button", { name: "Давно не были" }));
+    const panel = await screen.findByRole("complementary", { name: PROFILE_LABEL });
+    await waitFor(() => expect(within(panel).getByText(PICK_CLIENT)).not.toBeNull());
+
+    fireEvent.click(screen.getByRole("button", { name: "Все" }));
+    const back = await screen.findByRole("table", { name: "Клиенты" });
+    await waitFor(() => expect(within(back).getAllByRole("row")).toHaveLength(3));
+    for (const button of within(back).getAllByRole("button")) {
+      expect(button.getAttribute("aria-current")).toBeNull();
+    }
+  });
+
+  it("keeps the selection when the client is also in the new segment", async () => {
+    const c1 = makeClient("c1", "Айгуль Сапарова");
+    listReply.mockImplementation(async (req) => {
+      const url = new URL(req.url);
+      if (url.pathname === "/clients/c1") return jsonResponse(c1);
+      return jsonResponse([c1]);
+    });
+    renderPage();
+    const table = await screen.findByRole("table", { name: "Клиенты" });
+    fireEvent.click(within(table).getByRole("button", { name: /Айгуль Сапарова/ }));
+    await screen.findByLabelText(NOTE_FIELD_LABEL);
+
+    fireEvent.click(screen.getByRole("button", { name: "Постоянные" }));
+    await waitFor(() => expect(segmentParams().at(-1)).toBe("regular"));
+    const panel = await screen.findByRole("complementary", { name: PROFILE_LABEL });
+    expect(within(panel).getByRole("heading", { name: "Айгуль Сапарова" })).not.toBeNull();
+  });
+
+  it("explains that a segment cannot be chosen offline", async () => {
+    listReply.mockImplementation(async () => jsonResponse([makeClient("c1")]));
+    renderPage();
+    await screen.findByRole("table", { name: "Клиенты" });
+
+    vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+    onlineManager.setOnline(false);
+    const before = listReply.mock.calls.length;
+    fireEvent.click(screen.getByRole("button", { name: "Постоянные" }));
+
+    const status = await screen.findByRole("status");
+    expect(status.textContent).toBe(FILTER_OFFLINE);
+    expect(listReply.mock.calls.length).toBe(before);
+  });
+
   it("shows skeleton while loading and then renders the clients table without Show more", async () => {
     const rows = [
       makeClient("c1", "Айгуль Сапарова"),
@@ -445,7 +612,7 @@ describe("ClientsPage", () => {
   });
 
   it("saves a note, updates the list cache, and preserves it when switching back", async () => {
-    const store = new Map<string, Client>([
+    const store = new Map<string, ClientListItem>([
       ["c1", makeClient("c1", "Айгуль Сапарова")],
       ["c2", { ...makeClient("c2", "Ержан Бекенов"), notes: "Заметка Ержана" }],
     ]);
@@ -482,8 +649,8 @@ describe("ClientsPage", () => {
       expect(within(panel).getByRole("status").textContent).toBe(NOTE_SAVED);
     });
 
-    const cached = queryClient.getQueryData<InfiniteData<Client[]>>(
-      queryKeys.clients.list(""),
+    const cached = queryClient.getQueryData<InfiniteData<ClientListItem[]>>(
+      queryKeys.clients.list("", "all"),
     );
     expect(cached?.pages[0]?.find((c) => c.id === "c1")?.notes).toBe(
       "Любит тёплое масло",
@@ -566,5 +733,52 @@ describe("ClientsPage", () => {
     expect(
       screen.queryByRole("complementary", { name: PROFILE_LABEL }),
     ).toBeNull();
+  });
+
+  it("shows today's next appointment with the time in the master's time zone", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-11-16T03:00:00Z"));
+    try {
+      listReply.mockResolvedValueOnce(
+        jsonResponse([
+          makeClient("c1", "Айгуль Сапарова", {
+            nextAppointmentAt: "2026-11-16T10:00:00+05:00",
+          }),
+        ]),
+      );
+
+      renderPage();
+      const table = await screen.findByRole("table", { name: "Клиенты" });
+      await within(table).findByText("сегодня, 10:00");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("shows the weekday instead of today when the time zone is unknown", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-11-16T03:00:00Z"));
+    try {
+      respond.mockImplementation((req) => {
+        if (new URL(req.url).pathname.endsWith("/settings")) {
+          return Promise.resolve(jsonResponse({ title: "error" }, 500));
+        }
+        return listReply(req);
+      });
+      listReply.mockResolvedValueOnce(
+        jsonResponse([
+          makeClient("c1", "Айгуль Сапарова", {
+            nextAppointmentAt: "2026-11-16T10:00:00+05:00",
+          }),
+        ]),
+      );
+
+      renderPage();
+      const table = await screen.findByRole("table", { name: "Клиенты" });
+      expect(within(table).getByText("пн, 16 нояб.")).not.toBeNull();
+      expect(within(table).queryByText("сегодня, 10:00")).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

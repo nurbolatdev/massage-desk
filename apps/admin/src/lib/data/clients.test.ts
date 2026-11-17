@@ -18,7 +18,6 @@ import {
   notFoundTitle,
   replaceInPages,
   uniqueById,
-  uniqueClients,
 } from "./clients";
 
 function makeClient(id: string, overrides: Partial<Client> = {}): Client {
@@ -55,17 +54,6 @@ describe("nextOffset", () => {
   });
 });
 
-describe("uniqueClients", () => {
-  it("drops duplicate ids from later pages and preserves first-seen order", () => {
-    const a = makeClient("1", { name: "Айгуль" });
-    const b = makeClient("2", { name: "Болат" });
-    const bDup = makeClient("2", { name: "Болат (обновлённый)" });
-    const c = makeClient("3", { name: "Гульнар" });
-
-    expect(uniqueClients([[a, b], [bDup, c]])).toEqual([a, b, c]);
-  });
-});
-
 describe("clientName and hasName", () => {
   it("falls back to phone when name is null or whitespace", () => {
     expect(clientName({ name: null, phone: "+77010000001" })).toBe("+77010000001");
@@ -99,12 +87,14 @@ describe("clientSince", () => {
 
 describe("clientsView", () => {
   it("picks loading, error, empty, notFound, and list states", () => {
-    expect(clientsView({ hasData: false, error: null, count: 0, term: "" })).toBe("loading");
-    expect(clientsView({ hasData: false, error: new Error("boom"), count: 0, term: "" })).toBe("error");
-    expect(clientsView({ hasData: true, error: null, count: 0, term: "" })).toBe("empty");
-    expect(clientsView({ hasData: true, error: null, count: 0, term: "Айг" })).toBe("notFound");
-    expect(clientsView({ hasData: true, error: null, count: 3, term: "" })).toBe("list");
-    expect(clientsView({ hasData: true, error: new Error("bg"), count: 3, term: "" })).toBe("list");
+    expect(clientsView({ hasData: false, error: null, count: 0, term: "", segment: "all" })).toBe("loading");
+    expect(clientsView({ hasData: false, error: new Error("boom"), count: 0, term: "", segment: "all" })).toBe("error");
+    expect(clientsView({ hasData: true, error: null, count: 0, term: "", segment: "all" })).toBe("empty");
+    expect(clientsView({ hasData: true, error: null, count: 0, term: "Айг", segment: "all" })).toBe("notFound");
+    expect(clientsView({ hasData: true, error: null, count: 3, term: "", segment: "all" })).toBe("list");
+    expect(clientsView({ hasData: true, error: new Error("bg"), count: 3, term: "", segment: "all" })).toBe("list");
+    expect(clientsView({ hasData: true, error: null, count: 0, term: "", segment: "regular" })).toBe("emptySegment");
+    expect(clientsView({ hasData: true, error: null, count: 0, term: "Айг", segment: "regular" })).toBe("notFound");
   });
 });
 
@@ -123,10 +113,28 @@ describe("replaceInPages", () => {
 
     const next = replaceInPages([[c1], [c2, c3]], updated);
 
-    expect(next).toEqual([[c1], [c2, updated]]);
+    expect(next).toEqual([[c1], [c2, { ...c3, ...updated }]]);
     expect(next[0]?.[0]).toBe(c1);
     expect(next[1]?.[0]).toBe(c2);
-    expect(next[1]?.[1]).toBe(updated);
+  });
+
+  it("keeps the stats of a list row when the saved client has none", () => {
+    const stats = {
+      visits: 6,
+      lastVisitAt: null,
+      nextAppointmentAt: null,
+      noShows: 1,
+      totalSpent: 0,
+      visitIntervalDays: null,
+    };
+    const row = { ...makeClient("1", { notes: "старая" }), stats };
+    const other = { ...makeClient("2"), stats };
+
+    const next = replaceInPages([[row, other]], makeClient("1", { notes: "новая" }));
+
+    expect(next[0]?.[0]).toEqual({ ...row, notes: "новая" });
+    expect(next[0]?.[0]?.stats).toBe(stats);
+    expect(next[0]?.[1]).toBe(other);
   });
 
   it("keeps page contents unchanged when no client matches the id", () => {

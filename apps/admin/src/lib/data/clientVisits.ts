@@ -25,6 +25,8 @@ export const STATS_OFFLINE = "Статистика появится, когда 
 export const HISTORY_LOAD_FAILED = "Не получилось загрузить историю.";
 export const HISTORY_OFFLINE = "История появится, когда будет интернет.";
 export const HISTORY_EMPTY = "Записей пока нет.";
+export const HISTORY_MORE_FAILED =
+  "Не получилось загрузить следующие записи. Нажмите «Показать ещё», чтобы попробовать снова.";
 
 export function fetchClientStats(api: Api, id: string): Promise<ClientStats> {
   return unwrap(api.GET("/clients/{id}/stats", { params: { path: { id } } }));
