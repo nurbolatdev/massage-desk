@@ -17,13 +17,17 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.jspecify.annotations.Nullable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,6 +55,16 @@ public class AppointmentService {
             AppointmentView appointment, String clientName, String clientPhone, String serviceName) {
     }
 
+    /** Idempotency key of a create request, scoped to the staff member who sent it. */
+    public record RequestKey(UUID userId, UUID key) {
+        public RequestKey {
+            Objects.requireNonNull(userId, "userId");
+            Objects.requireNonNull(key, "key");
+        }
+    }
+
+    static final Duration KEY_LIFETIME = Duration.ofHours(24);
+
     private final AppointmentRepository appointments;
     private final ClientRepository clients;
     private final MassageServiceRepository services;
@@ -59,6 +73,7 @@ public class AppointmentService {
     private final Clock clock;
     private final DomainEventRecorder recorder;
     private final ScheduleLock scheduleLock;
+    private final IdempotencyKeyRepository keys;
 
     public AppointmentService(
             AppointmentRepository appointments,
@@ -68,7 +83,8 @@ public class AppointmentService {
             SettingsRepository settings,
             Clock clock,
             DomainEventRecorder recorder,
-            ScheduleLock scheduleLock) {
+            ScheduleLock scheduleLock,
+            IdempotencyKeyRepository keys) {
         this.appointments = appointments;
         this.clients = clients;
         this.services = services;
@@ -77,12 +93,45 @@ public class AppointmentService {
         this.clock = clock;
         this.recorder = recorder;
         this.scheduleLock = scheduleLock;
+        this.keys = keys;
     }
 
     /** Books the service for the client; the end is the start plus the service length. */
     @Transactional
     public AppointmentView create(UUID clientId, UUID serviceId, Instant start, AppointmentSource source, EventActor actor) {
+        return create(clientId, serviceId, start, source, actor, null);
+    }
+
+    /**
+     * Books the service for the client, or replays an earlier result for {@code requestKey}.
+     * Checked under the schedule lock before client, service, or schedule checks: a matching
+     * request within 24 hours returns the response as it was created (with no new event); another
+     * body with the same key fails with {@link Reason#IDEMPOTENCY_KEY_REUSED}. Only successful
+     * creations store a key. Lock order is unchanged (advisory lock only, no row lock).
+     */
+    @Transactional
+    public AppointmentView create(
+            UUID clientId,
+            UUID serviceId,
+            Instant start,
+            AppointmentSource source,
+            EventActor actor,
+            @Nullable RequestKey requestKey) {
+        start = start.truncatedTo(ChronoUnit.MICROS);
         scheduleLock.acquire();
+        if (requestKey != null) {
+            keys.deleteCreatedBefore(clock.instant().minus(KEY_LIFETIME));
+            Optional<IdempotencyKey> existing =
+                    keys.findByUserIdAndIdempotencyKey(requestKey.userId(), requestKey.key());
+            if (existing.isPresent()) {
+                IdempotencyKey found = existing.get();
+                if (found.sameRequest(clientId, serviceId, start)) {
+                    return replay(found, source);
+                }
+                throw new BookingException(
+                        Reason.IDEMPOTENCY_KEY_REUSED, "idempotency key was already used with another request");
+            }
+        }
         Client client = clients.findById(clientId)
                 .orElseThrow(() -> new BookingException(Reason.CLIENT_NOT_FOUND, "client not found"));
         MassageService service = services.findByIdAndActiveTrue(serviceId)
@@ -96,7 +145,28 @@ public class AppointmentService {
         Map<String, Object> payload = payload(saved);
         payload.put("source", source.name().toLowerCase(Locale.ROOT));
         recorder.record(DomainEventType.APPOINTMENT_CREATED, saved.getId(), actor, payload);
+        if (requestKey != null) {
+            keys.saveAndFlush(new IdempotencyKey(
+                    requestKey.userId(),
+                    requestKey.key(),
+                    saved.getId(),
+                    clientId,
+                    serviceId,
+                    saved.getPeriod(),
+                    clock.instant()));
+        }
         return view(saved);
+    }
+
+    private AppointmentView replay(IdempotencyKey k, AppointmentSource source) {
+        return new AppointmentView(
+                k.getAppointmentId(),
+                k.getClientId(),
+                k.getServiceId(),
+                k.period(),
+                AppointmentStatus.CONFIRMED,
+                source,
+                settings.get().getTimeZone());
     }
 
     /**

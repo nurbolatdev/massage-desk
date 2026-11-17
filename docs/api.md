@@ -16,7 +16,7 @@ Every staff request sends `Authorization: Bearer <Supabase access token>`. The t
 - `401`: token missing, invalid, expired, or issued for another audience or issuer.
 - `403`: valid token, but the user is not staff or the role is not enough.
 
-Browser access (CORS): only the origin set in `ADMIN_ORIGIN` (default `http://localhost:5173`, the admin dev server) may call the API. It is one origin in the form `https://host[:port]`; a wildcard `*`, an empty value, a path or a trailing slash make the API fail at startup. Allowed methods are GET, POST, PUT, PATCH and DELETE, allowed headers are `Authorization` and `Content-Type`, and credentials are not allowed. Preflight requests need no token, and `401`/`403` answers carry the same origin header, so the browser can show them.
+Browser access (CORS): only the origin set in `ADMIN_ORIGIN` (default `http://localhost:5173`, the admin dev server) may call the API. It is one origin in the form `https://host[:port]`; a wildcard `*`, an empty value, a path or a trailing slash make the API fail at startup. Allowed methods are GET, POST, PUT, PATCH and DELETE, allowed headers are `Authorization`, `Content-Type` and `Idempotency-Key`, and credentials are not allowed. Preflight requests need no token, and `401`/`403` answers carry the same origin header, so the browser can show them.
 
 Errors from the endpoints below use RFC 9457 problem details (`application/problem+json`).
 
@@ -50,6 +50,7 @@ Client errors raised by the framework (malformed body, wrong type, missing field
 | `OUTSIDE_SCHEDULE` | 422 | `time is outside working hours, in time off or in the past` |
 | `INVALID_HOURS` | 422 | `block must start before it ends`, `blocks of one day must not overlap or touch` |
 | `INVALID_TIME_OFF` | 422 | `time off must start before it ends`, or the period is out of range |
+| `IDEMPOTENCY_KEY_REUSED` | 422 | `idempotency key was already used with another request` |
 | `TIME_TAKEN` | 409 | `time is already booked` |
 | `NOT_CONFIRMED` | 409 | `appointment is <status>` |
 | `NOT_STARTED` | 409 | `appointment has not started yet` |
@@ -71,7 +72,7 @@ insert into profiles (user_id, role, display_name) values ('<auth user id>', 'ma
 | POST | `/webhook/whatsapp` | M2 | Incoming messages |
 | GET | `/slots?serviceId&day` | ✅ M1 | Free start times for a service on a day |
 | GET | `/appointments?from&to` | ✅ M1 | Appointments touching the local days |
-| POST | `/appointments` | ✅ M1 | Create; `409` when the time is taken |
+| POST | `/appointments` | ✅ M1 | Create; `409` when the time is taken; optional `Idempotency-Key` |
 | POST | `/appointments/{id}/reschedule` | ✅ M1 | Move, keeping the booked length |
 | POST | `/appointments/{id}/cancel` | ✅ M1 | Cancel; frees the time |
 | POST | `/appointments/{id}/no-show` | ✅ M1 | Mark a no-show after the start |
@@ -127,10 +128,18 @@ Response `201`:
 
 `start` must carry a UTC offset. Any minute is accepted, not only the grid of `/slots`. The time must lie inside one working block (breaks are excluded), outside time off and not in the past. Overlaps with other confirmed appointments are refused by the database, also under concurrent requests.
 
-- `400` (`application/problem+json`): a field is missing or invalid, or `start` has no offset.
+- `400` (`application/problem+json`): a field is missing or invalid, `start` has no offset, or `Idempotency-Key` is not a UUID.
 - `404` (`application/problem+json`): the client does not exist, or the service does not exist or is inactive.
 - `409` (`application/problem+json`): the time is already booked.
-- `422` (`application/problem+json`): the time is outside working hours, in time off or in the past.
+- `422` (`application/problem+json`): the time is outside working hours, in time off or in the past, or the `Idempotency-Key` was already used with another request.
+
+### Idempotency-Key
+
+`POST /appointments` accepts an optional `Idempotency-Key` header (a UUID generated once per booking form) so a retry after a lost response does not book a second time or fail with a false `409`. Keys are scoped per staff member (token `sub`), and requests are compared by `clientId`, `serviceId` and the `start` instant (regardless of UTC offset).
+
+- Same key and body within 24 hours: returns `201` with the response as originally created (even if the appointment was later cancelled or rescheduled; read the list for current state). Concurrent retries with the same key serialize under the schedule lock and create one appointment.
+- Same key and different body: `422` (`IDEMPOTENCY_KEY_REUSED`).
+- Only successful creations store a key; after a `4xx` error a retry runs from scratch. A non-UUID header returns `400` (`INVALID_REQUEST`).
 
 ### List
 

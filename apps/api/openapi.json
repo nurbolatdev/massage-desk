@@ -64,6 +64,16 @@
       },
       "post" : {
         "operationId" : "createAppointment",
+        "parameters" : [ {
+          "description" : "optional UUID created by the client once per booking form; a repeat with the same key and body within 24 hours returns the first result instead of booking again",
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -83,7 +93,7 @@
                 }
               }
             },
-            "description" : "appointment created"
+            "description" : "appointment created; a repeat with the same Idempotency-Key returns the appointment as it was created"
           },
           "400" : {
             "content" : {
@@ -123,7 +133,7 @@
                 }
               }
             },
-            "description" : "outside working hours, in time off or in the past"
+            "description" : "outside working hours, in time off or in the past, or the Idempotency-Key was already used with another request"
           }
         },
         "summary" : "Book a service for a client",
@@ -1567,7 +1577,7 @@
       "ErrorCode" : {
         "type" : "string",
         "description" : "machine-readable reason of an error response",
-        "enum" : [ "APPOINTMENT_CONFLICT", "APPOINTMENT_NOT_FOUND", "CLIENT_NOT_FOUND", "INVALID_HOURS", "INVALID_PHONE", "INVALID_REQUEST", "INVALID_TIME_OFF", "NOT_CONFIRMED", "NOT_STARTED", "OUTSIDE_SCHEDULE", "PHONE_TAKEN", "SERVICE_NOT_FOUND", "TIME_OFF_NOT_FOUND", "TIME_TAKEN", "UNKNOWN_TIME_ZONE" ]
+        "enum" : [ "APPOINTMENT_CONFLICT", "APPOINTMENT_NOT_FOUND", "CLIENT_NOT_FOUND", "IDEMPOTENCY_KEY_REUSED", "INVALID_HOURS", "INVALID_PHONE", "INVALID_REQUEST", "INVALID_TIME_OFF", "NOT_CONFIRMED", "NOT_STARTED", "OUTSIDE_SCHEDULE", "PHONE_TAKEN", "SERVICE_NOT_FOUND", "TIME_OFF_NOT_FOUND", "TIME_TAKEN", "UNKNOWN_TIME_ZONE" ]
       },
       "RescheduleAppointmentRequest" : {
         "type" : "object",

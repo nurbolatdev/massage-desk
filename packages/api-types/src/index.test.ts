@@ -57,6 +57,12 @@ describe("generated /appointments types", () => {
     expectTypeOf<Created["source"]>().toEqualTypeOf<"bot" | "manual">();
     expect(true).toBe(true);
   });
+
+  it("types the optional Idempotency-Key header", () => {
+    type CreateHeader = NonNullable<CreatePost["parameters"]["header"]>;
+    expectTypeOf<CreateHeader["Idempotency-Key"]>().toEqualTypeOf<string | undefined>();
+    expect(true).toBe(true);
+  });
 });
 
 describe("generated GET /appointments types", () => {
@@ -292,6 +298,7 @@ describe("error types", () => {
       | "APPOINTMENT_CONFLICT"
       | "APPOINTMENT_NOT_FOUND"
       | "CLIENT_NOT_FOUND"
+      | "IDEMPOTENCY_KEY_REUSED"
       | "INVALID_HOURS"
       | "INVALID_PHONE"
       | "INVALID_REQUEST"

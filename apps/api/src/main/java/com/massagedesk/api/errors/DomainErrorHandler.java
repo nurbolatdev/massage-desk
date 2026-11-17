@@ -32,7 +32,7 @@ class DomainErrorHandler extends ResponseEntityExceptionHandler {
     ResponseEntity<ProblemDetail> booking(BookingException e) {
         HttpStatus status = switch (e.reason()) {
             case CLIENT_NOT_FOUND, SERVICE_NOT_FOUND, APPOINTMENT_NOT_FOUND -> HttpStatus.NOT_FOUND;
-            case OUTSIDE_SCHEDULE -> HttpStatus.UNPROCESSABLE_CONTENT;
+            case OUTSIDE_SCHEDULE, IDEMPOTENCY_KEY_REUSED -> HttpStatus.UNPROCESSABLE_CONTENT;
             case TIME_TAKEN, NOT_CONFIRMED, NOT_STARTED -> HttpStatus.CONFLICT;
         };
         return problem(status, e.getMessage(), code(e.reason()));

@@ -57,6 +57,19 @@ class CorsTests {
     }
 
     @Test
+    void preflightAllowsIdempotencyKeyHeader() throws Exception {
+        MvcResult result = mvc.perform(options("/appointments")
+                        .header(HttpHeaders.ORIGIN, ORIGIN)
+                        .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "POST")
+                        .header(HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS, "authorization,content-type,idempotency-key"))
+                .andExpect(status().isOk())
+                .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, ORIGIN))
+                .andReturn();
+        assertThat(result.getResponse().getHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS))
+                .containsIgnoringCase("idempotency-key");
+    }
+
+    @Test
     void preflightFromAnotherOriginIsRejected() throws Exception {
         mvc.perform(options("/appointments")
                         .header(HttpHeaders.ORIGIN, "https://evil.example")

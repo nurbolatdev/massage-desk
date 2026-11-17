@@ -154,6 +154,20 @@ The master runs the schedule in the app; admin panel basics; event log; deploy a
   1. `feat(booking): reschedule, cancel and no-show`
   1. `feat(booking): record domain events`
   1. `test(booking): concurrent booking returns 409`
+- **Follow-up ([#65](https://github.com/nurbolatdev/massage-desk/issues/65)):**
+  - **Branch:** `feature/api-idempotency`
+  - **Pull request:** `feat(api): idempotency key for appointments`
+  - **Commits:**
+    1. `feat(booking): idempotency keys table`
+    1. `feat(booking): idempotency key entity and repository`
+    1. `feat(booking): replay a create with the same idempotency key`
+    1. `feat(booking): Idempotency-Key header on create`
+    1. `test(booking): lost response and parallel retries with one key`
+    1. `docs: idempotency key for appointments`
+    1. `fix(booking): normalize request start to microseconds`
+    1. `test(booking): replay with a fractional microsecond start`
+    1. `docs: roadmap commit list for idempotency key`
+  - **Then:** `feature/mobile-idempotency-key` — `feat(mobile): idempotency key for new appointments` (closes the issue)
 
 ### M1-8 · Clients and settings API
 

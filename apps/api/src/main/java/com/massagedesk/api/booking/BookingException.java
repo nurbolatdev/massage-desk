@@ -15,7 +15,8 @@ public class BookingException extends RuntimeException {
         OUTSIDE_SCHEDULE,
         TIME_TAKEN,
         NOT_CONFIRMED,
-        NOT_STARTED
+        NOT_STARTED,
+        IDEMPOTENCY_KEY_REUSED
     }
 
     private final Reason reason;
