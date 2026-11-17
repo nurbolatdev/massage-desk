@@ -35,7 +35,8 @@ import {
   toTimeOffPeriods,
   type WorkingBlock,
 } from "./schedule";
-import { fetchServices } from "./services";
+import { saveService, type ServiceSave, upsertService } from "./serviceForm";
+import { fetchServices, type Service } from "./services";
 import { saveWorkingHours } from "./workingHours";
 
 const SETTINGS_STALE_TIME = 5 * 60 * 1000;
@@ -60,6 +61,27 @@ export function useServices() {
   return useQuery({
     queryKey: queryKeys.services,
     queryFn: () => fetchServices(api),
+  });
+}
+
+/** No optimistic update: the server checks the fields. New times and prices reach /slots and the calendar. */
+export function useSaveService() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    networkMode: "always",
+    mutationFn: (save: ServiceSave) => saveService(api, save),
+    onSuccess: async (saved) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.services });
+      queryClient.setQueryData<Service[]>(queryKeys.services, (list) => upsertService(list, saved));
+    },
+    // Not returned: the dialog must not wait for the lists to reload.
+    onSettled: () => {
+      void Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.services }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.slots.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all }),
+      ]);
+    },
   });
 }
 

@@ -35,6 +35,10 @@ export function formatPrice(price: number): string {
   return `${priceFormat.format(price)}${NBSP}₸`;
 }
 
+export function formatAmount(price: number): string {
+  return priceFormat.format(price);
+}
+
 export function offeredText(active: boolean): string {
   return active ? OFFERED_YES : OFFERED_NO;
 }
