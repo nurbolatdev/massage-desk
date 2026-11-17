@@ -22,6 +22,8 @@ export const CONFLICT_TEXT = "Пока вы выбирали, это время 
 export const OUTSIDE_TEXT = "Это время уже нельзя записать. Выберите другое время.";
 export const NOT_FOUND_BOOKING_TEXT = "Клиент или услуга больше недоступны. Выберите ещё раз.";
 export const BOOK_FAILED = "Не получилось записать. Проверьте интернет и попробуйте ещё раз.";
+export const ALREADY_BOOKED_TEXT =
+  "Похоже, запись уже сохранилась, когда пропадал интернет. Закройте это окно и проверьте расписание.";
 export const BOOKING_OFFLINE_TEXT = "Записать клиента можно, когда телефон подключится к интернету.";
 
 export const CHOOSE_CLIENT = "Выберите клиента";
