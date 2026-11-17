@@ -64,7 +64,7 @@ Only with profile `supabase` (`migration-supabase/`). Every policy is select-onl
 - `staff_read` — `is_staff()`, on all business tables and the three log tables.
 - `own_profile_read` — on `profiles` a staff member sees only their own row.
 
-There are no insert/update/delete policies: an insert through the Supabase REST API fails (SQLState `42501`), an update or delete changes no rows. Every write goes through the API, which connects as the table owner and is not limited by RLS. `flyway_schema_history` is closed manually (see step 4 above). Without that step a staff token can also update or delete the migration history through the REST API.
+There are no insert/update/delete policies: an insert through the Supabase REST API fails (SQLState `42501`), an update or delete changes no rows. Every write goes through the API, which connects as the table owner and is not limited by RLS. `idempotency_keys` has RLS enabled with no policies (`V4_1`): staff cannot read or write it through Supabase, only the API does. `flyway_schema_history` is closed manually (see step 4 above). Without that step a staff token can also update or delete the migration history through the REST API.
 
 The comments in `V1_1` ("API is not limited") and `V3` ("staff may write these tables directly") are outdated: the current rule is read-only RLS from `V3_1`. Applied migrations are not edited because of Flyway checksums. `V3_1` also pins `is_staff()` to `search_path = public, pg_temp`.
 
@@ -83,6 +83,9 @@ constraint appointments_no_overlap
     exclude using gist (period with &&) where (status = 'confirmed')
 ```
 `[start, end)` ranges allow back-to-back appointments; cancelled ones free the time. Covered by `AppointmentOverlapConstraintTests`. One schedule lock (a transaction-scoped advisory lock) orders booking, rescheduling, adding time off, replacing working hours and changing the time zone, so parallel writes queue up instead of deadlocking and never check each other's uncommitted rows; the constraint still decides overlaps. Settings updates also lock the settings row, after the schedule lock, so a parallel change of the address or the bot switch cannot write an old time zone back.
+
+## Idempotency keys
+`idempotency_keys` stores a snapshot of a created appointment (`client_id`, `service_id`, `start_at`, `end_at`, `appointment_id`) keyed by a unique `(user_id, idempotency_key)` constraint. `appointment_id` cascades on delete (`on delete cascade`); there are no foreign keys to `profiles`, `clients` or `services` because rows live at most 24 hours. `created_at` is written from the API clock, and the API deletes expired rows (`created_at < now - 24h`) lazily on the next keyed booking request.
 
 ## Observability (append-only)
 - `events` — domain event log: `type` (e.g. `appointment_created`), `entity_type`, `entity_id`, `actor` (client, bot, master, admin, system), `payload` (jsonb object).
