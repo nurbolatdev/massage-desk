@@ -2,7 +2,16 @@ import { describe, expect, it } from "vitest";
 
 import { NBSP } from "@/lib/format";
 
-import { formatDuration, formatPrice, offeredText } from "./services";
+import { formatAmount, formatDuration, formatPrice, offeredText } from "./services";
+
+describe("formatAmount", () => {
+  it.each([
+    [8000, "8 000"],
+    [1500.5, "1 500,5"],
+  ])("formats %d without the currency", (price, text) => {
+    expect(formatAmount(price)).toBe(text.replaceAll(" ", NBSP));
+  });
+});
 
 describe("formatDuration", () => {
   it.each([5, 60, 480])("formats %i minutes", (min) => {
