@@ -3,6 +3,7 @@ import type { SegmentFilter } from "./clients";
 export const queryKeys = {
   settings: ["settings"] as const,
   workingHours: ["workingHours"] as const,
+  services: ["services"] as const,
   appointments: {
     all: ["appointments"] as const,
     range: (from: string, to: string) => ["appointments", from, to] as const,

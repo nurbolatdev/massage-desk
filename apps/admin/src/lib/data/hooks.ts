@@ -35,6 +35,7 @@ import {
   toTimeOffPeriods,
   type WorkingBlock,
 } from "./schedule";
+import { fetchServices } from "./services";
 import { saveWorkingHours } from "./workingHours";
 
 const SETTINGS_STALE_TIME = 5 * 60 * 1000;
@@ -52,6 +53,13 @@ export function useSettings() {
     queryKey: queryKeys.settings,
     queryFn: () => unwrap(api.GET("/settings")),
     staleTime: SETTINGS_STALE_TIME,
+  });
+}
+
+export function useServices() {
+  return useQuery({
+    queryKey: queryKeys.services,
+    queryFn: () => fetchServices(api),
   });
 }
 
