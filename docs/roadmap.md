@@ -165,6 +165,8 @@ The master runs the schedule in the app; admin panel basics; event log; deploy a
     1. `test(booking): lost response and parallel retries with one key`
     1. `docs: idempotency key for appointments`
     1. `fix(booking): normalize request start to microseconds`
+    1. `test(booking): replay with a fractional microsecond start`
+    1. `docs: roadmap commit list for idempotency key`
   - **Then:** `feature/mobile-idempotency-key` — `feat(mobile): idempotency key for new appointments` (closes the issue)
 
 ### M1-8 · Clients and settings API
