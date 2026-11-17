@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
+import { localDay } from "@massage-desk/shared";
 import { CircleAlert, RefreshCw, Search, Users } from "lucide-react";
 
 import { PageMain } from "@/components/PageMain";
@@ -23,10 +24,11 @@ import {
   SHOW_MORE,
   clientsView,
   notFoundTitle,
-  uniqueClients,
+  uniqueById,
 } from "@/lib/data/clients";
-import { useClients } from "@/lib/data/hooks";
+import { useClients, useTimeZone } from "@/lib/data/hooks";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
+import { useNow } from "@/lib/useNow";
 import { useOnline } from "@/lib/useOnline";
 
 import { ClientProfile } from "./ClientProfile";
@@ -39,6 +41,9 @@ export function ClientsPage() {
   const term = useDebouncedValue(text.trim(), SEARCH_DELAY_MS);
   const clients = useClients(term, "all");
   const online = useOnline();
+  const timeZone = useTimeZone();
+  const now = useNow();
+  const today = timeZone ? localDay(now, timeZone) : undefined;
   const tableRef = useRef<HTMLElement>(null);
   const moreRef = useRef<HTMLButtonElement>(null);
   const nameRef = useRef<HTMLHeadingElement>(null);
@@ -51,7 +56,7 @@ export function ClientsPage() {
   }, [selectedId]);
   const searchId = useId();
 
-  const rows = clients.data ? uniqueClients(clients.data.pages) : [];
+  const rows = clients.data ? uniqueById(clients.data.pages) : [];
   const selected = rows.find((c) => c.id === selectedId) ?? null;
   const view = clientsView({
     hasData: clients.data !== undefined,
@@ -137,6 +142,8 @@ export function ClientsPage() {
               clients={rows}
               selectedId={selectedId}
               onSelect={setSelectedId}
+              today={today}
+              year={now.getFullYear()}
               tableRef={tableRef}
             />
             {clients.hasNextPage && (

@@ -31,7 +31,7 @@ import {
   SEARCH_OFFLINE,
   SEARCH_PLACEHOLDER,
   SHOW_MORE,
-  type Client,
+  type ClientListItem,
 } from "@/lib/data/clients";
 import { queryKeys } from "@/lib/data/queryKeys";
 
@@ -50,13 +50,26 @@ vi.mock("@/lib/api", () => ({
   unwrap,
 }));
 
-function makeClient(id: string, name: string | null = `Клиент ${id}`): Client {
+function makeClient(
+  id: string,
+  name: string | null = `Клиент ${id}`,
+  stats: Partial<ClientListItem["stats"]> = {},
+): ClientListItem {
   return {
     id,
     phone: `+7701000${id.slice(-4).padStart(4, "0")}`,
     name,
     notes: null,
     createdAt: "2025-10-12T10:00:00+05:00",
+    stats: {
+      visits: 0,
+      totalSpent: 0,
+      noShows: 0,
+      lastVisitAt: null,
+      nextAppointmentAt: null,
+      visitIntervalDays: null,
+      ...stats,
+    },
   };
 }
 
@@ -114,6 +127,9 @@ beforeEach(() => {
       );
     }
     if (path.endsWith("/appointments")) return Promise.resolve(jsonResponse([]));
+    if (path.endsWith("/settings")) {
+      return Promise.resolve(jsonResponse({ timeZone: "Asia/Almaty" }));
+    }
     return listReply(req);
   });
 });
@@ -445,7 +461,7 @@ describe("ClientsPage", () => {
   });
 
   it("saves a note, updates the list cache, and preserves it when switching back", async () => {
-    const store = new Map<string, Client>([
+    const store = new Map<string, ClientListItem>([
       ["c1", makeClient("c1", "Айгуль Сапарова")],
       ["c2", { ...makeClient("c2", "Ержан Бекенов"), notes: "Заметка Ержана" }],
     ]);
@@ -482,7 +498,7 @@ describe("ClientsPage", () => {
       expect(within(panel).getByRole("status").textContent).toBe(NOTE_SAVED);
     });
 
-    const cached = queryClient.getQueryData<InfiniteData<Client[]>>(
+    const cached = queryClient.getQueryData<InfiniteData<ClientListItem[]>>(
       queryKeys.clients.list("", "all"),
     );
     expect(cached?.pages[0]?.find((c) => c.id === "c1")?.notes).toBe(
@@ -566,5 +582,52 @@ describe("ClientsPage", () => {
     expect(
       screen.queryByRole("complementary", { name: PROFILE_LABEL }),
     ).toBeNull();
+  });
+
+  it("shows today's next appointment with the time in the master's time zone", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-11-16T03:00:00Z"));
+    try {
+      listReply.mockResolvedValueOnce(
+        jsonResponse([
+          makeClient("c1", "Айгуль Сапарова", {
+            nextAppointmentAt: "2026-11-16T10:00:00+05:00",
+          }),
+        ]),
+      );
+
+      renderPage();
+      const table = await screen.findByRole("table", { name: "Клиенты" });
+      await within(table).findByText("сегодня, 10:00");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("shows the weekday instead of today when the time zone is unknown", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-11-16T03:00:00Z"));
+    try {
+      respond.mockImplementation((req) => {
+        if (new URL(req.url).pathname.endsWith("/settings")) {
+          return Promise.resolve(jsonResponse({ title: "error" }, 500));
+        }
+        return listReply(req);
+      });
+      listReply.mockResolvedValueOnce(
+        jsonResponse([
+          makeClient("c1", "Айгуль Сапарова", {
+            nextAppointmentAt: "2026-11-16T10:00:00+05:00",
+          }),
+        ]),
+      );
+
+      renderPage();
+      const table = await screen.findByRole("table", { name: "Клиенты" });
+      expect(within(table).getByText("пн, 16 нояб.")).not.toBeNull();
+      expect(within(table).queryByText("сегодня, 10:00")).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

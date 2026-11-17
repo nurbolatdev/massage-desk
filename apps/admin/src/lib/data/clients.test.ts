@@ -18,7 +18,6 @@ import {
   notFoundTitle,
   replaceInPages,
   uniqueById,
-  uniqueClients,
 } from "./clients";
 
 function makeClient(id: string, overrides: Partial<Client> = {}): Client {
@@ -52,17 +51,6 @@ describe("nextOffset", () => {
   it("stops on an empty page after a full page", () => {
     const p1 = makePage("a", CLIENTS_PAGE_SIZE);
     expect(nextOffset([], [p1, []])).toBeUndefined();
-  });
-});
-
-describe("uniqueClients", () => {
-  it("drops duplicate ids from later pages and preserves first-seen order", () => {
-    const a = makeClient("1", { name: "Айгуль" });
-    const b = makeClient("2", { name: "Болат" });
-    const bDup = makeClient("2", { name: "Болат (обновлённый)" });
-    const c = makeClient("3", { name: "Гульнар" });
-
-    expect(uniqueClients([[a, b], [bDup, c]])).toEqual([a, b, c]);
   });
 });
 
