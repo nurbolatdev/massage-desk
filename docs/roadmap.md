@@ -529,7 +529,7 @@ Split into eight pull requests.
 
 ### M1-18 · Admin: clients
 
-Split into five pull requests: the clients table, the client profile with notes, client visits and stats in the API, the client history and stats in the client card, and the remaining pieces in the admin (visit columns, filters and subtitle in the clients table, and Show more in the history; tracked in issue #108).
+Split into five pull requests: the clients table, the client profile with notes, client visits and stats in the API, the client history and stats in the client card, and the visit columns, filters and subtitle in the clients table with Show more in the client history.
 
 **Pull request 1 of 5**
 
@@ -584,7 +584,7 @@ Split into five pull requests: the clients table, the client profile with notes,
 - **Branch:** `feature/admin-clients-filters`
 - **Pull request:** `feat(admin): clients table columns and filters`
 - **Depends on:** pull request 4 of 5
-- **Commits (planned):**
+- **Commits:**
   1. `feat(admin): clients list stats data`
   1. `feat(admin): clients table columns`
   1. `feat(admin): clients filters and summary`
