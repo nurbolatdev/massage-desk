@@ -653,6 +653,7 @@ Split into three pull requests: the services list, adding and editing services, 
   1. `build(mobile): eas build profiles`
   1. `feat(mobile): over-the-air updates`
   1. `docs(mobile): installing the app on a phone`
+  1. `docs(mobile): publish updates for android only`
 
 ### M1-22 · Pilot M1: a week with the master 👤
 

@@ -144,12 +144,12 @@ Open the build link on the phone, download the APK, allow installing apps from t
 For JS-only changes (run from `apps/mobile`):
 
 ```bash
-eas update --channel preview --environment preview
+eas update -p android --channel preview --environment preview
 # check on the test phone, then:
-eas update --channel production --environment production
+eas update -p android --channel production --environment production
 ```
 
-The app downloads updates in the background (`updates.checkAutomatically: "ON_LOAD"`, `fallbackToCacheTimeout: 0`) and applies them on the next start. Always pass `--environment`: without it, a local `.env` with a LAN address could be bundled and sent to the master's phone.
+The app downloads updates in the background (`updates.checkAutomatically: "ON_LOAD"`, `fallbackToCacheTimeout: 0`) and applies them on the next start. The app is Android-only, so updates are published with `-p android`. Always pass `--environment`: without it, a local `.env` with a LAN address could be bundled and sent to the master's phone.
 
 For native changes (adding a package with native code, changing `app.json` plugins, icon, splash, Android settings, or upgrading the Expo SDK), bump `version` in `apps/mobile/app.json` (`runtimeVersion` uses policy `appVersion`) and build a new APK — an OTA update never reaches an app with a different runtime version.
 
