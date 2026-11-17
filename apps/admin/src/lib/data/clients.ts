@@ -113,7 +113,7 @@ export function clientSince(createdAt: string): string {
   return formatDayMonthYear(createdAt.slice(0, 10));
 }
 
-export type ClientsView = "loading" | "error" | "empty" | "notFound" | "list";
+export type ClientsView = "loading" | "error" | "empty" | "notFound" | "emptySegment" | "list";
 
 /** Picks the body state for the clients page; existing data takes precedence over background errors. */
 export function clientsView({
@@ -121,14 +121,19 @@ export function clientsView({
   error,
   count,
   term,
+  segment,
 }: {
   hasData: boolean;
   error: unknown;
   count: number;
   term: string;
+  segment: SegmentFilter;
 }): ClientsView {
   if (!hasData) return error == null ? "loading" : "error";
-  if (count === 0) return term ? "notFound" : "empty";
+  if (count === 0) {
+    if (term) return "notFound";
+    return segment !== "all" ? "emptySegment" : "empty";
+  }
   return "list";
 }
 

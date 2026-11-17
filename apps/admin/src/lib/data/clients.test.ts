@@ -87,12 +87,14 @@ describe("clientSince", () => {
 
 describe("clientsView", () => {
   it("picks loading, error, empty, notFound, and list states", () => {
-    expect(clientsView({ hasData: false, error: null, count: 0, term: "" })).toBe("loading");
-    expect(clientsView({ hasData: false, error: new Error("boom"), count: 0, term: "" })).toBe("error");
-    expect(clientsView({ hasData: true, error: null, count: 0, term: "" })).toBe("empty");
-    expect(clientsView({ hasData: true, error: null, count: 0, term: "Айг" })).toBe("notFound");
-    expect(clientsView({ hasData: true, error: null, count: 3, term: "" })).toBe("list");
-    expect(clientsView({ hasData: true, error: new Error("bg"), count: 3, term: "" })).toBe("list");
+    expect(clientsView({ hasData: false, error: null, count: 0, term: "", segment: "all" })).toBe("loading");
+    expect(clientsView({ hasData: false, error: new Error("boom"), count: 0, term: "", segment: "all" })).toBe("error");
+    expect(clientsView({ hasData: true, error: null, count: 0, term: "", segment: "all" })).toBe("empty");
+    expect(clientsView({ hasData: true, error: null, count: 0, term: "Айг", segment: "all" })).toBe("notFound");
+    expect(clientsView({ hasData: true, error: null, count: 3, term: "", segment: "all" })).toBe("list");
+    expect(clientsView({ hasData: true, error: new Error("bg"), count: 3, term: "", segment: "all" })).toBe("list");
+    expect(clientsView({ hasData: true, error: null, count: 0, term: "", segment: "regular" })).toBe("emptySegment");
+    expect(clientsView({ hasData: true, error: null, count: 0, term: "Айг", segment: "regular" })).toBe("notFound");
   });
 });
 
