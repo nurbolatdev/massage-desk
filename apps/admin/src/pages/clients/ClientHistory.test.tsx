@@ -1,10 +1,15 @@
 // @vitest-environment jsdom
 import { onlineManager, QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createApi, unwrap } from "@/lib/api/client";
-import { HISTORY_EMPTY, HISTORY_LOAD_FAILED, HISTORY_OFFLINE } from "@/lib/data/clientVisits";
+import {
+  HISTORY_EMPTY,
+  HISTORY_LOAD_FAILED,
+  HISTORY_MORE_FAILED,
+  HISTORY_OFFLINE,
+} from "@/lib/data/clientVisits";
 
 import { ClientHistory } from "./ClientHistory";
 
@@ -61,6 +66,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
   vi.useRealTimers();
   onlineManager.setOnline(true);
 });
@@ -131,5 +137,73 @@ describe("ClientHistory", () => {
 
     expect(screen.getByRole("status").textContent).toBe(HISTORY_OFFLINE);
     expect(respond).not.toHaveBeenCalled();
+  });
+  describe("show more", () => {
+    const page = (n: number, from = 0) =>
+      Array.from({ length: n }, (_, i) =>
+        item(
+          `p${from + i}`,
+          "done",
+          "2026-10-12T10:00:00+05:00",
+          "2026-10-12T11:00:00+05:00",
+        ),
+      );
+
+    it("has no button when the first page is short", async () => {
+      respond.mockResolvedValue(jsonResponse(page(6)));
+      renderHistory();
+
+      await screen.findAllByRole("listitem");
+      expect(screen.queryByRole("button", { name: "Показать ещё" })).toBeNull();
+    });
+
+    it("loads the next page and focuses the list at the end", async () => {
+      respond.mockResolvedValueOnce(jsonResponse(page(10)));
+      respond.mockResolvedValueOnce(jsonResponse(page(3, 10)));
+      renderHistory();
+
+      await screen.findAllByRole("listitem");
+      const button = screen.getByRole("button", { name: "Показать ещё" });
+      button.focus();
+      fireEvent.click(button);
+
+      await waitFor(() => expect(screen.getAllByRole("listitem")).toHaveLength(13));
+      expect(respond.mock.calls[1]?.[0].url).toBe(
+        "https://api.test/clients/c1/appointments?limit=10&offset=10",
+      );
+      expect(screen.queryByRole("button", { name: "Показать ещё" })).toBeNull();
+      expect(document.activeElement).toBe(screen.getByRole("list"));
+    });
+
+    it("keeps the rows on a failed load and retries", async () => {
+      respond.mockResolvedValueOnce(jsonResponse(page(10)));
+      respond.mockResolvedValueOnce(jsonResponse({ message: "fail" }, 500));
+      renderHistory();
+
+      await screen.findAllByRole("listitem");
+      fireEvent.click(screen.getByRole("button", { name: "Показать ещё" }));
+
+      expect((await screen.findByRole("alert")).textContent).toBe(HISTORY_MORE_FAILED);
+      expect(screen.getAllByRole("listitem")).toHaveLength(10);
+
+      respond.mockResolvedValueOnce(jsonResponse(page(3, 10)));
+      fireEvent.click(screen.getByRole("button", { name: "Показать ещё" }));
+      await waitFor(() => expect(screen.getAllByRole("listitem")).toHaveLength(13));
+    });
+
+    it("does not request when offline", async () => {
+      respond.mockResolvedValueOnce(jsonResponse(page(10)));
+      renderHistory();
+
+      await screen.findAllByRole("listitem");
+      vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+      onlineManager.setOnline(false);
+      window.dispatchEvent(new Event("offline"));
+      const button = screen.getByRole("button", { name: "Показать ещё" });
+      await waitFor(() => expect(button.getAttribute("aria-disabled")).toBe("true"));
+      fireEvent.click(button);
+
+      expect(respond).toHaveBeenCalledTimes(1);
+    });
   });
 });
