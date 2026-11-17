@@ -61,4 +61,4 @@ com.massagedesk.api
 |---|---|---|---|
 | local | PostgreSQL from `compose.yaml` (auto-started) | `./mvnw spring-boot:run` | Expo Go / dev build |
 | dev | Supabase project `massage-desk-dev` (profile `supabase`) | local | dev build |
-| prod | Supabase project `massage-desk-prod` | Render, deployed from `main` | APK via EAS |
+| prod | Supabase project `massage-desk-prod` | Render (Docker image), deployed from `main` - see [deploy.md](deploy.md) | APK via EAS |

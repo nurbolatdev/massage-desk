@@ -12,7 +12,7 @@ Source of truth: Flyway migrations in [`apps/api/src/main/resources/db`](../apps
    `DATABASE_URL=jdbc:postgresql://<pooler-host>:5432/postgres?sslmode=require`, `DATABASE_USER=postgres.<project-ref>`, `DATABASE_PASSWORD`, `SUPABASE_URL=https://<project-ref>.supabase.co` (no trailing slash; used to verify staff tokens, required with profile `supabase`).
 3. Run from `apps/api`: `./mvnw spring-boot:run -Dspring-boot.run.profiles=supabase,seed`.
    The `supabase` profile reads `.env` and applies both migration locations; `seed` adds the dev data.
-   For prod use `supabase` only.
+   For prod use `supabase` only (see [deploy.md](deploy.md)).
 4. Once per Supabase project, in the SQL editor, close Flyway's own table to the REST API:
    `alter table public.flyway_schema_history enable row level security;` (no policies on purpose).
    It cannot be a migration: Flyway holds a lock on that table while migrating, so the statement times out.
