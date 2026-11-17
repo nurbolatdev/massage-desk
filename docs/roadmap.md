@@ -174,6 +174,16 @@ The master runs the schedule in the app; admin panel basics; event log; deploy a
       1. `feat(mobile): own message for an already saved booking`
       1. `feat(mobile): send an idempotency key with new appointments`
       1. `docs: idempotency key in the mobile app`
+- **Follow-up ([#59](https://github.com/nurbolatdev/massage-desk/issues/59)):**
+  - **Branch:** `feature/api-appointment-by-id`
+  - **Pull request:** `feat(booking): get appointment by id`
+  - **Commits:**
+    1. `feat(booking): read one appointment with names`
+    1. `feat(booking): GET /appointments/{id}`
+    1. `docs: appointment by id`
+  - **Mobile:**
+    - **Branch:** `feature/mobile-card-by-id`
+    - **Pull request:** `feat(mobile): open the appointment card by id` (closes the issue)
 
 ### M1-8 · Clients and settings API
 
