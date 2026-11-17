@@ -1,6 +1,7 @@
 package com.massagedesk.api.booking;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.massagedesk.api.TestcontainersConfiguration;
 import com.massagedesk.api.booking.AppointmentService.AppointmentListView;
@@ -14,6 +15,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -119,5 +121,53 @@ class AppointmentListTests {
 
         assertThat(service.between(NOV_3, NOV_4)).hasSize(2);
         assertThat(service.between(NOV_4, NOV_4)).hasSize(1);
+    }
+
+    @Test
+    void byIdReturnsTheAppointmentWithNames() {
+        Appointment saved = save(client, "2026-11-03T05:00:00Z", "2026-11-03T06:00:00Z");
+
+        AppointmentListView item = service.byId(saved.getId());
+
+        assertThat(item).isEqualTo(service.between(NOV_3, NOV_3).get(0));
+        assertThat(item.appointment().id()).isEqualTo(saved.getId());
+        assertThat(item.clientName()).isEqualTo("Aigul");
+        assertThat(item.clientPhone()).isEqualTo("+998900000701");
+        assertThat(item.serviceName()).isEqualTo("Classic");
+    }
+
+    @Test
+    void byIdReturnsACancelledAppointment() {
+        Appointment saved = save(client, "2026-11-03T05:00:00Z", "2026-11-03T06:00:00Z");
+        saved.cancel();
+        appointments.saveAndFlush(saved);
+
+        assertThat(service.byId(saved.getId()).appointment().status()).isEqualTo(AppointmentStatus.CANCELLED);
+    }
+
+    @Test
+    void byIdKeepsADeactivatedService() {
+        Appointment saved = save(client, "2026-11-03T05:00:00Z", "2026-11-03T06:00:00Z");
+        classic.deactivate();
+        services.saveAndFlush(classic);
+
+        assertThat(service.byId(saved.getId()).serviceName()).isEqualTo("Classic");
+    }
+
+    @Test
+    void byIdOfAClientWithoutName() {
+        Client unnamed = clients.saveAndFlush(new Client("+998900000702", null));
+        Appointment saved = save(unnamed, "2026-11-03T05:00:00Z", "2026-11-03T06:00:00Z");
+
+        assertThat(service.byId(saved.getId()).clientName()).isNull();
+    }
+
+    @Test
+    void byIdOfAnUnknownAppointmentIsNotFound() {
+        assertThatThrownBy(() -> service.byId(UUID.randomUUID()))
+                .isInstanceOfSatisfying(BookingException.class, e -> {
+                    assertThat(e.reason()).isEqualTo(BookingException.Reason.APPOINTMENT_NOT_FOUND);
+                    assertThat(e.getMessage()).isEqualTo("appointment not found");
+                });
     }
 }
