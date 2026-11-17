@@ -642,6 +642,7 @@ Split into three pull requests: the services list, adding and editing services, 
   1. `build(api): container image`
   1. `feat(infra): render blueprint for the api`
   1. `docs(infra): production setup and secrets`
+  1. `docs(infra): wait for readiness in local run`
 
 ### M1-21 · Android build (APK)
 

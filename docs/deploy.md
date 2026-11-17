@@ -57,11 +57,12 @@ docker network create md-local
 docker run -d --name md-local-db --network md-local \
   -e POSTGRES_DB=massagedesk -e POSTGRES_USER=massagedesk -e POSTGRES_PASSWORD=massagedesk \
   postgres:17-alpine
+until docker exec md-local-db pg_isready -U massagedesk; do sleep 1; done
 docker run -d --name md-local-api --network md-local -p 18080:10000 -e PORT=10000 \
   -e SPRING_DATASOURCE_URL=jdbc:postgresql://md-local-db:5432/massagedesk \
   -e SPRING_DATASOURCE_USERNAME=massagedesk -e SPRING_DATASOURCE_PASSWORD=massagedesk \
   massage-desk-api:local
-curl -fsS http://localhost:18080/health
+until curl -fsS http://localhost:18080/health; do sleep 2; done
 docker rm -f md-local-api md-local-db && docker network rm md-local
 ```
 
