@@ -167,7 +167,13 @@ The master runs the schedule in the app; admin panel basics; event log; deploy a
     1. `fix(booking): normalize request start to microseconds`
     1. `test(booking): replay with a fractional microsecond start`
     1. `docs: roadmap commit list for idempotency key`
-  - **Then:** `feature/mobile-idempotency-key` — `feat(mobile): idempotency key for new appointments` (closes the issue)
+  - **Mobile:**
+    - **Branch:** `feature/mobile-idempotency-key`
+    - **Pull request:** `feat(mobile): idempotency key for new appointments` (closes the issue)
+    - **Commits:**
+      1. `feat(mobile): own message for an already saved booking`
+      1. `feat(mobile): send an idempotency key with new appointments`
+      1. `docs: idempotency key in the mobile app`
 
 ### M1-8 · Clients and settings API
 
