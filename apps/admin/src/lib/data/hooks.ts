@@ -24,6 +24,7 @@ import {
   fetchClientStats,
   nextHistoryOffset,
 } from "./clientVisits";
+import { saveSettings, type SettingsUpdate } from "./businessSettings";
 import { queryKeys } from "./queryKeys";
 import { rescheduleAppointment } from "./reschedule";
 import { daySlotsOptions, fetchSlots } from "./rescheduleTime";
@@ -80,6 +81,28 @@ export function useSaveService() {
         queryClient.invalidateQueries({ queryKey: queryKeys.services }),
         queryClient.invalidateQueries({ queryKey: queryKeys.slots.all }),
         queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all }),
+      ]);
+    },
+  });
+}
+
+/** No optimistic update: the server checks the zone and the appointments it moves out of the hours. */
+export function useSaveSettings() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    networkMode: "always",
+    mutationFn: (body: SettingsUpdate) => saveSettings(api, body),
+    onSuccess: async (settings, body) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.settings });
+      queryClient.setQueryData(queryKeys.settings, settings);
+      if (body.timeZone === undefined) return;
+      // Not returned: the form must not wait for the lists to reload.
+      void Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.slots.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.timeOff.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.workingHours }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.clients.all }),
       ]);
     },
   });
