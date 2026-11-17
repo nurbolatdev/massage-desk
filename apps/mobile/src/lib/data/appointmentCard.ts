@@ -135,7 +135,9 @@ export interface CardLoadInput {
 export function cardLoad({ appointmentsLoaded, settingsLoaded, settingsError, appointmentsError }: CardLoadInput) {
   return {
     hasData: appointmentsLoaded && settingsLoaded,
-    /** A failed settings or list load; both count as «refresh failed» when data is shown. */
+    /** Any failed load; it matters only while there is no data yet. */
     error: settingsError ?? appointmentsError,
+    /** Only a failed list counts as «refresh failed»; a settings error with data shown does not, as on Today. */
+    refreshError: appointmentsError,
   };
 }

@@ -259,7 +259,8 @@ export function useAppointment(id: string, day: string | undefined) {
     notFound: !valid || (appointments.data !== undefined && appointment === undefined),
     hasData: load.hasData,
     timeZone: settings.data?.timeZone,
-    refreshError: load.error,
+    error: load.error,
+    refreshError: load.refreshError,
     dataUpdatedAt: appointments.dataUpdatedAt,
     refetch,
   };

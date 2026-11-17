@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { ApiError } from "@/lib/api/errors";
 
 import { useAppointment } from "./hooks";
+import { queryKeys } from "./queryKeys";
 
 type Call = (path: string, init?: unknown) => Promise<unknown>;
 
@@ -73,5 +74,81 @@ describe("useAppointment refetch", () => {
     for (const [, init] of callsTo("/appointments")) {
       expect(init).toEqual({ params: { query: { from: "2026-11-03", to: "2026-11-03" } } });
     }
+  });
+});
+
+describe("useAppointment errors", () => {
+  const DAY = "2026-11-03";
+  const settings = { timeZone: "Asia/Tashkent", botEnabled: true, address: null };
+
+  function mockPaths(handlers: { settings: Call; appointments: Call }) {
+    mockGet.mockImplementation(async (path, init) => {
+      if (path === "/settings") return handlers.settings(path, init);
+      if (path === "/appointments") return handlers.appointments(path, init);
+      throw new Error(`unexpected GET ${path}`);
+    });
+  }
+
+  /** First call succeeds, the following ones fail. */
+  function okThenFail(data: unknown): Call {
+    let calls = 0;
+    return async () => {
+      calls += 1;
+      if (calls === 1) return ok(data);
+      throw new ApiError("server", { status: 500 });
+    };
+  }
+
+  const alwaysFail: Call = async () => {
+    throw new ApiError("server", { status: 500 });
+  };
+
+  beforeEach(() => {
+    mockGet.mockReset();
+  });
+
+  afterEach(async () => {
+    await cleanup();
+    queryClient.clear();
+  });
+
+  it("a failed settings refresh with data shown is not a refresh error", async () => {
+    mockPaths({ settings: okThenFail(settings), appointments: async () => ok([]) });
+    const { result } = await renderHook(() => useAppointment("a1", DAY), { wrapper });
+    await waitFor(() => expect(result.current.hasData).toBe(true));
+
+    await act(async () => {
+      result.current.refetch();
+    });
+    await waitFor(() => expect(queryClient.getQueryState(queryKeys.settings)?.status).toBe("error"));
+
+    await waitFor(() => expect(result.current.error).toBeInstanceOf(ApiError));
+    expect(result.current.hasData).toBe(true);
+    expect(result.current.refreshError).toBeNull();
+  });
+
+  it("a failed list refresh is a refresh error", async () => {
+    mockPaths({ settings: async () => ok(settings), appointments: okThenFail([]) });
+    const { result } = await renderHook(() => useAppointment("a1", DAY), { wrapper });
+    await waitFor(() => expect(result.current.hasData).toBe(true));
+
+    await act(async () => {
+      result.current.refetch();
+    });
+    await waitFor(() => expect(queryClient.getQueryState(queryKeys.appointments.range(DAY, DAY))?.status).toBe("error"));
+
+    await waitFor(() => expect(result.current.refreshError).toBeInstanceOf(ApiError));
+    expect(result.current.hasData).toBe(true);
+    expect(result.current.error).toBe(result.current.refreshError);
+  });
+
+  it("a settings failure before any data is the error, not a refresh error", async () => {
+    mockPaths({ settings: alwaysFail, appointments: async () => ok([]) });
+    const { result } = await renderHook(() => useAppointment("a1", DAY), { wrapper });
+    await waitFor(() => expect(result.current.error).not.toBeNull());
+
+    expect(result.current.hasData).toBe(false);
+    expect(result.current.error).toBeInstanceOf(ApiError);
+    expect(result.current.refreshError).toBeNull();
   });
 });

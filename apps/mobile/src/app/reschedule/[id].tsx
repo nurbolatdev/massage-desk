@@ -62,7 +62,7 @@ export default function RescheduleScreen() {
   const state = todayState({
     online,
     hasData: card.hasData,
-    error: card.refreshError,
+    error: card.error,
     appointmentsError: card.refreshError,
   });
   const { timeZone } = card;

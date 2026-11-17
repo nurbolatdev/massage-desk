@@ -174,16 +174,31 @@ describe("cardLoad", () => {
     expect(cardLoad({ ...base, appointmentsLoaded: false }).hasData).toBe(false);
   });
 
-  it("reports a settings error as the error", () => {
-    expect(cardLoad({ ...base, settingsLoaded: false, settingsError: failure }).error).toBe(failure);
+  it("a settings error is the error but not a refresh error", () => {
+    const noData = cardLoad({ ...base, settingsLoaded: false, settingsError: failure });
+    expect(noData.error).toBe(failure);
+    expect(noData.refreshError).toBeNull();
+    const withData = cardLoad({ ...base, settingsError: failure });
+    expect(withData.hasData).toBe(true);
+    expect(withData.refreshError).toBeNull();
   });
 
-  it("reports a list error as the error", () => {
-    expect(cardLoad({ ...base, appointmentsError: failure }).error).toBe(failure);
+  it("a list error is both the error and the refresh error", () => {
+    const load = cardLoad({ ...base, appointmentsError: failure });
+    expect(load.error).toBe(failure);
+    expect(load.refreshError).toBe(failure);
+  });
+
+  it("when both fail, the error is the settings one and the refresh error the list one", () => {
+    const settingsFailure = new Error("settings");
+    const listFailure = new Error("list");
+    const load = cardLoad({ ...base, settingsError: settingsFailure, appointmentsError: listFailure });
+    expect(load.error).toBe(settingsFailure);
+    expect(load.refreshError).toBe(listFailure);
   });
 
   it("has no error when nothing failed", () => {
-    expect(cardLoad(base)).toEqual({ hasData: true, error: null });
+    expect(cardLoad(base)).toEqual({ hasData: true, error: null, refreshError: null });
   });
 });
 
