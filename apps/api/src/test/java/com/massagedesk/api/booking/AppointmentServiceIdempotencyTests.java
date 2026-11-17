@@ -105,20 +105,6 @@ class AppointmentServiceIdempotencyTests {
     }
 
     @Test
-    void startWithFractionsOfAMicrosecondIsReplayed() {
-        RequestKey key = new RequestKey(USER, KEY);
-        Instant fractional = TUE_10.plusNanos(500);
-
-        AppointmentView first = service.create(
-                client.getId(), classic.getId(), fractional, AppointmentSource.MANUAL, EventActor.MASTER, key);
-        AppointmentView replay = service.create(
-                client.getId(), classic.getId(), fractional, AppointmentSource.MANUAL, EventActor.MASTER, key);
-
-        assertThat(replay.id()).isEqualTo(first.id());
-        assertThat(clientAppointmentCount()).isEqualTo(1);
-    }
-
-    @Test
     void anotherBodyWithTheSameKeyIsRefused() {
         RequestKey key = new RequestKey(USER, KEY);
         service.create(client.getId(), classic.getId(), TUE_10, AppointmentSource.MANUAL, EventActor.MASTER, key);

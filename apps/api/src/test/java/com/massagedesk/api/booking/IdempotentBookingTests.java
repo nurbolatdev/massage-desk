@@ -123,6 +123,22 @@ class IdempotentBookingTests {
         assertThat(JsonPath.<String>read(withoutKey.body(), "$.code")).isEqualTo("TIME_TAKEN");
     }
 
+    @Test
+    void startWithFractionsOfAMicrosecondIsReplayedAfterCommit() throws Exception {
+        UUID key = UUID.randomUUID();
+        String start = "2026-11-03T10:00:00.0000005+05:00";
+
+        Outcome first = create(start, key);
+        assertThat(first.status()).isEqualTo(201);
+
+        Outcome retry = create(start, key);
+        assertThat(retry.status()).isEqualTo(201);
+        assertThat(JsonPath.<String>read(retry.body(), "$.id"))
+                .isEqualTo(JsonPath.<String>read(first.body(), "$.id"));
+        assertThat(count("select count(*) from appointments where client_id = ? and status = 'confirmed'"))
+                .isEqualTo(1);
+    }
+
     @RepeatedTest(3)
     void parallelRetriesWithOneKeyBookOnce() throws Exception {
         UUID key = UUID.randomUUID();
