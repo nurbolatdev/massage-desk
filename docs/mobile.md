@@ -64,6 +64,8 @@ Done in M1-13. Opened from «Записать клиента» on Today. Three s
 
 - Only free times are offered. A time that is taken cannot be chosen.
 - If the time was taken meanwhile (409), the master sees an alert and the list of free times is refreshed.
+- Each opened form sends one `Idempotency-Key` with every try, so a retry after a lost connection returns the first booking instead of booking twice or showing a false «taken» alert. The key is kept after errors and a new one is made when the form is opened again.
+- If an earlier try from the same form was already saved and the time, service or client was then changed, the master sees «Похоже, запись уже сохранилась, когда пропадал интернет. Закройте это окно и проверьте расписание.»; the schedule is refreshed.
 - Offline, a banner explains that booking needs the internet, and the button is disabled.
 - The client gets no message about the booking yet.
 

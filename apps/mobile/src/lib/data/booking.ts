@@ -52,13 +52,20 @@ export interface BookInput {
   client: ClientChoice;
   serviceId: string;
   start: string;
+  /** The same value for every retry of one booking form, so a retry after a lost response is not booked twice. */
+  idempotencyKey: string;
 }
 
 export async function bookAppointment(
   api: Api,
-  { client, serviceId, start }: BookInput,
+  { client, serviceId, start, idempotencyKey }: BookInput,
 ): Promise<{ appointment: AppointmentResponse; clientId: string; clientName: string }> {
   const resolved = await resolveClient(api, client);
-  const appointment = await unwrap(api.POST("/appointments", { body: { clientId: resolved.id, serviceId, start } }));
+  const appointment = await unwrap(
+    api.POST("/appointments", {
+      params: { header: { "Idempotency-Key": idempotencyKey } },
+      body: { clientId: resolved.id, serviceId, start },
+    }),
+  );
   return { appointment, clientId: resolved.id, clientName: resolved.name };
 }

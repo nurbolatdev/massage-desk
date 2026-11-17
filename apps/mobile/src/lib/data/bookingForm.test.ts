@@ -4,6 +4,7 @@ import { ApiError } from "@/lib/api/errors";
 
 import type { ClientResponse } from "./booking";
 import { bookingErrorKind, bookingErrorText, bookingFormReducer, initialForm } from "./bookingForm";
+import { ALREADY_BOOKED_TEXT } from "./newBooking";
 
 const START = "2026-11-03T15:00:00+05:00";
 const OTHER = "2026-11-03T16:00:00+05:00";
@@ -55,6 +56,17 @@ describe("bookingFormReducer", () => {
     expect(next.error).toBe("failed");
   });
 
+  it("keeps the choices when an earlier try was already saved", () => {
+    const next = bookingFormReducer(withTime(), { type: "bookFailed", kind: "alreadyBooked" });
+    const before = withTime();
+    expect(next.error).toBe("alreadyBooked");
+    expect(next.start).toBe(before.start);
+    expect(next.clientId).toBe(before.clientId);
+    expect(next.serviceId).toBe(before.serviceId);
+    expect(next.taken).toBe(before.taken);
+    expect(next.collapsed).toBe(before.collapsed);
+  });
+
   it("unselects the picked client when the client no longer exists", () => {
     const client: ClientResponse = { id: "c1", phone: "+998901234567", name: "Айгуль" } as ClientResponse;
     const picked = bookingFormReducer(withTime(), { type: "clientPicked", client });
@@ -95,6 +107,9 @@ describe("bookingErrorKind", () => {
     expect(bookingErrorKind(new ApiError("problem", { status: 422, code: "OUTSIDE_SCHEDULE" }))).toBe("outside");
     expect(bookingErrorKind(new ApiError("problem", { status: 404, code: "CLIENT_NOT_FOUND" }))).toBe("notFound");
     expect(bookingErrorKind(new ApiError("problem", { status: 400, code: "INVALID_PHONE" }))).toBe("invalidPhone");
+    expect(bookingErrorKind(new ApiError("problem", { status: 422, code: "IDEMPOTENCY_KEY_REUSED" }))).toBe(
+      "alreadyBooked",
+    );
     expect(bookingErrorKind(new ApiError("network"))).toBe("failed");
     expect(bookingErrorKind(new Error())).toBe("failed");
   });
@@ -102,5 +117,6 @@ describe("bookingErrorKind", () => {
   it("has no text for taken and a text for the rest", () => {
     expect(bookingErrorText("taken")).toBeNull();
     expect(bookingErrorText("failed")).not.toBeNull();
+    expect(bookingErrorText("alreadyBooked")).toBe(ALREADY_BOOKED_TEXT);
   });
 });

@@ -1,7 +1,8 @@
 import { Feather } from "@expo/vector-icons";
 import { normalizePhone } from "@massage-desk/shared";
+import { randomUUID } from "expo-crypto";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useReducer, useRef } from "react";
+import { useReducer, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -61,6 +62,10 @@ export default function NewAppointmentScreen() {
   const [form, dispatch] = useReducer(bookingFormReducer, null, () => initialForm(null));
   const book = useBookAppointment();
   const inFlight = useRef(false);
+  // One key per opened form. Every try sends it, so a retry after a lost response gets the first result
+  // back instead of a second booking or a false "taken". It is kept after errors (the server stores a key
+  // only for a created appointment) and renewed only after a success.
+  const [idempotencyKey, setIdempotencyKey] = useState(() => randomUUID());
 
   const tz = settings.data?.timeZone;
   const today = tz === undefined ? undefined : localDay(now, tz);
@@ -108,9 +113,10 @@ export default function NewAppointmentScreen() {
       ? { kind: "existing" as const, id: form.clientId, name: form.clientLabel ?? form.phoneText.trim() }
       : { kind: "new" as const, phone: phone ?? "", name: form.name.trim() };
     book.mutate(
-      { client, serviceId, start: form.start },
+      { client, serviceId, start: form.start, idempotencyKey },
       {
         onSuccess: (result) => {
+          setIdempotencyKey(randomUUID());
           showBookingNotice({
             appointmentId: result.appointment.id,
             clientName: result.clientName,

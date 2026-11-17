@@ -1,14 +1,16 @@
 import { ApiError } from "@/lib/api/errors";
 
 import type { ClientResponse } from "./booking";
-import { BOOK_FAILED, NOT_FOUND_BOOKING_TEXT, OUTSIDE_TEXT } from "./newBooking";
+import { ALREADY_BOOKED_TEXT, BOOK_FAILED, NOT_FOUND_BOOKING_TEXT, OUTSIDE_TEXT } from "./newBooking";
 
 export const INVALID_PHONE_TEXT = "Проверьте номер. Например: +998 90 123 45 67";
 
-export type BookingErrorKind = "taken" | "outside" | "notFound" | "invalidPhone" | "failed";
+export type BookingErrorKind = "taken" | "outside" | "notFound" | "invalidPhone" | "alreadyBooked" | "failed";
 
 export function bookingErrorKind(error: unknown): BookingErrorKind {
   if (!(error instanceof ApiError)) return "failed";
+  // An earlier attempt with this form's key was saved; another try would book twice.
+  if (error.code === "IDEMPOTENCY_KEY_REUSED") return "alreadyBooked";
   if (error.code === "OUTSIDE_SCHEDULE") return "outside";
   if (error.code === "INVALID_PHONE") return "invalidPhone";
   if (error.code === "TIME_TAKEN") return "taken";
@@ -28,6 +30,8 @@ export function bookingErrorText(kind: BookingErrorKind): string | null {
       return NOT_FOUND_BOOKING_TEXT;
     case "invalidPhone":
       return INVALID_PHONE_TEXT;
+    case "alreadyBooked":
+      return ALREADY_BOOKED_TEXT;
     case "failed":
       return BOOK_FAILED;
   }
