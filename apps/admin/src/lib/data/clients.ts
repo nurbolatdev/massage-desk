@@ -87,7 +87,6 @@ export function uniqueById<T extends { id: string }>(pages: readonly (readonly T
   return result;
 }
 
-
 export function hasName(client: Pick<Client, "name">): boolean {
   return Boolean(client.name?.trim());
 }

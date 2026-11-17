@@ -106,7 +106,7 @@ export function ClientHistory({ clientId }: { clientId: string }) {
           size="small"
           ref={moreRef}
           aria-disabled={query.isFetchingNextPage || !online}
-          className="aria-disabled:bg-disabled-bg aria-disabled:text-neutral-fg aria-disabled:border-disabled-bg"
+          className="self-start aria-disabled:bg-disabled-bg aria-disabled:text-neutral-fg aria-disabled:border-disabled-bg"
           onClick={() => void loadMore()}
         >
           {SHOW_MORE}
