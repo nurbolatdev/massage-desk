@@ -292,6 +292,7 @@ describe("error types", () => {
       | "APPOINTMENT_CONFLICT"
       | "APPOINTMENT_NOT_FOUND"
       | "CLIENT_NOT_FOUND"
+      | "IDEMPOTENCY_KEY_REUSED"
       | "INVALID_HOURS"
       | "INVALID_PHONE"
       | "INVALID_REQUEST"

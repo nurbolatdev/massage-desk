@@ -504,7 +504,7 @@ export interface components {
          * @description machine-readable reason of an error response
          * @enum {string}
          */
-        ErrorCode: "APPOINTMENT_CONFLICT" | "APPOINTMENT_NOT_FOUND" | "CLIENT_NOT_FOUND" | "INVALID_HOURS" | "INVALID_PHONE" | "INVALID_REQUEST" | "INVALID_TIME_OFF" | "NOT_CONFIRMED" | "NOT_STARTED" | "OUTSIDE_SCHEDULE" | "PHONE_TAKEN" | "SERVICE_NOT_FOUND" | "TIME_OFF_NOT_FOUND" | "TIME_TAKEN" | "UNKNOWN_TIME_ZONE";
+        ErrorCode: "APPOINTMENT_CONFLICT" | "APPOINTMENT_NOT_FOUND" | "CLIENT_NOT_FOUND" | "IDEMPOTENCY_KEY_REUSED" | "INVALID_HOURS" | "INVALID_PHONE" | "INVALID_REQUEST" | "INVALID_TIME_OFF" | "NOT_CONFIRMED" | "NOT_STARTED" | "OUTSIDE_SCHEDULE" | "PHONE_TAKEN" | "SERVICE_NOT_FOUND" | "TIME_OFF_NOT_FOUND" | "TIME_TAKEN" | "UNKNOWN_TIME_ZONE";
         RescheduleAppointmentRequest: {
             /**
              * Format: date-time

@@ -15,6 +15,8 @@ public enum ErrorCode {
     APPOINTMENT_NOT_FOUND,
     /** No client with this id. */
     CLIENT_NOT_FOUND,
+    /** The idempotency key was already used with another request. */
+    IDEMPOTENCY_KEY_REUSED,
     /** A working-hours block is not valid. */
     INVALID_HOURS,
     /** The phone number is not valid. */
