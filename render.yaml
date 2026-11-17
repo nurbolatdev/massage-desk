@@ -1,0 +1,38 @@
+# Render Blueprint for the API service.
+# Values of secrets are set in the service settings on Render and are never stored in the repository.
+services:
+  - type: web
+    name: massage-desk-api
+    runtime: docker
+    branch: main
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: ./apps/api
+    region: frankfurt
+    # free sleeps when idle; use starter for production traffic
+    plan: free
+    # Readiness does not include the database, so a short database outage does not restart a healthy service.
+    healthCheckPath: /health/readiness
+    # Deploy only after the GitHub checks of the commit pass.
+    autoDeployTrigger: checksPass
+    buildFilter:
+      paths:
+        - apps/api/**
+    envVars:
+      # never add `seed` here
+      - key: SPRING_PROFILES_ACTIVE
+        value: supabase
+      # Session pooler allows few connections; old and new instances overlap during a deploy.
+      - key: SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE
+        value: "5"
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_USER
+        sync: false
+      - key: DATABASE_PASSWORD
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: ADMIN_ORIGIN
+        sync: false
+      - key: WHATSAPP_VERIFY_TOKEN
+        sync: false
