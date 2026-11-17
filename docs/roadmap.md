@@ -618,6 +618,7 @@ Split into three pull requests: the services list, adding and editing services, 
   1. `feat(admin): service dialog`
   1. `feat(admin): services and prices`
   1. `docs: admin services editing`
+  1. `fix(admin): service dialog review fixes`
 
 **Pull request 3 of 3**
 

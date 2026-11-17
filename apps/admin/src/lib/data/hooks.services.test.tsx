@@ -136,4 +136,21 @@ describe("useSaveService", () => {
       expect(client.getQueryState(queryKeys.slots.one("s1", "2026-11-20"))?.isInvalidated).toBe(true);
     });
   });
+
+  it("reports an error without waiting for the list to reload", async () => {
+    respond.mockImplementation((request) =>
+      request.method === "GET"
+        ? new Promise<Response>(() => undefined)
+        : Promise.resolve(json({ code: "INVALID_REQUEST" }, 400)),
+    );
+    const { wrap } = setup();
+    const { result } = renderHook(() => ({ list: useServices(), save: useSaveService() }), {
+      wrapper: wrap,
+    });
+
+    result.current.save.mutate({ id: "s1", body: { price: 9000 } });
+
+    await waitFor(() => expect(result.current.save.isError).toBe(true));
+    expect(result.current.list.isFetching).toBe(true);
+  });
 });

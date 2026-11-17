@@ -74,7 +74,7 @@ function ServicesTable({
                   {offeredText(service.active)}
                 </span>
               </td>
-              <td className={`${TD} text-right`}>
+              <td className={TD}>
                 <button
                   type="button"
                   aria-label={editLabel(service.name)}

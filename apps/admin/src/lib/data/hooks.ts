@@ -74,12 +74,14 @@ export function useSaveService() {
       await queryClient.cancelQueries({ queryKey: queryKeys.services });
       queryClient.setQueryData<Service[]>(queryKeys.services, (list) => upsertService(list, saved));
     },
-    onSettled: () =>
-      Promise.all([
+    // Not returned: the dialog must not wait for the lists to reload.
+    onSettled: () => {
+      void Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.services }),
         queryClient.invalidateQueries({ queryKey: queryKeys.slots.all }),
         queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all }),
-      ]),
+      ]);
+    },
   });
 }
 
