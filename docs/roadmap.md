@@ -593,8 +593,6 @@ Split into five pull requests: the clients table, the client profile with notes,
 
 ### M1-19 · Admin: services and settings
 
-- **Branch:** `feature/admin-settings`
-
 Split into three pull requests: the services list, adding and editing services, and the address and time zone.
 
 - **Also (from M1-16):** the server forbids user management for master: there is no user API yet, and when one is added it lives under `/admin/**`, which is admin-only and covered by a test.
@@ -608,6 +606,7 @@ Split into three pull requests: the services list, adding and editing services, 
   1. `feat(admin): services data`
   1. `feat(admin): settings page with services`
   1. `docs: admin services list`
+  1. `fix(admin): settings review fixes`
 
 **Pull request 2 of 3**
 
