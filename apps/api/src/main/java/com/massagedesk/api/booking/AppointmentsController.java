@@ -1,5 +1,6 @@
 package com.massagedesk.api.booking;
 
+import com.massagedesk.api.booking.AppointmentService.RequestKey;
 import com.massagedesk.api.errors.ApiProblem;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -67,7 +69,8 @@ class AppointmentsController {
     }
 
     @Operation(summary = "Book a service for a client")
-    @ApiResponse(responseCode = "201", description = "appointment created")
+    @ApiResponse(responseCode = "201",
+            description = "appointment created; a repeat with the same Idempotency-Key returns the appointment as it was created")
     @ApiResponse(responseCode = "400", description = "missing or invalid field",
             content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
                     schema = @Schema(implementation = ApiProblem.class)))
@@ -78,16 +81,23 @@ class AppointmentsController {
             content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
                     schema = @Schema(implementation = ApiProblem.class)))
     @ApiResponse(responseCode = "422",
-            description = "outside working hours, in time off or in the past",
+            description = "outside working hours, in time off or in the past, or the Idempotency-Key was already used with another request",
             content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
                     schema = @Schema(implementation = ApiProblem.class)))
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
-    AppointmentResponse createAppointment(@Valid @RequestBody CreateAppointmentRequest request,
+    AppointmentResponse createAppointment(
+            @Valid @RequestBody CreateAppointmentRequest request,
+            @Parameter(name = "Idempotency-Key",
+                    description = "optional UUID created by the client once per booking form; a repeat with the same key and body within 24 hours returns the first result instead of booking again")
+            @RequestHeader(name = "Idempotency-Key", required = false) UUID idempotencyKey,
             @Parameter(hidden = true) Authentication authentication) {
+        RequestKey key = idempotencyKey == null
+                ? null
+                : new RequestKey(StaffActors.userId(authentication), idempotencyKey);
         return AppointmentResponse.from(appointments.create(
                 request.clientId(), request.serviceId(), request.start().toInstant(),
-                AppointmentSource.MANUAL, StaffActors.of(authentication)));
+                AppointmentSource.MANUAL, StaffActors.of(authentication), key));
     }
 
     @Operation(summary = "Move an appointment to another start, keeping its length")

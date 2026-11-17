@@ -64,6 +64,16 @@
       },
       "post" : {
         "operationId" : "createAppointment",
+        "parameters" : [ {
+          "description" : "optional UUID created by the client once per booking form; a repeat with the same key and body within 24 hours returns the first result instead of booking again",
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -83,7 +93,7 @@
                 }
               }
             },
-            "description" : "appointment created"
+            "description" : "appointment created; a repeat with the same Idempotency-Key returns the appointment as it was created"
           },
           "400" : {
             "content" : {
@@ -123,7 +133,7 @@
                 }
               }
             },
-            "description" : "outside working hours, in time off or in the past"
+            "description" : "outside working hours, in time off or in the past, or the Idempotency-Key was already used with another request"
           }
         },
         "summary" : "Book a service for a client",

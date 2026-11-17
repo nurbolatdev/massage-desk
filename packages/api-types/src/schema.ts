@@ -657,7 +657,10 @@ export interface operations {
     createAppointment: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description optional UUID created by the client once per booking form; a repeat with the same key and body within 24 hours returns the first result instead of booking again */
+                "Idempotency-Key"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -667,7 +670,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description appointment created */
+            /** @description appointment created; a repeat with the same Idempotency-Key returns the appointment as it was created */
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -703,7 +706,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ApiProblem"];
                 };
             };
-            /** @description outside working hours, in time off or in the past */
+            /** @description outside working hours, in time off or in the past, or the Idempotency-Key was already used with another request */
             422: {
                 headers: {
                     [name: string]: unknown;

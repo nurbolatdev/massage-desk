@@ -1,5 +1,6 @@
 package com.massagedesk.api.booking;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -38,6 +39,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Import({TestcontainersConfiguration.class, FixedClockConfiguration.class})
 @Transactional
 class AppointmentsControllerTests {
+
+    private static final UUID STAFF_ID = UUID.fromString("00000000-0000-0000-0000-000000000101");
+    private static final UUID OTHER_STAFF_ID = UUID.fromString("00000000-0000-0000-0000-000000000102");
 
     @Autowired
     private MockMvc mvc;
@@ -80,6 +84,19 @@ class AppointmentsControllerTests {
 
     private ResultActions postJson(String json) throws Exception {
         return postJson(json, StaffRole.MASTER);
+    }
+
+    private ResultActions postJson(String json, String key) throws Exception {
+        return postJson(json, key, STAFF_ID);
+    }
+
+    private ResultActions postJson(String json, String key, UUID subject) throws Exception {
+        return mvc.perform(post("/appointments")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("Idempotency-Key", key)
+                .content(json)
+                .with(jwt().jwt(j -> j.subject(subject.toString()))
+                        .authorities(new SimpleGrantedAuthority(StaffRole.MASTER.authority()))));
     }
 
     @Test
@@ -181,6 +198,87 @@ class AppointmentsControllerTests {
                 .andExpect(status().isConflict())
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
                 .andExpect(jsonPath("$.detail").value("time is already booked"));
+    }
+
+    @Test
+    void repeatWithTheSameKeyReturnsTheSameBody() throws Exception {
+        String key = UUID.randomUUID().toString();
+        String first = postJson(body("2026-11-03T10:00:00+05:00"), key)
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        String second = postJson(body("2026-11-03T10:00:00+05:00"), key)
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(second).isEqualTo(first);
+        Integer count = jdbc.queryForObject(
+                "select count(*) from appointments where client_id = ?", Integer.class, client.getId());
+        assertThat(count).isEqualTo(1);
+    }
+
+    @Test
+    void sameKeyAnotherOffsetIsTheSameRequest() throws Exception {
+        String key = UUID.randomUUID().toString();
+        String first = postJson(body("2026-11-03T10:00:00+05:00"), key)
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String firstId = JsonPath.read(first, "$.id");
+
+        postJson(body("2026-11-03T05:00:00Z"), key)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(firstId));
+    }
+
+    @Test
+    void sameKeyAnotherBodyIs422() throws Exception {
+        String key = UUID.randomUUID().toString();
+        postJson(body("2026-11-03T10:00:00+05:00"), key).andExpect(status().isCreated());
+
+        postJson(body("2026-11-03T11:00:00+05:00"), key)
+                .andExpect(status().isUnprocessableContent())
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+                .andExpect(jsonPath("$.code").value("IDEMPOTENCY_KEY_REUSED"))
+                .andExpect(jsonPath("$.detail").value("idempotency key was already used with another request"));
+    }
+
+    @Test
+    void keyIsScopedToTheTokenSubject() throws Exception {
+        String key = UUID.randomUUID().toString();
+        String first = postJson(body("2026-11-03T10:00:00+05:00"), key, STAFF_ID)
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String firstId = JsonPath.read(first, "$.id");
+
+        String second = postJson(body("2026-11-03T11:00:00+05:00"), key, OTHER_STAFF_ID)
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String secondId = JsonPath.read(second, "$.id");
+
+        assertThat(secondId).isNotEqualTo(firstId);
+    }
+
+    @Test
+    void invalidKeyIs400() throws Exception {
+        postJson(body("2026-11-03T10:00:00+05:00"), "not-a-uuid")
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+
+        Integer count = jdbc.queryForObject(
+                "select count(*) from appointments where client_id = ?", Integer.class, client.getId());
+        assertThat(count).isZero();
+    }
+
+    @Test
+    void withoutKeyTheTakenTimeIsStill409() throws Exception {
+        postJson(body("2026-11-03T10:00:00+05:00")).andExpect(status().isCreated());
+
+        // last statement: the database transaction is aborted by the exclusion violation
+        postJson(body("2026-11-03T10:00:00+05:00"))
+                .andExpect(status().isConflict())
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+                .andExpect(jsonPath("$.code").value("TIME_TAKEN"));
     }
 
     private String createAt(String start) throws Exception {
