@@ -53,8 +53,7 @@ export default function AppointmentScreen() {
   const state = todayState({
     online,
     hasData: card.hasData,
-    error: card.refreshError,
-    // The card counts a failed settings load as a failed refresh too.
+    error: card.error,
     appointmentsError: card.refreshError,
   });
   const { appointment, timeZone } = card;

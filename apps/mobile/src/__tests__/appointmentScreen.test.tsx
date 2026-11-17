@@ -1,13 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import type { components } from "@massage-desk/api-types";
 import { onlineManager, QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen, userEvent, waitFor } from "@testing-library/react-native";
+import { act, cleanup, render, screen, userEvent, waitFor } from "@testing-library/react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import AppointmentScreen from "@/app/appointment/[id]";
+import { ApiError } from "@/lib/api/errors";
 import { CANCEL_CONFIRM_YES, CANCEL_LABEL } from "@/lib/data/appointmentCard";
 import { RESCHEDULE_LABEL } from "@/lib/data/reschedule";
 import { queryKeys } from "@/lib/data/queryKeys";
+import { LOAD_ERROR_TEXT, REFRESH_FAILED_TITLE, RETRY_LABEL } from "@/lib/data/todayState";
 
 type Call = (path: string, init?: unknown) => Promise<unknown>;
 
@@ -164,5 +166,51 @@ describe("appointment card screen", () => {
     onlineManager.setOnline(false);
     await renderCard();
     expect(screen.getByRole("button", { name: RESCHEDULE_LABEL })).toBeDisabled();
+  });
+
+  it("a failed settings refresh keeps the card without the refresh warning", async () => {
+    queryClient.setQueryData(queryKeys.settings, settings, { updatedAt: Date.now() - 10 * 60 * 1000 });
+    mockGet.mockImplementation(async (path) => {
+      if (path === "/settings") throw new ApiError("server", { status: 500 });
+      if (path === "/appointments") return ok([listItem]);
+      if (path === "/clients/{id}") return ok(client);
+      throw new Error(`unexpected GET ${path}`);
+    });
+    await renderCard();
+    await waitFor(() => expect(queryClient.getQueryState(queryKeys.settings)?.status).toBe("error"));
+    // Subscribers are notified on a later timer tick than the cache update.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+
+    expect(screen.getByText("Анна")).toBeOnTheScreen();
+    expect(screen.queryByText(REFRESH_FAILED_TITLE)).toBeNull();
+  });
+
+  it("a failed list refresh shows the refresh warning", async () => {
+    mockGet.mockImplementation(async (path) => {
+      if (path === "/settings") return ok(settings);
+      if (path === "/appointments") throw new ApiError("server", { status: 500 });
+      if (path === "/clients/{id}") return ok(client);
+      throw new Error(`unexpected GET ${path}`);
+    });
+    await renderCard();
+
+    expect(await screen.findByText(REFRESH_FAILED_TITLE)).toBeOnTheScreen();
+    expect(screen.getByText("Анна")).toBeOnTheScreen();
+  });
+
+  it("a settings failure before any data shows the load error with a retry", async () => {
+    queryClient.removeQueries({ queryKey: queryKeys.settings });
+    mockGet.mockImplementation(async (path) => {
+      if (path === "/settings") throw new ApiError("server", { status: 500 });
+      if (path === "/appointments") return ok([listItem]);
+      if (path === "/clients/{id}") return ok(client);
+      throw new Error(`unexpected GET ${path}`);
+    });
+    await renderCard();
+
+    expect(await screen.findByText(LOAD_ERROR_TEXT)).toBeOnTheScreen();
+    expect(screen.getByRole("button", { name: RETRY_LABEL })).toBeOnTheScreen();
+    expect(screen.queryByText(REFRESH_FAILED_TITLE)).toBeNull();
+    expect(screen.queryByText("Анна")).toBeNull();
   });
 });
