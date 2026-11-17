@@ -613,8 +613,9 @@ Split into three pull requests: the services list, adding and editing services, 
 - **Branch:** `feature/admin-services-edit`
 - **Pull request:** `feat(admin): services and prices`
 - **Depends on:** pull request 1 of 3
-- **Commits (planned):**
+- **Commits:**
   1. `feat(admin): service form data`
+  1. `feat(admin): service dialog`
   1. `feat(admin): services and prices`
   1. `docs: admin services editing`
 
