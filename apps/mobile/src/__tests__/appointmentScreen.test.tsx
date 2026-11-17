@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import type { components } from "@massage-desk/api-types";
 import { onlineManager, QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen, userEvent, waitFor } from "@testing-library/react-native";
+import { act, cleanup, render, screen, userEvent, waitFor } from "@testing-library/react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import AppointmentScreen from "@/app/appointment/[id]";
@@ -178,6 +178,8 @@ describe("appointment card screen", () => {
     });
     await renderCard();
     await waitFor(() => expect(queryClient.getQueryState(queryKeys.settings)?.status).toBe("error"));
+    // Subscribers are notified on a later timer tick than the cache update.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
 
     expect(screen.getByText("Анна")).toBeOnTheScreen();
     expect(screen.queryByText(REFRESH_FAILED_TITLE)).toBeNull();
