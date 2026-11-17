@@ -83,7 +83,7 @@ Done in M1-15. Opened from the row «Выходные и отпуск» in Setti
 
 ## Data
 
-- Setup: set `EXPO_PUBLIC_API_URL` in `apps/mobile/.env` (see `.env.example`). On a phone use the computer's LAN address, not `localhost`.
+- Setup: set `EXPO_PUBLIC_API_URL` in `apps/mobile/.env` (see `.env.example`). On a phone use the computer's LAN address, not `localhost`. For the APK the URL comes from the build environment, see [Build and install](#build-and-install).
 - The app reads the schedule through the API with a client built from the generated OpenAPI types. A `401` answer signs the master out on this device.
 - The day is the master's day: it is computed in the time zone from the settings.
 - The last loaded data is kept on the device for 7 days and cleared at sign-out.
@@ -97,6 +97,72 @@ The master signs in with email and password. There is no registration: staff acc
 Setup: copy `apps/mobile/.env.example` to `apps/mobile/.env` and fill `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. Both values are public client values; the real `.env` is never committed.
 
 The session lives in the device's secure storage. It is split into parts because of the per-value size limit, and it refreshes while the app is open. Without a session only the sign-in screen is reachable. Sign-out is in Settings and asks for confirmation.
+
+## Build and install
+
+### Build profiles
+
+Configured in `apps/mobile/eas.json`:
+
+- `production` — APK for the master's phone, update channel `production`.
+- `preview` — `extends: "production"`, APK for a test phone, update channel `preview`.
+
+Both profiles use internal distribution (`distribution: "internal"`) and build a signed APK (`android.buildType: "apk"`), without Google Play. `cli.appVersionSource: "remote"` and `autoIncrement: true` increment the Android build number on EAS for every build, so a new APK installs over the old one and keeps the master's session. EAS creates and stores the Android signing key on the first build — never reset it, otherwise a new APK will not install over the existing one and the master would have to uninstall and sign in again.
+
+### Environment variables
+
+| Variable | Value |
+|---|---|
+| `EXPO_PUBLIC_API_URL` | `https://<service>.onrender.com` (see [deploy.md](deploy.md)); HTTPS only — a release build blocks plain `http` |
+| `EXPO_PUBLIC_SUPABASE_URL` | `https://<project-ref>.supabase.co`, the production Supabase project |
+| `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Publishable key of the production Supabase project |
+
+Set the values in EAS environment variables for both `production` and `preview` (never commit real values or put them in `eas.json`):
+
+```bash
+eas env:create --environment production --name EXPO_PUBLIC_API_URL --value https://<service>.onrender.com --visibility plaintext
+eas env:create --environment production --name EXPO_PUBLIC_SUPABASE_URL --value https://<project-ref>.supabase.co --visibility plaintext
+eas env:create --environment production --name EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY --value <publishable-key> --visibility sensitive
+```
+
+Repeat with `--environment preview`. Use `--visibility plaintext` for URLs and `--visibility sensitive` for the publishable key — never `secret`, because `secret` variables cannot be read locally during `eas update`, and all `EXPO_PUBLIC_*` values are public client values compiled into the APK anyway. Without these three variables the app throws an error on start.
+
+### First build (once)
+
+1. Install the EAS CLI (`npm i -g eas-cli`) and run `eas login`.
+2. In `apps/mobile`, run `eas init` and `eas update:configure` (this writes `extra.eas.projectId` and `updates.url` into `apps/mobile/app.json` — commit the change).
+3. Create the three EAS environment variables above for `preview` and `production`.
+4. Run `eas build -p android --profile preview` in `apps/mobile` and verify the APK on a test phone.
+5. Run `eas build -p android --profile production` and install it on the master's phone.
+
+### Install on a phone
+
+Open the build link on the phone, download the APK, allow installing apps from that browser when Android asks (once), install, open the app, and sign in. Check that the app icon and splash screen match the brand assets. Subsequent APK builds install the same way, directly over the old app without uninstalling.
+
+### Updates without reinstalling
+
+For JS-only changes (run from `apps/mobile`):
+
+```bash
+eas update -p android --channel preview --environment preview
+# check on the test phone, then:
+eas update -p android --channel production --environment production
+```
+
+The app downloads updates in the background (`updates.checkAutomatically: "ON_LOAD"`, `fallbackToCacheTimeout: 0`) and applies them on the next start. The app is Android-only, so updates are published with `-p android`. Always pass `--environment`: without it, a local `.env` with a LAN address could be bundled and sent to the master's phone.
+
+For native changes (adding a package with native code, changing `app.json` plugins, icon, splash, Android settings, or upgrading the Expo SDK), bump `version` in `apps/mobile/app.json` (`runtimeVersion` uses policy `appVersion`) and build a new APK — an OTA update never reaches an app with a different runtime version.
+
+To roll back a bad update, find the previous update group with `eas update:list` and republish it:
+
+```bash
+eas update:republish --group <group-id> --destination-channel production
+```
+
+### Known gaps
+
+- No in-app version or update indicator yet.
+- On the free Render plan the first API request after idle takes about a minute.
 
 ## Tests
 
