@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider, onlineManager } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createApi, unwrap } from "@/lib/api/client";
@@ -17,6 +17,7 @@ import {
   zoneConfirmText,
   zoneConflictText,
 } from "@/lib/data/businessSettings";
+import { queryKeys } from "@/lib/data/queryKeys";
 import { slotLines } from "@/lib/data/reschedule";
 import { SAVE_OFFLINE_HINT } from "@/lib/data/workingHours";
 import { ApiError } from "@/lib/api/errors";
@@ -153,6 +154,25 @@ describe("BusinessSettingsSection saving", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(document.activeElement).toBe(screen.getByRole("heading", { level: 2 }));
     expect(save().disabled).toBe(true);
+  });
+
+  it("keeps the edited zone and takes a new address from the server", async () => {
+    serve();
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    render(
+      <QueryClientProvider client={client}>
+        <BusinessSettingsSection />
+      </QueryClientProvider>,
+    );
+    await screen.findByLabelText("Адрес");
+    fireEvent.click(zone(/^Москва/));
+    act(() => {
+      client.setQueryData(queryKeys.settings, { ...settings, address: "Новый адрес" });
+    });
+    await waitFor(() => expect(address().value).toBe("Новый адрес"));
+    expect(zone(/^Москва/).checked).toBe(true);
   });
 
   it("clears the address with an empty string", async () => {

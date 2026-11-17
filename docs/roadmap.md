@@ -631,6 +631,7 @@ Split into three pull requests: the services list, adding and editing services, 
   1. `feat(admin): address and time zone form`
   1. `feat(admin): business settings and time zone`
   1. `docs: admin settings`
+  1. `fix(admin): settings review fixes`
 
 ### M1-20 · Deploy API
 

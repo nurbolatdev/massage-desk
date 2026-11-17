@@ -54,7 +54,10 @@ function BusinessForm({ saved, titleRef }: { saved: Settings; titleRef: RefObjec
 
   if (saved !== base) {
     setBase(saved);
-    if (!isDirty(base, draft)) setDraft(businessDraft(saved));
+    setDraft((d) => ({
+      address: d.address.trim() === (base.address ?? "") ? (saved.address ?? "") : d.address,
+      timeZone: d.timeZone === base.timeZone ? saved.timeZone : d.timeZone,
+    }));
   }
 
   const online = useOnline();
