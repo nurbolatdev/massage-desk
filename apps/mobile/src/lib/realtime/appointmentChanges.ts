@@ -45,6 +45,7 @@ export function subscribeAppointmentChanges(
 export async function invalidateAppointments(queryClient: QueryClient): Promise<void> {
   await Promise.all([
     queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.appointment.all }),
     queryClient.invalidateQueries({ queryKey: queryKeys.slots.all }),
   ]);
 }

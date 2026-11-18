@@ -15,6 +15,10 @@ export const queryKeys = {
     all: ["appointments"] as const,
     range: (from: string, to: string) => ["appointments", from, to] as const,
   },
+  appointment: {
+    all: ["appointment"] as const,
+    one: (id: string) => ["appointment", id] as const,
+  },
   timeOff: {
     all: ["timeOff"] as const,
     range: (from: string, to: string) => ["timeOff", from, to] as const,

@@ -1,9 +1,10 @@
 import { describe, expect, it, jest } from "@jest/globals";
 
 import { createApi } from "@/lib/api/client";
+import { ApiError } from "@/lib/api/errors";
 
 import type { AppointmentListItem } from "./appointments";
-import { fetchAppointments, toAppointment } from "./appointments";
+import { fetchAppointment, fetchAppointments, toAppointment } from "./appointments";
 
 const item: AppointmentListItem = {
   id: "a1",
@@ -49,5 +50,40 @@ describe("fetchAppointments", () => {
       "https://api.test/appointments?from=2026-11-03&to=2026-11-03",
     );
     expect(data).toEqual([item]);
+  });
+});
+
+describe("fetchAppointment", () => {
+  function apiWith(response: Response) {
+    const fetch = jest.fn<(input: Request) => Promise<Response>>(async () => response);
+    const api = createApi({
+      baseUrl: "https://api.test",
+      getAccessToken: async () => "tok",
+      onUnauthorized: jest.fn(),
+      fetch,
+    });
+    return { api, fetch };
+  }
+
+  it("calls GET /appointments/{id}", async () => {
+    const { api, fetch } = apiWith(new Response(JSON.stringify(item), { status: 200 }));
+    const data = await fetchAppointment(api, "a1");
+    expect(fetch.mock.calls[0]?.[0].url).toBe("https://api.test/appointments/a1");
+    expect(data).toEqual(item);
+  });
+
+  it("rejects with the problem code when the appointment is unknown", async () => {
+    const body = { code: "APPOINTMENT_NOT_FOUND", title: "Not found", status: 404 };
+    const { api } = apiWith(
+      new Response(JSON.stringify(body), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    await expect(fetchAppointment(api, "a1")).rejects.toMatchObject({
+      status: 404,
+      code: "APPOINTMENT_NOT_FOUND",
+    });
+    await expect(fetchAppointment(api, "a1")).rejects.toBeInstanceOf(ApiError);
   });
 });

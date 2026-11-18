@@ -156,7 +156,11 @@ export function useAppointmentAction() {
         (items) => withStatus(items, result.id, result.status),
       );
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all }),
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.appointment.all }),
+      ]),
   });
 }
 
@@ -169,6 +173,7 @@ export function useRescheduleAppointment() {
     onSettled: () =>
       Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.appointment.all }),
         queryClient.invalidateQueries({ queryKey: queryKeys.slots.all }),
       ]),
   });

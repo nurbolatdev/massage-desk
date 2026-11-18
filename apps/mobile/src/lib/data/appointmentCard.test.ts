@@ -17,6 +17,7 @@ import {
   detailRows,
   durationText,
   initials,
+  isAppointmentNotFound,
   statusChip,
   timeRange,
 } from "./appointmentCard";
@@ -153,6 +154,22 @@ describe("actionErrorText", () => {
   it("falls back to the failed text", () => {
     expect(actionErrorText(new ApiError("network"))).toBe(ACTION_FAILED);
     expect(actionErrorText(new Error())).toBe(ACTION_FAILED);
+  });
+});
+
+describe("isAppointmentNotFound", () => {
+  it("is true only for the not-found problem", () => {
+    expect(
+      isAppointmentNotFound(new ApiError("problem", { status: 404, code: "APPOINTMENT_NOT_FOUND" })),
+    ).toBe(true);
+  });
+
+  it("is false for other errors", () => {
+    expect(isAppointmentNotFound(new ApiError("problem", { status: 404, code: "CLIENT_NOT_FOUND" }))).toBe(false);
+    expect(isAppointmentNotFound(new ApiError("server", { status: 500 }))).toBe(false);
+    expect(isAppointmentNotFound(new ApiError("problem", { status: 400, code: "INVALID_REQUEST" }))).toBe(false);
+    expect(isAppointmentNotFound(new Error())).toBe(false);
+    expect(isAppointmentNotFound(null)).toBe(false);
   });
 });
 

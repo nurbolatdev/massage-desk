@@ -124,6 +124,13 @@ export function actionErrorText(error: unknown): string {
   return error instanceof ApiError && error.status === 409 ? ACTION_CONFLICT : ACTION_FAILED;
 }
 
+/** The API answered 404 for this appointment id. */
+export function isAppointmentNotFound(error: unknown): boolean {
+  return (
+    error instanceof ApiError && error.status === 404 && error.code === "APPOINTMENT_NOT_FOUND"
+  );
+}
+
 export interface CardLoadInput {
   appointmentsLoaded: boolean;
   settingsLoaded: boolean;
