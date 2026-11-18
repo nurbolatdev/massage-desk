@@ -184,6 +184,12 @@ The master runs the schedule in the app; admin panel basics; event log; deploy a
   - **Mobile:**
     - **Branch:** `feature/mobile-card-by-id`
     - **Pull request:** `feat(mobile): open the appointment card by id` (closes the issue)
+    - **Commits:**
+      1. `feat(mobile): load one appointment by id`
+      1. `feat(mobile): find the appointment by id when the day does not have it`
+      1. `feat(mobile): open the card and reschedule without a day`
+      1. `test(mobile): retry after a lost booking response`
+      1. `docs: appointment card by id in the mobile app`
 
 ### M1-8 · Clients and settings API
 

@@ -45,13 +45,14 @@ Later:
 
 Done in M1-12. The next-client card and every row on Today open it. It shows the time, service, client and who booked; call and WhatsApp buttons; the client's note with quick phrases (saved with `PATCH /clients/{id}`); and, for a confirmed appointment, «Перенести», «Отменить» and, once it has started, «Не пришёл». Every action asks for confirmation, and no request is sent before «Да». The status chip is shown only for unusual statuses (cancelled, no-show, done), not for a confirmed one. States: loading, offline, error, «Запись не найдена».
 
-- The card route is `/appointment/<id>?day=YYYY-MM-DD`. The API has no single-appointment endpoint, so the card finds the appointment in the list of that day (same cache as Today). Without `day` it shows «Запись не найдена» ([#59](https://github.com/nurbolatdev/massage-desk/issues/59)).
+- The card route is `/appointment/<id>` with an optional `?day=YYYY-MM-DD`. With `day` the card takes the appointment from the list of that day (same cache as Today; works offline). Without `day`, or when the appointment is no longer in that day (it was moved), the card loads `GET /appointments/{id}`; an unknown id shows «Запись не найдена» ([#59](https://github.com/nurbolatdev/massage-desk/issues/59)).
 - Not shown yet, because the API does not provide it: price, who cancelled and when, visit history, the no-show counter.
 
 ## Reschedule
 
 Opened from «Перенести» on the card of a confirmed appointment. The master picks a new day and a free time; the booked length is kept.
 
+- The screen also opens by one id (`/reschedule/<id>`, `day` is optional), like the card.
 - The app asks for confirmation first; no request is sent before «Да, перенести».
 - Only free times are offered. If the time was taken meanwhile (409), the master sees an alert and the list of times is refreshed.
 - Offline, the button is disabled.
