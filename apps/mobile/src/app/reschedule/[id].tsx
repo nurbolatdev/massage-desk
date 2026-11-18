@@ -101,7 +101,12 @@ export default function RescheduleScreen() {
 
   const goBack = () => {
     if (router.canGoBack()) router.back();
-    else router.replace({ pathname: "/appointment/[id]", params: { id, day: dayParam ?? "" } });
+    else {
+      router.replace({
+        pathname: "/appointment/[id]",
+        params: dayParam === undefined ? { id } : { id, day: dayParam },
+      });
+    }
   };
 
   const start = form.start === null ? null : new Date(form.start);
