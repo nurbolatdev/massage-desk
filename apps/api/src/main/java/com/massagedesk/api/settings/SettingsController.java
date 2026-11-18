@@ -1,0 +1,56 @@
+package com.massagedesk.api.settings;
+
+import com.massagedesk.api.errors.ApiProblem;
+import com.massagedesk.api.security.StaffActors;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import org.springframework.http.MediaType;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+/** Time zone, address and the bot switch. */
+@Tag(name = "settings")
+@RestController
+@RequestMapping("/settings")
+class SettingsController {
+
+    private final SettingsService service;
+
+    SettingsController(SettingsService service) {
+        this.service = service;
+    }
+
+    @Operation(summary = "Business settings")
+    @ApiResponse(responseCode = "200", description = "current settings")
+    @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
+    SettingsResponse getSettings() {
+        return SettingsResponse.from(service.current());
+    }
+
+    @Operation(summary = "Change settings; absent or null fields stay unchanged")
+    @ApiResponse(responseCode = "200", description = "settings after the change")
+    @ApiResponse(responseCode = "400", description = "invalid field or unknown time zone",
+            content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                    schema = @Schema(implementation = ApiProblem.class)))
+    @ApiResponse(responseCode = "409",
+            description = "confirmed appointments are outside the working hours in the new time zone; "
+                    + "send force to store anyway",
+            content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                    schema = @Schema(implementation = ApiProblem.class)))
+    @PatchMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    SettingsResponse updateSettings(@Valid @RequestBody UpdateSettingsRequest request,
+            @Parameter(hidden = true) Authentication authentication) {
+        return SettingsResponse.from(
+                service.update(request.timeZone(), request.address(), request.botEnabled(),
+                Boolean.TRUE.equals(request.force()), StaffActors.of(authentication)));
+    }
+}

@@ -1,0 +1,27 @@
+{
+  "name": "massage-desk",
+  "private": true,
+  "license": "MIT",
+  "workspaces": [
+    "packages/shared",
+    "packages/api-types",
+    "apps/mobile",
+    "apps/admin"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build:shared": "npm run build -w @massage-desk/shared",
+    "dev:admin": "npm run dev -w @massage-desk/admin",
+    "dev:mobile": "npm run start -w @massage-desk/mobile",
+    "api:openapi": "cd apps/api && OPENAPI_UPDATE=true ./mvnw -B -q test -Dtest=OpenApiDocumentTests",
+    "api:types": "npm run api:openapi && npm run generate -w @massage-desk/api-types",
+    "check": "bash scripts/check.sh",
+    "brand": "node scripts/brand/generate.mjs",
+    "postinstall": "npm run build:shared"
+  },
+  "devDependencies": {
+    "sharp": "^0.35.5"
+  }
+}

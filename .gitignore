@@ -1,0 +1,21 @@
+# dependencies and builds
+node_modules/
+dist/
+build/
+target/
+coverage/
+*.tsbuildinfo
+.expo/
+*.apk
+*.aab
+
+# secrets
+.env
+.env.*
+!.env.example
+
+# IDE and OS
+.idea/
+*.iml
+.vscode/
+.DS_Store

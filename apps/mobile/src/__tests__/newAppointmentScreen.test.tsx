@@ -1,0 +1,474 @@
+import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
+import type { components } from "@massage-desk/api-types";
+import { onlineManager, QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { act, cleanup, fireEvent, render, screen, userEvent, waitFor } from "@testing-library/react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+
+import NewAppointmentScreen from "@/app/new-appointment";
+import { clearBookingNotice, getBookingNotice } from "@/lib/data/bookingNotice";
+import { addDays, localDay } from "@/lib/data/days";
+import { ALREADY_BOOKED_TEXT, BOOK_FAILED, CHOOSE_TIME, conflictTitle, takenA11y } from "@/lib/data/newBooking";
+import { NAME_LABEL, NEW_CLIENT_INFO_BOLD, PHONE_STEP } from "@/lib/data/clientPicker";
+import { queryKeys } from "@/lib/data/queryKeys";
+
+type Call = (path: string, init?: unknown) => Promise<unknown>;
+
+const mockGet = jest.fn<Call>();
+const mockPost = jest.fn<Call>();
+const mockBack = jest.fn();
+const mockRandomUUID = jest.fn<() => string>();
+const mockParams = jest.fn<() => Record<string, string>>(() => ({}));
+
+jest.mock("expo-router", () => ({
+  useRouter: () => ({ canGoBack: () => true, back: mockBack, replace: jest.fn(), push: jest.fn() }),
+  useLocalSearchParams: () => mockParams(),
+}));
+
+jest.mock("expo-crypto", () => ({ randomUUID: () => mockRandomUUID() }));
+
+jest.mock("@/lib/api", () => ({
+  api: {
+    GET: (path: string, init?: unknown) => mockGet(path, init),
+    POST: (path: string, init?: unknown) => mockPost(path, init),
+  },
+  unwrap: jest.requireActual<typeof import("@/lib/api/client")>("@/lib/api/client").unwrap,
+  ApiError: jest.requireActual<typeof import("@/lib/api/errors")>("@/lib/api/errors").ApiError,
+}));
+
+type Schemas = components["schemas"];
+
+const TIME_ZONE = "Asia/Tashkent";
+
+const settings: Schemas["SettingsResponse"] = { timeZone: TIME_ZONE, botEnabled: true, address: null };
+
+const service: Schemas["ServiceResponse"] = { id: "s1", name: "Классический массаж", durationMin: 60, price: 100, active: true, sortOrder: 1 };
+
+const client: Schemas["ClientResponse"] = {
+  id: "c1",
+  name: "Анна",
+  phone: "+998901234567",
+  notes: null,
+  createdAt: "2026-10-01T09:00:00+05:00",
+};
+
+function ok(data: unknown, status = 200) {
+  return { data, response: new Response(null, { status }) };
+}
+
+const timeTaken = {
+  error: { code: "TIME_TAKEN", status: 409, title: "Conflict", detail: "", instance: "/appointments" },
+  response: new Response(null, { status: 409 }),
+};
+
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: false, gcTime: Infinity }, mutations: { retry: false, gcTime: Infinity } },
+});
+
+const notFound = {
+  error: { code: "NOT_FOUND", status: 404, title: "Not Found", detail: "", instance: "/appointments" },
+  response: new Response(null, { status: 404 }),
+};
+
+function keyOf(index: number): string | undefined {
+  const calls = mockPost.mock.calls.filter(([path]) => path === "/appointments");
+  return (calls[index]?.[1] as { params?: { header?: Record<string, string> } } | undefined)?.params?.header?.["Idempotency-Key"];
+}
+
+function clientRequests(): number {
+  return mockGet.mock.calls.filter(([path]) => path === "/clients").length;
+}
+
+function slotRequests(): number {
+  return mockGet.mock.calls.filter(([path]) => path === "/slots").length;
+}
+
+describe("new appointment screen", () => {
+  const day = localDay(new Date(), TIME_ZONE);
+  const busy = `${day}T10:00:00+05:00`;
+  const free = `${day}T11:30:00+05:00`;
+  const booked: Schemas["AppointmentResponse"] = {
+    id: "a-new",
+    clientId: "c1",
+    serviceId: "s1",
+    start: free,
+    end: `${day}T12:30:00+05:00`,
+    status: "confirmed",
+    source: "manual",
+  };
+
+  beforeEach(() => {
+    onlineManager.setOnline(true);
+    mockGet.mockReset();
+    mockPost.mockReset();
+    mockBack.mockReset();
+    let n = 0;
+    mockRandomUUID.mockReset();
+    mockRandomUUID.mockImplementation(() => {
+      n += 1;
+      return `key-${n}`;
+    });
+    mockParams.mockReset();
+    mockParams.mockReturnValue({});
+    mockGet.mockImplementation(async (path, init) => {
+      if (path === "/clients") return ok([client]);
+      if (path === "/services") return ok([service]);
+      if (path === "/slots") {
+        const requested = (init as { params: { query: { day: string } } }).params.query.day;
+        const starts = slotRequests() === 1 ? [`${requested}T10:00:00+05:00`, `${requested}T11:30:00+05:00`] : [`${requested}T11:30:00+05:00`];
+        return ok({ day: requested, timeZone: TIME_ZONE, durationMin: 60, starts });
+      }
+      throw new Error(`unexpected GET ${path}`);
+    });
+    mockPost.mockResolvedValueOnce(timeTaken).mockResolvedValueOnce(ok(booked, 201));
+    queryClient.setQueryData(queryKeys.settings, settings);
+    queryClient.setQueryData(queryKeys.services, [service]);
+  });
+
+  afterEach(async () => {
+    onlineManager.setOnline(true);
+    clearBookingNotice();
+    // Unmount first: observers leaving after clear() would re-arm the 5 minute query gc timers.
+    await cleanup();
+    queryClient.clear();
+  });
+
+  function renderScreen() {
+    return render(
+      <SafeAreaProvider
+        initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}
+      >
+        <QueryClientProvider client={queryClient}>
+          <NewAppointmentScreen />
+        </QueryClientProvider>
+      </SafeAreaProvider>,
+    );
+  }
+
+  function requestedSlotDays(): string[] {
+    return mockGet.mock.calls
+      .filter(([path]) => path === "/slots")
+      .map(([, init]) => (init as { params: { query: { day: string } } }).params.query.day);
+  }
+
+  it("opens on the day from the calendar", async () => {
+    const target = addDays(day, 2);
+    mockParams.mockReturnValue({ day: target });
+    await renderScreen();
+
+    await waitFor(() => expect(requestedSlotDays()).toContain(target));
+    expect(requestedSlotDays()).not.toContain(day);
+  });
+
+  it.each([
+    ["yesterday", -1],
+    ["beyond the booking days", 10],
+  ])("a day outside the booking days opens today (%s)", async (_name, offset) => {
+    const outside = addDays(day, offset);
+    mockParams.mockReturnValue({ day: outside });
+    await renderScreen();
+
+    await waitFor(() => expect(requestedSlotDays()).toContain(day));
+    expect(requestedSlotDays()).not.toContain(outside);
+  });
+
+  it("an invalid day opens today", async () => {
+    mockParams.mockReturnValue({ day: "2026-13-40" });
+    await renderScreen();
+    await waitFor(() => expect(requestedSlotDays()).toContain(day));
+    expect(requestedSlotDays()).not.toContain("2026-13-40");
+  });
+
+  it("busy time cannot be chosen", async () => {
+    await render(
+      <SafeAreaProvider
+        initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}
+      >
+        <QueryClientProvider client={queryClient}>
+          <NewAppointmentScreen />
+        </QueryClientProvider>
+      </SafeAreaProvider>,
+    );
+    const user = userEvent.setup();
+
+    await user.type(screen.getByLabelText(PHONE_STEP), "901234567");
+    await user.press(await screen.findByText("Анна"));
+
+    expect(await screen.findByText("10:00")).toBeOnTheScreen();
+    expect(screen.queryByText("12:00")).toBeNull();
+    await user.press(screen.getByText("10:00"));
+
+    await user.press(screen.getByRole("button", { name: /^Записать ·/ }));
+    await waitFor(() => expect(mockPost).toHaveBeenCalledTimes(1));
+    expect(mockPost).toHaveBeenCalledWith("/appointments", { params: { header: { "Idempotency-Key": expect.any(String) } }, body: { clientId: "c1", serviceId: "s1", start: busy } });
+
+    expect(await screen.findByText(conflictTitle("10:00"))).toBeOnTheScreen();
+    const takenChip = screen.getByRole("button", { name: takenA11y("10:00") });
+    expect(takenChip.props.accessibilityState).toMatchObject({ disabled: true });
+    await waitFor(() => expect(slotRequests()).toBeGreaterThanOrEqual(2));
+
+    await user.press(takenChip);
+    await user.press(screen.getByRole("button", { name: CHOOSE_TIME }));
+    expect(mockPost).toHaveBeenCalledTimes(1);
+
+    await user.press(screen.getByText("11:30"));
+    await user.press(screen.getByRole("button", { name: "Записать · сегодня, 11:30" }));
+    await waitFor(() => expect(mockPost).toHaveBeenCalledTimes(2));
+    expect(keyOf(0)).toMatch(/^key-/);
+    expect(keyOf(1)).toBe(keyOf(0));
+    expect(mockPost).toHaveBeenLastCalledWith("/appointments", { params: { header: { "Idempotency-Key": expect.any(String) } }, body: { clientId: "c1", serviceId: "s1", start: free } });
+
+    await waitFor(() => expect(mockBack).toHaveBeenCalled());
+    expect(getBookingNotice()?.appointmentId).toBe("a-new");
+    expect(getBookingNotice()?.clientName).toBe("Анна");
+    expect(screen.queryByRole("button", { name: takenA11y("10:00") })).toBeNull();
+  });
+
+  it("never shows the new-client box while a known number is being checked", async () => {
+    await render(
+      <SafeAreaProvider
+        initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}
+      >
+        <QueryClientProvider client={queryClient}>
+          <NewAppointmentScreen />
+        </QueryClientProvider>
+      </SafeAreaProvider>,
+    );
+    const user = userEvent.setup();
+    const newClientBox = () => screen.queryByText(NEW_CLIENT_INFO_BOLD);
+
+    await user.type(screen.getByLabelText(PHONE_STEP), "+998901234567");
+    expect(newClientBox()).toBeNull();
+    expect(await screen.findByText("Анна")).toBeOnTheScreen();
+    expect(newClientBox()).toBeNull();
+  });
+
+  it("sends one request for two quick taps and loads times once more after a conflict", async () => {
+    mockPost.mockReset();
+    mockPost.mockImplementation(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      return timeTaken;
+    });
+    await render(
+      <SafeAreaProvider
+        initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}
+      >
+        <QueryClientProvider client={queryClient}>
+          <NewAppointmentScreen />
+        </QueryClientProvider>
+      </SafeAreaProvider>,
+    );
+    const user = userEvent.setup();
+
+    await user.type(screen.getByLabelText(PHONE_STEP), "901234567");
+    await user.press(await screen.findByText("Анна"));
+    await user.press(await screen.findByText("10:00"));
+
+    const button = screen.getByRole("button", { name: /^Записать ·/ });
+    await act(async () => {
+      fireEvent.press(button);
+      fireEvent.press(button);
+    });
+    expect(await screen.findByText(conflictTitle("10:00"))).toBeOnTheScreen();
+    expect(mockPost).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(slotRequests()).toBe(2));
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(slotRequests()).toBe(2);
+  });
+
+  it("searches clients again after a failed booking", async () => {
+    mockPost.mockReset();
+    mockPost.mockResolvedValue(notFound);
+    await render(
+      <SafeAreaProvider
+        initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}
+      >
+        <QueryClientProvider client={queryClient}>
+          <NewAppointmentScreen />
+        </QueryClientProvider>
+      </SafeAreaProvider>,
+    );
+    const user = userEvent.setup();
+
+    await user.type(screen.getByLabelText(PHONE_STEP), "901234567");
+    await user.press(await screen.findByText("Анна"));
+    await user.press(await screen.findByText("10:00"));
+    await waitFor(() => expect(clientRequests()).toBeGreaterThanOrEqual(1));
+    const before = clientRequests();
+
+    await user.press(screen.getByRole("button", { name: /^Записать ·/ }));
+    await waitFor(() => expect(mockPost).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(clientRequests()).toBeGreaterThan(before));
+  });
+
+  it("does not show the new-client box while the last digit is still being searched", async () => {
+    const full = "+998901234567";
+    let releaseFull: () => void = () => undefined;
+    mockGet.mockImplementation(async (path, init) => {
+      if (path === "/clients") {
+        const q = (init as { params: { query: { q: string } } }).params.query.q;
+        if (q === full) {
+          await new Promise<void>((resolve) => {
+            releaseFull = resolve;
+          });
+          return ok([client]);
+        }
+        return ok([]);
+      }
+      if (path === "/services") return ok([service]);
+      throw new Error(`unexpected GET ${path}`);
+    });
+    await render(
+      <SafeAreaProvider
+        initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}
+      >
+        <QueryClientProvider client={queryClient}>
+          <NewAppointmentScreen />
+        </QueryClientProvider>
+      </SafeAreaProvider>,
+    );
+    const user = userEvent.setup();
+    const input = screen.getByLabelText(PHONE_STEP);
+    const newClientBox = () => screen.queryByText(NEW_CLIENT_INFO_BOLD);
+
+    await user.type(input, "+99890123456");
+    await waitFor(() => expect(mockGet.mock.calls.some(([, init]) => (init as { params: { query: { q: string } } }).params.query.q === "+99890123456")).toBe(true));
+    await user.type(input, "7");
+    // The debounce is pending, then the full-number search is in flight: never the new-client box.
+    expect(newClientBox()).toBeNull();
+    await waitFor(() => expect(mockGet.mock.calls.some(([, init]) => (init as { params: { query: { q: string } } }).params.query.q === full)).toBe(true));
+    expect(newClientBox()).toBeNull();
+
+    await act(async () => {
+      releaseFull();
+    });
+    expect(await screen.findByText("Анна")).toBeOnTheScreen();
+    expect(newClientBox()).toBeNull();
+  });
+
+  it("names the client the server booked when the phone was taken in the meantime", async () => {
+    const phone = "+998901234567";
+    const gulnara: Schemas["ClientResponse"] = { ...client, id: "c2", name: "Гульнара" };
+    let created = false;
+    mockGet.mockImplementation(async (path, init) => {
+      if (path === "/clients") return ok(created ? [gulnara] : []);
+      if (path === "/services") return ok([service]);
+      if (path === "/slots") {
+        const requested = (init as { params: { query: { day: string } } }).params.query.day;
+        return ok({ day: requested, timeZone: TIME_ZONE, durationMin: 60, starts: [`${requested}T11:30:00+05:00`] });
+      }
+      throw new Error(`unexpected GET ${path}`);
+    });
+    mockPost.mockReset();
+    mockPost.mockImplementation(async (path) => {
+      if (path === "/clients") {
+        created = true;
+        return {
+          error: { code: "PHONE_TAKEN", status: 409, title: "Conflict", detail: "", instance: "/clients" },
+          response: new Response(null, { status: 409 }),
+        };
+      }
+      return ok({ ...booked, clientId: "c2" }, 201);
+    });
+    await render(
+      <SafeAreaProvider
+        initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}
+      >
+        <QueryClientProvider client={queryClient}>
+          <NewAppointmentScreen />
+        </QueryClientProvider>
+      </SafeAreaProvider>,
+    );
+    const user = userEvent.setup();
+
+    await user.type(screen.getByLabelText(PHONE_STEP), phone);
+    await screen.findByText(NEW_CLIENT_INFO_BOLD);
+    await user.type(screen.getByLabelText(NAME_LABEL), "Айгуль");
+    await user.press(await screen.findByText("11:30"));
+    await user.press(screen.getByRole("button", { name: /^Записать ·/ }));
+
+    await waitFor(() => expect(mockBack).toHaveBeenCalled());
+    expect(mockPost).toHaveBeenCalledWith("/appointments", { params: { header: { "Idempotency-Key": expect.any(String) } }, body: { clientId: "c2", serviceId: "s1", start: free } });
+    expect(getBookingNotice()?.clientName).toBe("Гульнара");
+  });
+
+  it("a retry after a lost response sends the same key and books without a conflict", async () => {
+    mockPost.mockReset();
+    mockPost.mockRejectedValueOnce(new TypeError("Network request failed")).mockResolvedValueOnce(ok({ ...booked, start: busy }, 201));
+    await renderScreen();
+    const user = userEvent.setup();
+
+    await user.type(screen.getByLabelText(PHONE_STEP), "901234567");
+    await user.press(await screen.findByText("Анна"));
+    await user.press(await screen.findByText("10:00"));
+    await user.press(screen.getByRole("button", { name: /^Записать ·/ }));
+    expect(await screen.findByText(BOOK_FAILED)).toBeOnTheScreen();
+    await waitFor(() => expect(slotRequests()).toBeGreaterThanOrEqual(2));
+    await waitFor(() => expect(screen.queryByText("10:00")).toBeNull());
+
+    const retry = screen.getByRole("button", { name: /^Записать ·/ });
+    expect(retry.props.accessibilityState).not.toMatchObject({ disabled: true });
+    await user.press(retry);
+    await waitFor(() => expect(mockBack).toHaveBeenCalled());
+    expect(getBookingNotice()?.appointmentId).toBe("a-new");
+    expect(mockPost).toHaveBeenCalledTimes(2);
+    expect(keyOf(1)).toBe(keyOf(0));
+    expect(screen.queryByText(conflictTitle("10:00"))).toBeNull();
+  });
+
+  it("changing the time after a lost response keeps the key; a saved first try keeps showing the check-the-schedule text", async () => {
+    const reused = {
+      error: { code: "IDEMPOTENCY_KEY_REUSED", status: 422, title: "Unprocessable Content", detail: "", instance: "/appointments" },
+      response: new Response(null, { status: 422 }),
+    };
+    mockPost.mockReset();
+    mockPost
+      .mockRejectedValueOnce(new TypeError("Network request failed"))
+      .mockResolvedValueOnce(reused)
+      .mockResolvedValueOnce(reused);
+    await renderScreen();
+    const user = userEvent.setup();
+
+    await user.type(screen.getByLabelText(PHONE_STEP), "901234567");
+    await user.press(await screen.findByText("Анна"));
+    await user.press(await screen.findByText("10:00"));
+    await user.press(screen.getByRole("button", { name: /^Записать ·/ }));
+    expect(await screen.findByText(BOOK_FAILED)).toBeOnTheScreen();
+
+    await user.press(screen.getByText("11:30"));
+    await user.press(screen.getByRole("button", { name: /^Записать ·/ }));
+    expect(await screen.findByText(ALREADY_BOOKED_TEXT)).toBeOnTheScreen();
+    expect(screen.queryByText(BOOK_FAILED)).toBeNull();
+    expect(screen.queryByText(conflictTitle("11:30"))).toBeNull();
+
+    await user.press(screen.getByRole("button", { name: /^Записать ·/ }));
+    await waitFor(() => expect(mockPost).toHaveBeenCalledTimes(3));
+    expect(await screen.findByText(ALREADY_BOOKED_TEXT)).toBeOnTheScreen();
+    expect(mockBack).not.toHaveBeenCalled();
+    expect(keyOf(1)).toBe(keyOf(0));
+    expect(keyOf(2)).toBe(keyOf(0));
+  });
+
+  it("a newly opened form gets a new key", async () => {
+    mockPost.mockReset();
+    mockPost.mockRejectedValueOnce(new TypeError("Network request failed")).mockResolvedValueOnce(ok(booked, 201));
+    const first = await renderScreen();
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText(PHONE_STEP), "901234567");
+    await user.press(await screen.findByText("Анна"));
+    await user.press(await screen.findByText("11:30"));
+    await user.press(screen.getByRole("button", { name: /^Записать ·/ }));
+    expect(await screen.findByText(BOOK_FAILED)).toBeOnTheScreen();
+    await act(async () => {
+      first.unmount();
+    });
+
+    await renderScreen();
+    const second = userEvent.setup();
+    await second.type(screen.getByLabelText(PHONE_STEP), "901234567");
+    await second.press(await screen.findByText("Анна"));
+    await second.press(await screen.findByText("11:30"));
+    await second.press(screen.getByRole("button", { name: /^Записать ·/ }));
+    await waitFor(() => expect(mockPost).toHaveBeenCalledTimes(2));
+    expect(keyOf(1)).not.toBe(keyOf(0));
+  });
+});

@@ -1,0 +1,300 @@
+# API
+
+Spring Boot, `apps/api`. The OpenAPI 3.1 document is served at `GET /v3/api-docs` (staff token required, no Swagger UI). The committed copy is `apps/api/openapi.json`, refreshed by `npm run api:openapi` (needs Docker), and `./mvnw verify` fails when it is out of date.
+
+## Contract
+
+`packages/api-types` exports `paths`, `components` and `operations` generated from `openapi.json`. It also exports `ApiProblem` (the body of every error response) and `ErrorCode`: `import type { ApiProblem, ErrorCode } from "@massage-desk/api-types"`. Clients use `import type` only and never hand-write API types. After changing an endpoint, run `npm run api:types` and commit both files.
+
+## Authentication
+
+Every staff request sends `Authorization: Bearer <Supabase access token>`. The token is verified with the project JWKS (`${SUPABASE_URL}/auth/v1/.well-known/jwks.json`), algorithms ES256 and RS256, issuer `${SUPABASE_URL}/auth/v1`, audience `authenticated`. The Supabase project must use JWT signing keys (dashboard, JWT Keys); the legacy shared secret is not supported, and with it every request gets `401`.
+
+- Open without a token: `/health`, `/health/*`, `/webhook/whatsapp`.
+- Staff is a row in `profiles` whose `user_id` equals the token `sub`; its `role` is `master` or `admin`. The role is read from the database on every request, never from token claims.
+- `/admin/*` is admin only. Everything else needs `master` or `admin`; admin can do everything master can.
+- `401`: token missing, invalid, expired, or issued for another audience or issuer.
+- `403`: valid token, but the user is not staff or the role is not enough.
+
+Browser access (CORS): only the origin set in `ADMIN_ORIGIN` (default `http://localhost:5173`, the admin dev server) may call the API. It is one origin in the form `https://host[:port]`; a wildcard `*`, an empty value, a path or a trailing slash make the API fail at startup. Allowed methods are GET, POST, PUT, PATCH and DELETE, allowed headers are `Authorization`, `Content-Type` and `Idempotency-Key`, and credentials are not allowed. Preflight requests need no token, and `401`/`403` answers carry the same origin header, so the browser can show them.
+
+Errors from the endpoints below use RFC 9457 problem details (`application/problem+json`).
+
+### Errors
+
+Every documented error response is an `ApiProblem` (`application/problem+json`):
+
+| Member | Type | Required | Meaning |
+|---|---|---|---|
+| `type` | string | no | absent while it is `about:blank` |
+| `title` | string | yes | the HTTP reason phrase |
+| `status` | number | yes | the HTTP status |
+| `detail` | string | yes | human-readable text; may change, never branch on it |
+| `instance` | string | yes | the request path |
+| `code` | `ErrorCode` | yes | machine-readable reason; branch on this |
+| `conflicts` | array | no | only with `APPOINTMENT_CONFLICT`: the confirmed appointments in the way, ordered by start |
+
+Client errors raised by the framework (malformed body, wrong type, missing field or parameter, unknown path, wrong method or media type) carry the code `INVALID_REQUEST` and the framework's `detail`.
+
+`401` and `403` come from the security layer with an empty body and no `code`; handle them by status. `5xx` are not part of the contract: show a generic error and retry later.
+
+| `code` | Status | `detail` |
+|---|---|---|
+| `INVALID_REQUEST` | 400, 404, 405, 406, 415 | the framework's text |
+| `CLIENT_NOT_FOUND` | 404 | `client not found` |
+| `SERVICE_NOT_FOUND` | 404 | `service not found` |
+| `APPOINTMENT_NOT_FOUND` | 404 | `appointment not found` |
+| `TIME_OFF_NOT_FOUND` | 404 | `time off not found` |
+| `INVALID_PHONE` | 400 | `invalid phone number` |
+| `UNKNOWN_TIME_ZONE` | 400 | `unknown time zone` |
+| `OUTSIDE_SCHEDULE` | 422 | `time is outside working hours, in time off or in the past` |
+| `INVALID_HOURS` | 422 | `block must start before it ends`, `blocks of one day must not overlap or touch` |
+| `INVALID_TIME_OFF` | 422 | `time off must start before it ends`, or the period is out of range |
+| `IDEMPOTENCY_KEY_REUSED` | 422 | `idempotency key was already used with another request` |
+| `TIME_TAKEN` | 409 | `time is already booked` |
+| `NOT_CONFIRMED` | 409 | `appointment is <status>` |
+| `NOT_STARTED` | 409 | `appointment has not started yet` |
+| `PHONE_TAKEN` | 409 | `client with this phone already exists` |
+| `APPOINTMENT_CONFLICT` | 409 | `time off overlaps confirmed appointments`, `confirmed appointments are outside the new working hours` or `confirmed appointments are outside the working hours in the new time zone`, with `conflicts` |
+
+The `422` title is `Unprocessable Content` (RFC 9110 name); the status code is `422`.
+
+To add a staff member, create the user in Supabase Auth, then run:
+
+```sql
+insert into profiles (user_id, role, display_name) values ('<auth user id>', 'master', '<name>');
+```
+
+| Method | Path | Status | Purpose |
+|---|---|---|---|
+| GET | `/health` | ✅ M0 | Liveness and readiness |
+| GET | `/webhook/whatsapp` | ✅ M0 | Meta webhook verification |
+| POST | `/webhook/whatsapp` | M2 | Incoming messages |
+| GET | `/slots?serviceId&day` | ✅ M1 | Free start times for a service on a day |
+| GET | `/appointments?from&to` | ✅ M1 | Appointments touching the local days |
+| GET | `/appointments/{id}` | ✅ M1 | One appointment with names, any status |
+| POST | `/appointments` | ✅ M1 | Create; `409` when the time is taken; optional `Idempotency-Key` |
+| POST | `/appointments/{id}/reschedule` | ✅ M1 | Move, keeping the booked length |
+| POST | `/appointments/{id}/cancel` | ✅ M1 | Cancel; frees the time |
+| POST | `/appointments/{id}/no-show` | ✅ M1 | Mark a no-show after the start |
+| GET | `/clients?q&segment&limit&offset` | ✅ M1 | List and search clients with visit stats |
+| GET | `/clients/summary` | ✅ M1 | Number of clients and new ones in the last 30 days |
+| POST | `/clients` | ✅ M1 | Add a client; `409` when the phone exists |
+| GET | `/clients/{id}` | ✅ M1 | One client |
+| GET | `/clients/{id}/stats` | ✅ M1 | Visit stats of one client |
+| GET | `/clients/{id}/appointments?limit&offset` | ✅ M1 | A client's appointments, newest first |
+| PATCH | `/clients/{id}` | ✅ M1 | Change name or notes |
+| GET | `/services` | ✅ M1 | All services, active and inactive |
+| POST | `/services` | ✅ M1 | Add a service |
+| PATCH | `/services/{id}` | ✅ M1 | Change or deactivate a service |
+| GET | `/working-hours` | ✅ M1 | The weekly working hours |
+| PUT | `/working-hours` | ✅ M1 | Replace the whole week |
+| GET | `/time-off?from&to` | ✅ M1 | Time off touching the local days |
+| POST | `/time-off` | ✅ M1 | Add a day off or vacation |
+| DELETE | `/time-off/{id}` | ✅ M1 | Remove time off |
+| GET | `/settings` | ✅ M1 | Time zone, address, bot switch |
+| PATCH | `/settings` | ✅ M1 | Change settings |
+| GET/POST | `/conversations/*` | M2 | Chats, master replies, take-over |
+| POST | `/devices` | M4 | Register a push token |
+| GET | `/admin/*` | M1–M5 | Statistics and diagnostics (admin only) |
+
+## Free time
+
+`GET /slots?serviceId=<uuid>&day=YYYY-MM-DD` returns the free start times of an active service on one day. `day` is a local date in the master's time zone.
+
+```json
+{"day":"2026-11-03","timeZone":"Asia/Tashkent","durationMin":60,"starts":["2026-11-03T10:00:00+05:00","2026-11-03T10:30:00+05:00"]}
+```
+
+Working hours (with breaks), time off and confirmed appointments are taken into account; times in the past are never offered. A day without working hours gives an empty `starts`.
+
+- `400` (`application/problem+json`): `serviceId` or `day` is missing or invalid.
+- `404` (`application/problem+json`): the service does not exist or is inactive.
+
+Configuration: `APP_SLOTS_STEP` (grid of offered start times, default `30m`) and `APP_SLOTS_MIN_NOTICE` (how far ahead the first start is, default `0m`).
+
+## Appointments
+
+`POST /appointments` books a service for an existing client. The end is the start plus the service length; the client never sends it.
+
+```json
+{"clientId":"<uuid>","serviceId":"<uuid>","start":"2026-11-03T10:00:00+05:00"}
+```
+
+Response `201`:
+
+```json
+{"id":"<uuid>","clientId":"<uuid>","serviceId":"<uuid>","start":"2026-11-03T10:00:00+05:00","end":"2026-11-03T11:00:00+05:00","status":"confirmed","source":"manual"}
+```
+
+`start` must carry a UTC offset. Any minute is accepted, not only the grid of `/slots`. The time must lie inside one working block (breaks are excluded), outside time off and not in the past. Overlaps with other confirmed appointments are refused by the database, also under concurrent requests.
+
+- `400` (`application/problem+json`): a field is missing or invalid, `start` has no offset, or `Idempotency-Key` is not a UUID.
+- `404` (`application/problem+json`): the client does not exist, or the service does not exist or is inactive.
+- `409` (`application/problem+json`): the time is already booked.
+- `422` (`application/problem+json`): the time is outside working hours, in time off or in the past, or the `Idempotency-Key` was already used with another request.
+
+### Idempotency-Key
+
+`POST /appointments` accepts an optional `Idempotency-Key` header (a UUID generated once per booking form) so a retry after a lost response does not book a second time or fail with a false `409`. Keys are scoped per staff member (token `sub`), and requests are compared by `clientId`, `serviceId` and the `start` instant (regardless of UTC offset).
+
+- Same key and body within 24 hours: returns `201` with the response as originally created (even if the appointment was later cancelled or rescheduled; read the list for current state). Concurrent retries with the same key serialize under the schedule lock and create one appointment.
+- Same key and different body: `422` (`IDEMPOTENCY_KEY_REUSED`).
+- Only successful creations store a key; after a `4xx` error a retry runs from scratch. A non-UUID header returns `400` (`INVALID_REQUEST`).
+
+### List
+
+`GET /appointments?from=2026-11-03&to=2026-11-03` returns the appointments that touch the local days `from..to` (both inclusive, in the master's time zone), as an array:
+
+```json
+[{"id":"<uuid>","clientId":"<uuid>","clientName":"Aigul","clientPhone":"+998900000801","serviceId":"<uuid>","serviceName":"Classic","start":"2026-11-03T10:00:00+05:00","end":"2026-11-03T11:00:00+05:00","status":"confirmed","source":"bot"}]
+```
+
+All statuses are returned (`confirmed`, `cancelled`, `no_show`, `done`), ordered by start. An appointment that crosses midnight is listed for both days. `clientName` may be `null`. The range is at most 62 days.
+
+- `400` (`application/problem+json`, `INVALID_REQUEST`): a date is missing or invalid; `dates must be within 2000-01-01..2100-12-31`; `from must not be after to`; `range must be at most 62 days`.
+
+### One appointment
+
+`GET /appointments/{id}` returns one appointment of any status in the same shape as a list item (`clientName` may be `null`, times carry the master's offset). It serves links without a day, for example from notifications.
+
+- `400` (`application/problem+json`, `INVALID_REQUEST`): the id is not a UUID.
+- `404` (`application/problem+json`, `APPOINTMENT_NOT_FOUND`): `appointment not found`.
+
+### Reschedule, cancel and no-show
+
+- `POST /appointments/{id}/reschedule` with `{"start":"2026-11-03T13:00:00+05:00"}` moves the appointment. The booked length is kept (not the current service length) and the same time rules as for creation apply. Errors: `400`, `404`, `409` (time taken), `422`.
+- `POST /appointments/{id}/cancel` (no body) cancels it and frees the time. Errors: `400`, `404`, `409`.
+- `POST /appointments/{id}/no-show` (no body) marks that the client did not come; allowed only once the visit has started, otherwise `409`. Errors: `400`, `404`, `409`.
+
+All three return the updated appointment (same shape as the create response). Any action on an appointment that is not `confirmed` gives `409` with `appointment is <status>`; repeated actions are not idempotent. Errors are `application/problem+json`.
+
+## Clients
+
+`GET /clients` returns a JSON array of clients. `q` (at most 100 characters) filters by name (case-insensitive substring) and, when it consists only of phone characters (digits, `+`, spaces, brackets, dashes), also by phone digits. A blank `q` lists everyone. Order: by name alphabetically, clients without a name last, then by phone. Paging: `limit` 1..200 (default 50), `offset` from 0 (default 0); there is no total count in the list; see `GET /clients/summary`. `segment` (optional: `regular`, `lapsed` or `no_shows`) keeps only clients of that segment; an empty value lists everyone; any other value gives `400`.
+
+```json
+{"id":"<uuid>","phone":"+998901234567","name":"Aziza","notes":null,"createdAt":"2026-11-02T10:15:00+05:00","stats":{"visits":3,"totalSpent":280000,"noShows":1,"lastVisitAt":"2026-10-12T10:00:00+05:00","nextAppointmentAt":"2026-11-03T10:00:00+05:00","visitIntervalDays":14}}
+```
+
+`POST`, `PATCH` and `GET /clients/{id}` return the same client without `stats`.
+
+**Visit stats.** A visit is an appointment that is `done`, or `confirmed` and already ended; an appointment in progress is not counted. `GET /clients/{id}/stats` returns the same `stats` object for one client:
+
+- `visits`: the number of visits.
+- `totalSpent`: the sum of the current service prices over the visits (`0` without visits).
+- `noShows`: appointments marked `no_show`.
+- `lastVisitAt`: the start of the last visit, or `null`.
+- `nextAppointmentAt`: the start of the earliest `confirmed` appointment that starts no earlier than now, or `null`.
+- `visitIntervalDays`: how often the client comes, in days: the time between the first and the last visit divided by `visits - 1`, rounded, at least `1`; `null` with fewer than two visits.
+
+**Segments.** `regular`: 3 or more visits, and the last visit is at most 60 days ago or the client has a next appointment. `lapsed`: at least one visit, no next appointment, and the last visit is more than 60 days ago. `no_shows`: at least one no-show. `regular` and `lapsed` never overlap; `no_shows` can overlap with either.
+
+**Summary.** `GET /clients/summary` returns the counts of all clients, regardless of search and segment; "new" means added within the last 30 days (a rolling window, not a calendar month).
+
+```json
+{"total":142,"newLast30Days":9}
+```
+
+**History.** `GET /clients/{id}/appointments?limit&offset` returns the client's appointments of all statuses, newest first, in the same shape as `GET /appointments`. Paging is the same as in the list (`limit` 1..200, default 50; `offset` from 0), without a total count. `404` `client not found` for an unknown client.
+
+`POST /clients` takes `{"phone":"+998 90 123-45-67","name":"Aziza","notes":"..."}`; only `phone` is required. The phone is parsed with phone number rules (same as the apps): a number without `+` is read as a number of the default country (`app.phone.default-region`, `UZ`), only valid numbers are accepted, and the result is stored as E.164 (9 to 15 digits) and cannot be changed later, because chats are matched by it. Response `201`.
+
+`PATCH /clients/{id}` takes `name` and/or `notes`. A missing or `null` field is left unchanged; a blank text clears the field. Text is trimmed.
+
+- `400` (`application/problem+json`): invalid field, query parameter or id; `invalid phone number`.
+- `404` (`application/problem+json`): `client not found`.
+- `409` (`application/problem+json`): `client with this phone already exists`.
+
+Clients cannot be deleted: appointments and chats refer to them.
+
+Known gaps:
+
+- `totalSpent` uses the current service prices: an appointment does not store its price, so changing a price changes the sum of past visits.
+- There is no index on `appointments (client_id, …)`; add one when appointments become numerous.
+- The segment thresholds (3 visits, 60 days) are fixed in the code.
+
+## Services
+
+`GET /services` returns every service, active and inactive, ordered by `sortOrder` then name. The booking screen filters by `active`.
+
+```json
+{"id":"<uuid>","name":"Classic","durationMin":60,"price":150000.5,"sortOrder":0,"active":true}
+```
+
+`POST /services` takes `name` (up to 100 characters), `durationMin` (5..480), `price` (not negative, up to 2 decimals) and optional `sortOrder` (0..10000; omitted means after the last one). Response `201`.
+
+`PATCH /services/{id}` takes any of `name`, `durationMin`, `price`, `sortOrder`, `active`. A missing or `null` field is left unchanged. Inactive services can be edited and re-enabled.
+
+There is no delete: appointments refer to services, so a service is deactivated with `active: false`. A deactivated service gives `404` on `/slots` and cannot be booked; appointments already made keep their service and their booked length, also after a duration change.
+
+- `400` (`application/problem+json`): invalid field or id.
+- `404` (`application/problem+json`): `service not found`.
+
+## Working hours
+
+`GET /working-hours` returns the week; `PUT /working-hours` replaces the whole week in one request and returns the stored blocks. Both use the same shape, ordered by weekday, then start.
+
+```json
+{"blocks":[{"weekday":1,"start":"09:00","end":"13:00"},{"weekday":1,"start":"14:00","end":"19:00"}]}
+```
+
+- `weekday` is the ISO number: 1 = Monday ... 7 = Sunday.
+- `start` and `end` are local times `HH:mm` in the master's time zone (`00:00`..`23:59`; no seconds, no `24:00`).
+- A weekday without blocks is a day off every week. `{"blocks":[]}` makes every day a day off.
+- A break is a gap between two blocks of one day. Blocks of one day must neither overlap nor touch (`09:00-13:00` and `13:00-17:00` must be sent as one block `09:00-17:00`).
+- The week is replaced atomically: either all blocks are stored or none. At most 50 blocks.
+- The new hours apply to `/slots` and to new appointments at once. Appointments already made are never changed or cancelled.
+- Optional `force` (boolean, default `false`). If confirmed appointments that start from now on do not fit inside one block of the new week, the request answers `409` with `conflicts` (`appointmentId`, `clientName` or `null`, `start`, `end` in the master's offset, ordered by start), and the old week stays. With `"force": true` the week is stored anyway. Appointments that have already started are not checked.
+
+```json
+{"blocks":[{"weekday":2,"start":"10:00","end":"13:00"}],"force":true}
+```
+
+- `400` (`application/problem+json`): missing or invalid field.
+- `409` (`application/problem+json`): `confirmed appointments are outside the new working hours`, with `conflicts`.
+- `422` (`application/problem+json`): `block must start before it ends`; `blocks of one day must not overlap or touch`.
+
+## Time off
+
+`POST /time-off` takes `start` and `end` (ISO-8601 with an offset), an optional `reason` (up to 200 characters) and an optional `force` (boolean, default `false`). The period is half-open, `[start, end)`. A day off is local midnight to the next local midnight with the master's offset. Response `201`; times are answered in the master's offset.
+
+```json
+{"id":"<uuid>","start":"2026-11-03T00:00:00+05:00","end":"2026-11-04T00:00:00+05:00","reason":null}
+```
+
+`GET /time-off?from=2026-11-03&to=2026-11-05` lists time off that touches the local days `from..to`, both inclusive, ordered by start (a vacation that began earlier is included). Both dates are required, must lie between 2000-01-01 and 2100-12-31, and cover at most 366 days.
+
+`DELETE /time-off/{id}` answers `204`. There is no edit: delete and create again.
+
+- Periods may overlap each other.
+- Time off over confirmed appointments answers `409` with the list of those appointments, unless `force` is `true`. An appointment that ends exactly when the time off starts is not a conflict. With `force: true` the time off is stored and the appointments are never changed or cancelled; the app shows the list so the master can move or cancel them.
+- Time off hides the time from `/slots` and refuses new appointments there at once.
+
+- `400` (`application/problem+json`): missing or invalid field, id or date; `from must not be after to`; `range must be at most 366 days`; `dates must be within 2000-01-01..2100-12-31`.
+- `404` (`application/problem+json`): `time off not found`.
+- `409` (`application/problem+json`): `time off overlaps confirmed appointments`. Besides the usual members the body has `conflicts`, ordered by start:
+
+```json
+{"title":"Conflict","status":409,"detail":"time off overlaps confirmed appointments","instance":"/time-off","code":"APPOINTMENT_CONFLICT","conflicts":[{"appointmentId":"<uuid>","clientName":"Aigul","start":"2026-11-03T10:00:00+05:00","end":"2026-11-03T11:00:00+05:00"}]}
+```
+
+  `clientName` is `null` when the client has no name.
+- `422` (`application/problem+json`): `time off must start before it ends`; `time off must end in the future, start within two years and last at most 366 days`.
+
+## Settings
+
+`GET /settings` returns the business settings; `PATCH /settings` changes them. A field that is absent or `null` stays unchanged; a blank `address` clears it.
+
+```json
+{"timeZone":"Asia/Tashkent","address":null,"botEnabled":true}
+```
+
+- `timeZone` must be a region id such as `Asia/Tashkent`. Fixed offsets (`+05:00`, `UTC`, `Etc/GMT+5`) are refused because they ignore daylight saving.
+- Changing the zone keeps working hours as local times (the same 10:00 in the new zone) and does not move booked appointments, which keep their instants.
+- `botEnabled` is stored now; the bot uses it from M2.
+- A zone change that differs from the stored zone checks every confirmed appointment that starts from now on against the stored week in the new zone. If one does not fit inside a block, the whole request is refused with `409` and `conflicts`, and nothing of it is stored (not even `address` or `botEnabled`). The times in `conflicts` use the offset of the new zone. The same zone is not checked.
+- `force: true` (optional) stores the zone anyway. Appointments are never cancelled, moved or messaged.
+
+- `400` (`application/problem+json`): invalid field or malformed JSON; `unknown time zone`.
+- `409` (`application/problem+json`): `confirmed appointments are outside the working hours in the new time zone`, with `conflicts`; send `force: true` to store the zone anyway.

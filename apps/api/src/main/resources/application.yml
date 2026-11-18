@@ -1,0 +1,93 @@
+spring:
+  application:
+    name: massage-desk-api
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate.jdbc.time_zone: UTC
+  mvc:
+    # errors as RFC 9457 problem details
+    problemdetails:
+      enabled: true
+  flyway:
+    locations: classpath:db/migration
+    # a database seeded earlier must still start without the "seed" profile
+    ignore-migration-patterns: "*:future,repeatable:missing"
+  docker:
+    compose:
+      lifecycle-management: start-only
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${app.supabase.url}/auth/v1
+          jwk-set-uri: ${app.supabase.url}/auth/v1/.well-known/jwks.json
+          audiences: authenticated
+          jws-algorithms: ES256,RS256
+
+# stable output: apps/api/openapi.json is compared in tests
+springdoc:
+  api-docs:
+    version: openapi_3_1
+  writer-with-order-by-keys: true
+  writer-with-default-pretty-printer: true
+
+server:
+  port: ${PORT:8080}
+  shutdown: graceful
+
+management:
+  endpoints:
+    web:
+      base-path: /
+      exposure:
+        include: health
+      path-mapping:
+        health: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+app:
+  supabase:
+    # default is the local Supabase CLI address; dev and prod set SUPABASE_URL
+    url: ${SUPABASE_URL:http://127.0.0.1:54321}
+  cors:
+    # the only origin allowed to call the API from a browser; default is the Vite dev server, prod sets ADMIN_ORIGIN
+    admin-origin: ${ADMIN_ORIGIN:http://localhost:5173}
+  whatsapp:
+    verify-token: ${WHATSAPP_VERIFY_TOKEN:}
+  phone:
+    # country used to read phone numbers typed without a plus sign
+    default-region: UZ
+  slots:
+    # grid of offered start times and how far ahead the first one is; overridable by APP_SLOTS_STEP / APP_SLOTS_MIN_NOTICE
+    step: 30m
+    min-notice: 0m
+
+# Flyway locations by profile: "supabase" adds Supabase-only migrations,
+# "seed" adds development seed data (never enable it on prod).
+---
+spring:
+  config:
+    activate:
+      on-profile: seed & !supabase
+  flyway:
+    locations: classpath:db/migration,classpath:db/seed-dev
+---
+spring:
+  config:
+    activate:
+      on-profile: supabase & !seed
+  flyway:
+    locations: classpath:db/migration,classpath:db/migration-supabase
+---
+spring:
+  config:
+    activate:
+      on-profile: supabase & seed
+  flyway:
+    locations: classpath:db/migration,classpath:db/migration-supabase,classpath:db/seed-dev

@@ -1,0 +1,18 @@
+# Profile for Supabase-hosted databases (dev and prod projects).
+# Supabase-only migrations (db/migration-supabase) are added in application.yml.
+# Connection settings are read from apps/api/.env (run the API from apps/api).
+spring:
+  config:
+    import: optional:file:.env[.properties]
+  datasource:
+    url: ${DATABASE_URL}
+    username: ${DATABASE_USER}
+    password: ${DATABASE_PASSWORD}
+  docker:
+    compose:
+      enabled: false
+
+app:
+  supabase:
+    # required: no default, startup fails without it (see SupabaseUrlConfig); no trailing slash
+    url: ${SUPABASE_URL}

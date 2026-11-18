@@ -1,0 +1,301 @@
+package com.massagedesk.api.booking;
+
+import com.massagedesk.api.booking.BookingException.Reason;
+import com.massagedesk.api.clients.Client;
+import com.massagedesk.api.clients.ClientRepository;
+import com.massagedesk.api.events.DomainEventRecorder;
+import com.massagedesk.api.events.DomainEventType;
+import com.massagedesk.api.events.EventActor;
+import com.massagedesk.api.schedule.MassageService;
+import com.massagedesk.api.schedule.MassageServiceRepository;
+import com.massagedesk.api.schedule.ScheduleLock;
+import com.massagedesk.api.schedule.SlotService;
+import com.massagedesk.api.schedule.TimeRange;
+import com.massagedesk.api.settings.SettingsRepository;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import org.jspecify.annotations.Nullable;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * The only way appointments change. Free-time rules come from the schedule; double booking is
+ * refused by the database constraint, not by a check in code.
+ */
+@Service
+public class AppointmentService {
+
+    /** An appointment as seen by callers; {@code zone} is the master's zone for display. */
+    public record AppointmentView(
+            UUID id,
+            UUID clientId,
+            UUID serviceId,
+            TimeRange period,
+            AppointmentStatus status,
+            AppointmentSource source,
+            ZoneId zone) {
+    }
+
+    /** An appointment with the names a list needs; {@code clientName} may be null. */
+    public record AppointmentListView(
+            AppointmentView appointment, String clientName, String clientPhone, String serviceName) {
+    }
+
+    /** Idempotency key of a create request, scoped to the staff member who sent it. */
+    public record RequestKey(UUID userId, UUID key) {
+        public RequestKey {
+            Objects.requireNonNull(userId, "userId");
+            Objects.requireNonNull(key, "key");
+        }
+    }
+
+    static final Duration KEY_LIFETIME = Duration.ofHours(24);
+
+    private final AppointmentRepository appointments;
+    private final ClientRepository clients;
+    private final MassageServiceRepository services;
+    private final SlotService slotService;
+    private final SettingsRepository settings;
+    private final Clock clock;
+    private final DomainEventRecorder recorder;
+    private final ScheduleLock scheduleLock;
+    private final IdempotencyKeyRepository keys;
+
+    public AppointmentService(
+            AppointmentRepository appointments,
+            ClientRepository clients,
+            MassageServiceRepository services,
+            SlotService slotService,
+            SettingsRepository settings,
+            Clock clock,
+            DomainEventRecorder recorder,
+            ScheduleLock scheduleLock,
+            IdempotencyKeyRepository keys) {
+        this.appointments = appointments;
+        this.clients = clients;
+        this.services = services;
+        this.slotService = slotService;
+        this.settings = settings;
+        this.clock = clock;
+        this.recorder = recorder;
+        this.scheduleLock = scheduleLock;
+        this.keys = keys;
+    }
+
+    /** Books the service for the client; the end is the start plus the service length. */
+    @Transactional
+    public AppointmentView create(UUID clientId, UUID serviceId, Instant start, AppointmentSource source, EventActor actor) {
+        return create(clientId, serviceId, start, source, actor, null);
+    }
+
+    /**
+     * Books the service for the client, or replays an earlier result for {@code requestKey}.
+     * Checked under the schedule lock before client, service, or schedule checks: a matching
+     * request within 24 hours returns the response as it was created (with no new event); another
+     * body with the same key fails with {@link Reason#IDEMPOTENCY_KEY_REUSED}. Only successful
+     * creations store a key. Lock order is unchanged (advisory lock only, no row lock).
+     */
+    @Transactional
+    public AppointmentView create(
+            UUID clientId,
+            UUID serviceId,
+            Instant start,
+            AppointmentSource source,
+            EventActor actor,
+            @Nullable RequestKey requestKey) {
+        start = start.truncatedTo(ChronoUnit.MICROS);
+        scheduleLock.acquire();
+        if (requestKey != null) {
+            keys.deleteCreatedBefore(clock.instant().minus(KEY_LIFETIME));
+            Optional<IdempotencyKey> existing =
+                    keys.findByUserIdAndIdempotencyKey(requestKey.userId(), requestKey.key());
+            if (existing.isPresent()) {
+                IdempotencyKey found = existing.get();
+                if (found.sameRequest(clientId, serviceId, start)) {
+                    return replay(found, source);
+                }
+                throw new BookingException(
+                        Reason.IDEMPOTENCY_KEY_REUSED, "idempotency key was already used with another request");
+            }
+        }
+        Client client = clients.findById(clientId)
+                .orElseThrow(() -> new BookingException(Reason.CLIENT_NOT_FOUND, "client not found"));
+        MassageService service = services.findByIdAndActiveTrue(serviceId)
+                .orElseThrow(() -> new BookingException(Reason.SERVICE_NOT_FOUND, "service not found"));
+        TimeRange period = new TimeRange(start, start.plus(service.getDuration()));
+        if (!slotService.fitsSchedule(period)) {
+            throw new BookingException(
+                    Reason.OUTSIDE_SCHEDULE, "time is outside working hours, in time off or in the past");
+        }
+        Appointment saved = flush(new Appointment(client, service, period, source));
+        Map<String, Object> payload = payload(saved);
+        payload.put("source", source.name().toLowerCase(Locale.ROOT));
+        recorder.record(DomainEventType.APPOINTMENT_CREATED, saved.getId(), actor, payload);
+        if (requestKey != null) {
+            keys.saveAndFlush(new IdempotencyKey(
+                    requestKey.userId(),
+                    requestKey.key(),
+                    saved.getId(),
+                    clientId,
+                    serviceId,
+                    saved.getPeriod(),
+                    clock.instant()));
+        }
+        return view(saved);
+    }
+
+    private AppointmentView replay(IdempotencyKey k, AppointmentSource source) {
+        return new AppointmentView(
+                k.getAppointmentId(),
+                k.getClientId(),
+                k.getServiceId(),
+                k.period(),
+                AppointmentStatus.CONFIRMED,
+                source,
+                settings.get().getTimeZone());
+    }
+
+    /**
+     * Moves a confirmed appointment, keeping its booked length. Lock order: the schedule lock
+     * first, then the row lock ({@code locked(id)}); never the other way round.
+     */
+    @Transactional
+    public AppointmentView reschedule(UUID id, Instant start, EventActor actor) {
+        scheduleLock.acquire();
+        Appointment appointment = locked(id);
+        appointment.requireConfirmed();
+        TimeRange old = appointment.getPeriod();
+        TimeRange period = new TimeRange(start, start.plus(Duration.between(old.start(), old.end())));
+        if (!slotService.fitsSchedule(period)) {
+            throw new BookingException(
+                    Reason.OUTSIDE_SCHEDULE, "time is outside working hours, in time off or in the past");
+        }
+        appointment.reschedule(period);
+        Appointment saved = flush(appointment);
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("client_id", saved.getClient().getId().toString());
+        payload.put("service_id", saved.getService().getId().toString());
+        payload.put("previous_start", old.start().toString());
+        payload.put("previous_end", old.end().toString());
+        payload.put("start", period.start().toString());
+        payload.put("end", period.end().toString());
+        recorder.record(DomainEventType.APPOINTMENT_RESCHEDULED, saved.getId(), actor, payload);
+        return view(saved);
+    }
+
+    /** Cancels a confirmed appointment. */
+    @Transactional
+    public AppointmentView cancel(UUID id, EventActor actor) {
+        Appointment appointment = locked(id);
+        appointment.cancel();
+        Appointment saved = flush(appointment);
+        recorder.record(DomainEventType.APPOINTMENT_CANCELLED, saved.getId(), actor, payload(saved));
+        return view(saved);
+    }
+
+    /** Marks a confirmed appointment as a no-show once the visit has started. */
+    @Transactional
+    public AppointmentView markNoShow(UUID id, EventActor actor) {
+        Appointment appointment = locked(id);
+        appointment.markNoShow(clock.instant());
+        Appointment saved = flush(appointment);
+        recorder.record(DomainEventType.APPOINTMENT_NO_SHOW, saved.getId(), actor, payload(saved));
+        return view(saved);
+    }
+
+    /**
+     * Appointments of any status touching the local days {@code from..to}, both inclusive, ordered
+     * by start. Three queries whatever the count: appointments, then clients and services by id.
+     */
+    @Transactional(readOnly = true)
+    public List<AppointmentListView> between(LocalDate from, LocalDate to) {
+        ZoneId zone = settings.get().getTimeZone();
+        Instant windowStart = from.atStartOfDay(zone).toInstant();
+        Instant windowEnd = to.plusDays(1).atStartOfDay(zone).toInstant();
+        List<Appointment> found = appointments.findOverlapping(windowStart, windowEnd);
+        return listViews(found, zone);
+    }
+
+    /** Appointments of one client across all statuses, newest first. */
+    @Transactional(readOnly = true)
+    public List<AppointmentListView> ofClient(UUID clientId, int limit, int offset) {
+        if (!clients.existsById(clientId)) {
+            throw new BookingException(Reason.CLIENT_NOT_FOUND, "client not found");
+        }
+        return listViews(appointments.findByClient(clientId, limit, offset), settings.get().getTimeZone());
+    }
+
+    /** One appointment of any status with the client and service names, the same shape as a list item. */
+    @Transactional(readOnly = true)
+    public AppointmentListView byId(UUID id) {
+        Appointment found = appointments.findById(id)
+                .orElseThrow(() -> new BookingException(Reason.APPOINTMENT_NOT_FOUND, "appointment not found"));
+        return listViews(List.of(found), settings.get().getTimeZone()).getFirst();
+    }
+
+    private List<AppointmentListView> listViews(List<Appointment> found, ZoneId zone) {
+        Map<UUID, Client> clientsById = new HashMap<>();
+        clients.findAllById(found.stream().map(a -> a.getClient().getId()).collect(Collectors.toSet()))
+                .forEach(c -> clientsById.put(c.getId(), c));
+        Map<UUID, MassageService> servicesById = new HashMap<>();
+        services.findAllById(found.stream().map(a -> a.getService().getId()).collect(Collectors.toSet()))
+                .forEach(s -> servicesById.put(s.getId(), s));
+        return found.stream().map(a -> {
+            Client client = clientsById.get(a.getClient().getId());
+            MassageService service = servicesById.get(a.getService().getId());
+            AppointmentView view = new AppointmentView(
+                    a.getId(), client.getId(), service.getId(), a.getPeriod(), a.getStatus(), a.getSource(), zone);
+            return new AppointmentListView(view, client.getName(), client.getPhone(), service.getName());
+        }).toList();
+    }
+
+    private Appointment locked(UUID id) {
+        return appointments.findByIdForUpdate(id)
+                .orElseThrow(() -> new BookingException(Reason.APPOINTMENT_NOT_FOUND, "appointment not found"));
+    }
+
+    private Appointment flush(Appointment appointment) {
+        try {
+            return appointments.saveAndFlush(appointment);
+        } catch (DataIntegrityViolationException e) {
+            if (OverlapViolations.isOverlap(e)) {
+                throw new BookingException(Reason.TIME_TAKEN, "time is already booked", e);
+            }
+            throw e;
+        }
+    }
+
+    private static Map<String, Object> payload(Appointment a) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("client_id", a.getClient().getId().toString());
+        payload.put("service_id", a.getService().getId().toString());
+        payload.put("start", a.getPeriod().start().toString());
+        payload.put("end", a.getPeriod().end().toString());
+        return payload;
+    }
+
+    private AppointmentView view(Appointment a) {
+        return new AppointmentView(
+                a.getId(),
+                a.getClient().getId(),
+                a.getService().getId(),
+                a.getPeriod(),
+                a.getStatus(),
+                a.getSource(),
+                settings.get().getTimeZone());
+    }
+}

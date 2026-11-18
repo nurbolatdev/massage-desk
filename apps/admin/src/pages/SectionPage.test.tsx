@@ -1,0 +1,63 @@
+// @vitest-environment jsdom
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
+
+import { sections } from "@/sections";
+
+vi.mock("@/lib/auth/roleContext", () => ({ useStaffRole: () => "admin" }));
+
+const schedule = sections.find((s) => s.id === "schedule");
+if (!schedule) throw new Error("schedule section is missing");
+const clients = sections.find((s) => s.id === "clients");
+if (!clients) throw new Error("clients section is missing");
+
+const settings = sections.find((s) => s.id === "settings");
+if (!settings) throw new Error("settings section is missing");
+
+beforeEach(() => {
+  vi.resetModules();
+});
+
+afterEach(() => {
+  cleanup();
+  vi.doUnmock("./schedule/SchedulePage");
+  vi.doUnmock("./clients/ClientsPage");
+  vi.doUnmock("./settings/SettingsPage");
+  vi.restoreAllMocks();
+});
+
+describe("SectionPage", () => {
+  it("shows the skeleton first and then the loaded page", async () => {
+    vi.doMock("./schedule/SchedulePage", () => ({ SchedulePage: () => <h1>Расписание</h1> }));
+    const { SectionPage } = await import("./SectionPage");
+    const { container } = render(<SectionPage section={schedule} />);
+    expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
+    expect(await screen.findByRole("heading", { name: "Расписание" })).not.toBeNull();
+  });
+
+  it("shows a Russian message with a reload button when the page chunk fails", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.doMock("./schedule/SchedulePage", () => {
+      throw new Error("Failed to fetch dynamically imported module");
+    });
+    const { SectionPage } = await import("./SectionPage");
+    render(<SectionPage section={schedule} />);
+    expect(await screen.findByText("Не удалось открыть раздел")).not.toBeNull();
+    expect(screen.getByText("Проверьте связь и обновите страницу.")).not.toBeNull();
+    expect(screen.getByRole("button", { name: "Обновить страницу" })).not.toBeNull();
+  });
+
+  it("раздел clients грузит страницу клиентов", async () => {
+    vi.doMock("./clients/ClientsPage", () => ({ ClientsPage: () => <h1>Клиенты</h1> }));
+    const { SectionPage } = await import("./SectionPage");
+    render(<SectionPage section={clients} />);
+    expect(await screen.findByRole("heading", { name: "Клиенты" })).not.toBeNull();
+  });
+
+  it("раздел settings грузит страницу настроек", async () => {
+    vi.doMock("./settings/SettingsPage", () => ({ SettingsPage: () => <h1>Настройки</h1> }));
+    const { SectionPage } = await import("./SectionPage");
+    render(<SectionPage section={settings} />);
+    expect(await screen.findByRole("heading", { name: "Настройки" })).not.toBeNull();
+  });
+});

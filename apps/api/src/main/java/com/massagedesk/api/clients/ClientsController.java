@@ -1,0 +1,131 @@
+package com.massagedesk.api.clients;
+
+import com.massagedesk.api.errors.ApiProblem;
+import com.massagedesk.api.security.StaffActors;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+import java.util.List;
+import java.util.UUID;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
+
+/** Client list, search, creation and edits for the master's app. Rules live in the service. */
+@Tag(name = "clients")
+@RestController
+@RequestMapping("/clients")
+class ClientsController {
+
+    private final ClientService clients;
+
+    ClientsController(ClientService clients) {
+        this.clients = clients;
+    }
+
+    @Operation(summary = "List clients or search them by name or phone")
+    @ApiResponse(responseCode = "200", description = "clients with visit stats, alphabetically by name")
+    @ApiResponse(responseCode = "400", description = "invalid query parameter",
+            content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                    schema = @Schema(implementation = ApiProblem.class)))
+    @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
+    List<ClientListItem> listClients(
+            @Parameter(description = "name fragment or phone digits; blank lists everyone")
+            @RequestParam(required = false) @Size(max = 100) String q,
+            @Parameter(
+                    description = "regular: 3+ visits, seen in 60 days or booked; "
+                            + "lapsed: visited, not seen in 60 days, not booked; "
+                            + "no_shows: at least one no-show",
+                    schema = @Schema(allowableValues = {"regular", "lapsed", "no_shows"}))
+            @RequestParam(required = false) @Pattern(regexp = "^(regular|lapsed|no_shows)?$") String segment,
+            @Parameter(description = "page size, 1..200") @RequestParam(defaultValue = "50") @Min(1) @Max(200) int limit,
+            @Parameter(description = "rows to skip") @RequestParam(defaultValue = "0") @Min(0) int offset) {
+        return clients.list(q, ClientSegment.fromParam(segment), limit, offset)
+                .stream()
+                .map(ClientListItem::from)
+                .toList();
+    }
+
+    @Operation(summary = "Number of clients and new ones in the last 30 days")
+    @ApiResponse(responseCode = "200", description = "client count summary")
+    @GetMapping(value = "/summary", produces = MediaType.APPLICATION_JSON_VALUE)
+    ClientsSummaryResponse getClientsSummary() {
+        return ClientsSummaryResponse.from(clients.summary());
+    }
+
+    @Operation(summary = "Get one client")
+    @ApiResponse(responseCode = "200", description = "the client")
+    @ApiResponse(responseCode = "400", description = "invalid id",
+            content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                    schema = @Schema(implementation = ApiProblem.class)))
+    @ApiResponse(responseCode = "404", description = "client not found",
+            content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                    schema = @Schema(implementation = ApiProblem.class)))
+    @GetMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
+    ClientResponse getClient(@Parameter(description = "client id") @PathVariable UUID id) {
+        return ClientResponse.from(clients.get(id));
+    }
+
+    @Operation(summary = "Visit stats of one client")
+    @ApiResponse(responseCode = "200", description = "visit summary of the client")
+    @ApiResponse(responseCode = "400", description = "invalid id",
+            content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                    schema = @Schema(implementation = ApiProblem.class)))
+    @ApiResponse(responseCode = "404", description = "client not found",
+            content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                    schema = @Schema(implementation = ApiProblem.class)))
+    @GetMapping(value = "/{id}/stats", produces = MediaType.APPLICATION_JSON_VALUE)
+    ClientStatsResponse getClientStats(@Parameter(description = "client id") @PathVariable UUID id) {
+        return ClientStatsResponse.from(clients.stats(id));
+    }
+
+    @Operation(summary = "Add a client")
+    @ApiResponse(responseCode = "201", description = "client created")
+    @ApiResponse(responseCode = "400", description = "missing or invalid field, or invalid phone number",
+            content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                    schema = @Schema(implementation = ApiProblem.class)))
+    @ApiResponse(responseCode = "409", description = "a client with this phone already exists",
+            content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                    schema = @Schema(implementation = ApiProblem.class)))
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseStatus(HttpStatus.CREATED)
+    ClientResponse createClient(@Valid @RequestBody CreateClientRequest request,
+            @Parameter(hidden = true) Authentication authentication) {
+        return ClientResponse.from(clients.create(
+                request.phone(), request.name(), request.notes(), StaffActors.of(authentication)));
+    }
+
+    @Operation(summary = "Change a client's name or notes")
+    @ApiResponse(responseCode = "200", description = "client updated")
+    @ApiResponse(responseCode = "400", description = "invalid field or id",
+            content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                    schema = @Schema(implementation = ApiProblem.class)))
+    @ApiResponse(responseCode = "404", description = "client not found",
+            content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                    schema = @Schema(implementation = ApiProblem.class)))
+    @PatchMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE,
+            produces = MediaType.APPLICATION_JSON_VALUE)
+    ClientResponse updateClient(@Parameter(description = "client id") @PathVariable UUID id,
+            @Valid @RequestBody UpdateClientRequest request,
+            @Parameter(hidden = true) Authentication authentication) {
+        return ClientResponse.from(clients.update(
+                id, request.name(), request.notes(), StaffActors.of(authentication)));
+    }
+}

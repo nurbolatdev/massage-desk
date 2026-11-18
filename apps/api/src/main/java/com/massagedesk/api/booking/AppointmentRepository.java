@@ -1,0 +1,66 @@
+package com.massagedesk.api.booking;
+
+import jakarta.persistence.LockModeType;
+import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+public interface AppointmentRepository extends JpaRepository<Appointment, UUID> {
+
+    /**
+     * Confirmed appointments that overlap the half-open window. Only confirmed
+     * appointments hold time, the same rule as the {@code appointments_no_overlap}
+     * constraint.
+     */
+    @Query(nativeQuery = true, value = """
+            select a.* from appointments a
+            where a.status = 'confirmed'
+              and a.period && tstzrange(cast(:windowStart as timestamptz), cast(:windowEnd as timestamptz), '[)')
+            order by lower(a.period)
+            """)
+    List<Appointment> findConfirmedOverlapping(
+            @Param("windowStart") Instant windowStart, @Param("windowEnd") Instant windowEnd);
+
+    /** Appointments of any status that overlap the half-open window, ordered by start. */
+    @Query(nativeQuery = true, value = """
+            select a.* from appointments a
+            where a.period && tstzrange(cast(:windowStart as timestamptz), cast(:windowEnd as timestamptz), '[)')
+            order by lower(a.period), a.id
+            """)
+    List<Appointment> findOverlapping(
+            @Param("windowStart") Instant windowStart, @Param("windowEnd") Instant windowEnd);
+
+    /**
+     * Confirmed appointments that start at or after {@code from}, with no upper bound. Only
+     * confirmed appointments hold time; appointments already in progress are excluded. The open
+     * range overlap lets the index on {@code period} serve the query.
+     */
+    @Query(nativeQuery = true, value = """
+            select a.* from appointments a
+            where a.status = 'confirmed'
+              and a.period && tstzrange(cast(:from as timestamptz), null, '[)')
+              and lower(a.period) >= cast(:from as timestamptz)
+            order by lower(a.period)
+            """)
+    List<Appointment> findConfirmedStartingFrom(@Param("from") Instant from);
+
+    /** Loads the appointment with a row lock; serialises status changes of one appointment. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select a from Appointment a where a.id = :id")
+    Optional<Appointment> findByIdForUpdate(@Param("id") UUID id);
+
+    /** All statuses, newest first. */
+    @Query(nativeQuery = true, value = """
+            select a.* from appointments a
+            where a.client_id = :clientId
+            order by lower(a.period) desc, a.id desc
+            limit :limit offset :offset
+            """)
+    List<Appointment> findByClient(
+            @Param("clientId") UUID clientId, @Param("limit") int limit, @Param("offset") int offset);
+}
