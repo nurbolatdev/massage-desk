@@ -4,6 +4,7 @@ import { act, cleanup, renderHook, waitFor } from "@testing-library/react-native
 import type { ReactNode } from "react";
 
 import { ApiError } from "@/lib/api/errors";
+import { shouldRetry } from "@/lib/query/queryClient";
 
 import type { AppointmentListItem } from "./appointments";
 import { useAppointment } from "./hooks";
@@ -218,12 +219,21 @@ describe("useAppointment by id", () => {
 
   it("an unknown id without a day is not found, without retries", async () => {
     mockPaths(notFound);
-    const { result } = await renderHook(() => useAppointment("a1", undefined), { wrapper });
+    const retryingClient = new QueryClient({
+      defaultOptions: { queries: { retry: shouldRetry, gcTime: Infinity } },
+    });
+    const retryingWrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={retryingClient}>{children}</QueryClientProvider>
+    );
+    const { result } = await renderHook(() => useAppointment("a1", undefined), {
+      wrapper: retryingWrapper,
+    });
     await waitFor(() => expect(result.current.notFound).toBe(true));
 
     expect(result.current.error).toBeNull();
     expect(result.current.refreshError).toBeNull();
     expect(callsTo("/appointments/{id}")).toHaveLength(1);
+    retryingClient.clear();
   });
 
   it("finds an appointment that the day's list does not have", async () => {

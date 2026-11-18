@@ -19,7 +19,10 @@ jest.mock("@/lib/api", () => ({
 const DAY = "2026-11-03";
 
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { retry: false, gcTime: Infinity } },
+  defaultOptions: {
+    queries: { retry: false, gcTime: Infinity },
+    mutations: { retry: false, gcTime: Infinity },
+  },
 });
 
 function wrapper({ children }: { children: ReactNode }) {
