@@ -393,47 +393,38 @@ describe("new appointment screen", () => {
 
   it("a retry after a lost response sends the same key and books without a conflict", async () => {
     mockPost.mockReset();
-    mockPost.mockRejectedValueOnce(new TypeError("Network request failed")).mockResolvedValueOnce(ok(booked, 201));
+    mockPost.mockRejectedValueOnce(new TypeError("Network request failed")).mockResolvedValueOnce(ok({ ...booked, start: busy }, 201));
     await renderScreen();
     const user = userEvent.setup();
 
     await user.type(screen.getByLabelText(PHONE_STEP), "901234567");
     await user.press(await screen.findByText("Анна"));
-    await user.press(await screen.findByText("11:30"));
+    await user.press(await screen.findByText("10:00"));
     await user.press(screen.getByRole("button", { name: /^Записать ·/ }));
     expect(await screen.findByText(BOOK_FAILED)).toBeOnTheScreen();
+    await waitFor(() => expect(slotRequests()).toBeGreaterThanOrEqual(2));
+    await waitFor(() => expect(screen.queryByText("10:00")).toBeNull());
 
-    await user.press(screen.getByRole("button", { name: /^Записать ·/ }));
+    const retry = screen.getByRole("button", { name: /^Записать ·/ });
+    expect(retry.props.accessibilityState).not.toMatchObject({ disabled: true });
+    await user.press(retry);
     await waitFor(() => expect(mockBack).toHaveBeenCalled());
     expect(getBookingNotice()?.appointmentId).toBe("a-new");
     expect(mockPost).toHaveBeenCalledTimes(2);
     expect(keyOf(1)).toBe(keyOf(0));
-    expect(screen.queryByText(conflictTitle("11:30"))).toBeNull();
+    expect(screen.queryByText(conflictTitle("10:00"))).toBeNull();
   });
 
-  it("changing the time after a lost response keeps the key; a saved first try shows the check-the-schedule text", async () => {
-    mockGet.mockImplementation(async (path, init) => {
-      if (path === "/clients") return ok([client]);
-      if (path === "/services") return ok([service]);
-      if (path === "/slots") {
-        const requested = (init as { params: { query: { day: string } } }).params.query.day;
-        return ok({
-          day: requested,
-          timeZone: TIME_ZONE,
-          durationMin: 60,
-          starts: [`${requested}T10:00:00+05:00`, `${requested}T11:30:00+05:00`],
-        });
-      }
-      throw new Error(`unexpected GET ${path}`);
-    });
+  it("changing the time after a lost response keeps the key; a saved first try keeps showing the check-the-schedule text", async () => {
+    const reused = {
+      error: { code: "IDEMPOTENCY_KEY_REUSED", status: 422, title: "Unprocessable Content", detail: "", instance: "/appointments" },
+      response: new Response(null, { status: 422 }),
+    };
     mockPost.mockReset();
     mockPost
       .mockRejectedValueOnce(new TypeError("Network request failed"))
-      .mockResolvedValueOnce({
-        error: { code: "IDEMPOTENCY_KEY_REUSED", status: 422, title: "Unprocessable Content", detail: "", instance: "/appointments" },
-        response: new Response(null, { status: 422 }),
-      })
-      .mockResolvedValueOnce(ok({ ...booked, start: busy }, 201));
+      .mockResolvedValueOnce(reused)
+      .mockResolvedValueOnce(reused);
     await renderScreen();
     const user = userEvent.setup();
 
@@ -449,9 +440,10 @@ describe("new appointment screen", () => {
     expect(screen.queryByText(BOOK_FAILED)).toBeNull();
     expect(screen.queryByText(conflictTitle("11:30"))).toBeNull();
 
-    await user.press(screen.getByText("10:00"));
     await user.press(screen.getByRole("button", { name: /^Записать ·/ }));
-    await waitFor(() => expect(mockBack).toHaveBeenCalled());
+    await waitFor(() => expect(mockPost).toHaveBeenCalledTimes(3));
+    expect(await screen.findByText(ALREADY_BOOKED_TEXT)).toBeOnTheScreen();
+    expect(mockBack).not.toHaveBeenCalled();
     expect(keyOf(1)).toBe(keyOf(0));
     expect(keyOf(2)).toBe(keyOf(0));
   });

@@ -6,8 +6,8 @@ import { api, unwrap } from "@/lib/api";
 import type { AppointmentAction } from "./appointmentActions";
 import { postAppointmentAction, rescheduleAppointment, withStatus } from "./appointmentActions";
 import type { AppointmentListItem } from "./appointments";
-import { fetchAppointments, toAppointments } from "./appointments";
-import { cardLoad } from "./appointmentCard";
+import { fetchAppointment, fetchAppointments, toAppointment, toAppointments } from "./appointments";
+import { cardLoad, isAppointmentNotFound } from "./appointmentCard";
 import type { BookInput } from "./booking";
 import { bookAppointment, fetchServices, fetchSlots, searchClients } from "./booking";
 import { isDay, localDay, nextDay } from "./days";
@@ -156,7 +156,11 @@ export function useAppointmentAction() {
         (items) => withStatus(items, result.id, result.status),
       );
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all }),
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.appointment.all }),
+      ]),
   });
 }
 
@@ -169,6 +173,7 @@ export function useRescheduleAppointment() {
     onSettled: () =>
       Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.appointment.all }),
         queryClient.invalidateQueries({ queryKey: queryKeys.slots.all }),
       ]),
   });
@@ -236,32 +241,45 @@ export function useUpcomingTimeOff(now: Date) {
   };
 }
 
-export function useAppointment(id: string, day: string | undefined) {
+export function useAppointment(id: string, day?: string) {
   const settings = useSettings();
   const valid = day !== undefined && isDay(day);
-  const appointments = useAppointments(valid ? day : "", valid ? day : "", valid);
-  const appointment = appointments.data?.find((a) => a.id === id);
+  const list = useAppointments(valid ? day : "", valid ? day : "", valid);
+  const fromDay = list.data?.find((a) => a.id === id);
+  // Ask the server for the appointment when there is no day, or the day's list does not have it.
+  const byId = id !== "" && (!valid || (list.data !== undefined && fromDay === undefined));
+  const one = useQuery({
+    queryKey: queryKeys.appointment.one(id),
+    queryFn: () => fetchAppointment(api, id),
+    // The cache keeps raw JSON; Dates are made here.
+    select: toAppointment,
+    enabled: byId,
+  });
+  const appointment = byId ? one.data : fromDay;
+  const gone = isAppointmentNotFound(one.error);
+  const source = byId ? one : list;
 
   const refetch = () => {
     void settings.refetch();
-    if (valid) void appointments.refetch();
+    if (valid) void list.refetch();
+    if (byId) void one.refetch();
   };
 
   const load = cardLoad({
-    appointmentsLoaded: appointments.data !== undefined,
+    appointmentsLoaded: source.data !== undefined,
     settingsLoaded: settings.data !== undefined,
     settingsError: settings.error,
-    appointmentsError: appointments.error,
+    appointmentsError: gone ? null : source.error,
   });
 
   return {
     appointment,
-    notFound: !valid || (appointments.data !== undefined && appointment === undefined),
+    notFound: id === "" || (byId && gone),
     hasData: load.hasData,
     timeZone: settings.data?.timeZone,
     error: load.error,
     refreshError: load.refreshError,
-    dataUpdatedAt: appointments.dataUpdatedAt,
+    dataUpdatedAt: source.dataUpdatedAt,
     refetch,
   };
 }

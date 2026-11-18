@@ -14,6 +14,13 @@ export function fetchAppointments(
   return unwrap(api.GET("/appointments", { params: { query: { from, to } } }));
 }
 
+export function fetchAppointment(
+  api: ReturnType<typeof createApi>,
+  id: string,
+): Promise<AppointmentListItem> {
+  return unwrap(api.GET("/appointments/{id}", { params: { path: { id } } }));
+}
+
 export function toAppointment(item: AppointmentListItem): Appointment {
   return {
     id: item.id,

@@ -6,7 +6,13 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import AppointmentScreen from "@/app/appointment/[id]";
 import { ApiError } from "@/lib/api/errors";
-import { CANCEL_CONFIRM_YES, CANCEL_LABEL } from "@/lib/data/appointmentCard";
+import {
+  BACK_LABEL,
+  CANCEL_CONFIRM_YES,
+  CANCEL_LABEL,
+  NOT_FOUND_TEXT,
+  NOT_FOUND_TITLE,
+} from "@/lib/data/appointmentCard";
 import { RESCHEDULE_LABEL } from "@/lib/data/reschedule";
 import { queryKeys } from "@/lib/data/queryKeys";
 import { LOAD_ERROR_TEXT, REFRESH_FAILED_TITLE, RETRY_LABEL } from "@/lib/data/todayState";
@@ -17,9 +23,10 @@ const mockGet = jest.fn<Call>();
 const mockPost = jest.fn<Call>();
 const mockPatch = jest.fn<Call>();
 const mockPush = jest.fn();
+const mockParams = jest.fn<() => { id: string; day?: string }>(() => ({ id: "a1", day: "2026-11-03" }));
 
 jest.mock("expo-router", () => ({
-  useLocalSearchParams: () => ({ id: "a1", day: "2026-11-03" }),
+  useLocalSearchParams: () => mockParams(),
   useRouter: () => ({ canGoBack: () => true, back: jest.fn(), replace: jest.fn(), push: mockPush }),
 }));
 
@@ -99,6 +106,8 @@ describe("appointment card screen", () => {
     mockPost.mockReset();
     mockPatch.mockReset();
     mockPush.mockReset();
+    mockParams.mockReset();
+    mockParams.mockImplementation(() => ({ id: "a1", day: DAY }));
     mockGet.mockImplementation(async (path) => {
       if (path === "/settings") return ok(settings);
       if (path === "/appointments") return ok([listItem]);
@@ -212,5 +221,58 @@ describe("appointment card screen", () => {
     expect(screen.getByRole("button", { name: RETRY_LABEL })).toBeOnTheScreen();
     expect(screen.queryByText(REFRESH_FAILED_TITLE)).toBeNull();
     expect(screen.queryByText("Анна")).toBeNull();
+  });
+
+  it("opens by id without a day", async () => {
+    mockParams.mockImplementation(() => ({ id: "a1" }));
+    queryClient.removeQueries({ queryKey: queryKeys.appointments.all });
+    mockGet.mockImplementation(async (path) => {
+      if (path === "/settings") return ok(settings);
+      if (path === "/appointments/{id}") return ok(listItem);
+      if (path === "/clients/{id}") return ok(client);
+      throw new Error(`unexpected GET ${path}`);
+    });
+    await renderCard();
+
+    expect(await screen.findByText("Анна")).toBeOnTheScreen();
+    expect(screen.getByRole("button", { name: RESCHEDULE_LABEL })).toBeOnTheScreen();
+    expect(mockGet.mock.calls.filter(([path]) => path === "/appointments")).toHaveLength(0);
+  });
+
+  it("shows not found when the id is unknown", async () => {
+    mockParams.mockImplementation(() => ({ id: "a1" }));
+    queryClient.removeQueries({ queryKey: queryKeys.appointments.all });
+    mockGet.mockImplementation(async (path) => {
+      if (path === "/settings") return ok(settings);
+      if (path === "/appointments/{id}") {
+        return {
+          error: { code: "APPOINTMENT_NOT_FOUND", status: 404, title: "Not found", detail: "", instance: "/appointments/a1" },
+          response: new Response(null, { status: 404 }),
+        };
+      }
+      throw new Error(`unexpected GET ${path}`);
+    });
+    await renderCard();
+
+    expect(await screen.findByText(NOT_FOUND_TITLE)).toBeOnTheScreen();
+    expect(screen.getByText(NOT_FOUND_TEXT)).toBeOnTheScreen();
+    expect(screen.getAllByRole("button", { name: BACK_LABEL }).length).toBeGreaterThan(0);
+    expect(screen.queryByText(LOAD_ERROR_TEXT)).toBeNull();
+  });
+
+  it("finds an appointment moved to another day", async () => {
+    const moved = { ...listItem, start: "2026-11-05T10:00:00+05:00", end: "2026-11-05T11:00:00+05:00" };
+    queryClient.setQueryData(queryKeys.appointments.range(DAY, DAY), []);
+    mockGet.mockImplementation(async (path) => {
+      if (path === "/settings") return ok(settings);
+      if (path === "/appointments") return ok([]);
+      if (path === "/appointments/{id}") return ok(moved);
+      if (path === "/clients/{id}") return ok(client);
+      throw new Error(`unexpected GET ${path}`);
+    });
+    await renderCard();
+
+    expect(await screen.findByText("Анна")).toBeOnTheScreen();
+    expect(screen.queryByText(NOT_FOUND_TITLE)).toBeNull();
   });
 });

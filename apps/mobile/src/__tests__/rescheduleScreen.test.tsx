@@ -5,10 +5,11 @@ import { cleanup, render, screen, userEvent, waitFor } from "@testing-library/re
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import RescheduleScreen from "@/app/reschedule/[id]";
-import { BACK_LABEL, NOT_FOUND_TITLE } from "@/lib/data/appointmentCard";
+import { BACK_LABEL, LOADING_LABEL, NOT_FOUND_TITLE } from "@/lib/data/appointmentCard";
 import { localDay } from "@/lib/data/days";
 import { CHOOSE_TIME, conflictTitle, OUTSIDE_TEXT, serviceMeta, takenA11y } from "@/lib/data/newBooking";
 import { queryKeys } from "@/lib/data/queryKeys";
+import { LOAD_ERROR_TEXT } from "@/lib/data/todayState";
 import {
   currentLine,
   NOW_LABEL,
@@ -25,6 +26,9 @@ type Call = (path: string, init?: unknown) => Promise<unknown>;
 const mockGet = jest.fn<Call>();
 const mockPost = jest.fn<Call>();
 const mockDismissTo = jest.fn();
+const mockReplace = jest.fn();
+const mockCanGoBack = jest.fn<() => boolean>(() => true);
+let mockDayValue: string | undefined;
 
 type Schemas = components["schemas"];
 
@@ -38,16 +42,16 @@ const FREE = `${DAY}T11:30:00+05:00`;
 jest.mock("expo-router", () => ({
   useLocalSearchParams: () => ({ id: "a1", day: mockDay() }),
   useRouter: () => ({
-    canGoBack: () => true,
+    canGoBack: () => mockCanGoBack(),
     back: jest.fn(),
-    replace: jest.fn(),
+    replace: mockReplace,
     push: jest.fn(),
     dismissTo: mockDismissTo,
   }),
 }));
 
-function mockDay(): string {
-  return DAY;
+function mockDay(): string | undefined {
+  return mockDayValue;
 }
 
 jest.mock("@/lib/api", () => ({
@@ -100,6 +104,7 @@ const queryClient = new QueryClient({
 });
 
 let appointmentsAnswer: () => Schemas["AppointmentListItem"][] = () => [listItem];
+let oneAnswer: () => Schemas["AppointmentListItem"] = () => listItem;
 let slotsGate: Promise<void> | null = null;
 
 function slotRequests(): number {
@@ -128,11 +133,20 @@ describe("reschedule screen", () => {
     mockGet.mockReset();
     mockPost.mockReset();
     mockDismissTo.mockReset();
+    mockReplace.mockReset();
+    mockCanGoBack.mockReset();
+    mockCanGoBack.mockImplementation(() => true);
+    mockDayValue = DAY;
     appointmentsAnswer = () => [listItem];
+    oneAnswer = () => listItem;
     slotsGate = null;
     mockGet.mockImplementation(async (path, init) => {
       if (path === "/settings") return ok(settings);
       if (path === "/appointments") return ok(appointmentsAnswer());
+      if (path === "/appointments/{id}") {
+        if (slotsGate !== null) await slotsGate;
+        return ok(oneAnswer());
+      }
       if (path === "/slots") {
         const requested = (init as { params: { query: { day: string } } }).params.query.day;
         if (slotRequests() === 2 && slotsGate !== null) await slotsGate;
@@ -230,6 +244,7 @@ describe("reschedule screen", () => {
     });
     mockPost.mockImplementation(async () => {
       appointmentsAnswer = () => [];
+      oneAnswer = () => ({ ...listItem, start: target, end: `${next}T12:30:00+05:00` });
       return ok({ ...moved, start: target, end: `${next}T12:30:00+05:00` });
     });
     await renderScreen();
@@ -245,6 +260,8 @@ describe("reschedule screen", () => {
     expect(mockDismissTo).not.toHaveBeenCalled();
     expect(screen.queryByText(NOT_FOUND_TITLE)).not.toBeOnTheScreen();
     expect(screen.getByText(RESCHEDULE_CONFIRM_TITLE)).toBeOnTheScreen();
+    expect(screen.queryByLabelText(LOADING_LABEL)).toBeNull();
+    expect(screen.queryByText(LOAD_ERROR_TEXT)).toBeNull();
 
     release();
     await waitFor(() => expect(mockDismissTo).toHaveBeenCalled());
@@ -302,5 +319,35 @@ describe("reschedule screen", () => {
     expect(screen.getByText(RESCHEDULE_OFFLINE_TEXT)).toBeOnTheScreen();
     const button = screen.getByRole("button", { name: CHOOSE_TIME });
     expect(button.props.accessibilityState).toMatchObject({ disabled: true });
+  });
+
+  it("opens by id without a day", async () => {
+    mockDayValue = undefined;
+    queryClient.removeQueries({ queryKey: queryKeys.appointments.all });
+    await renderScreen();
+
+    expect(await screen.findByText(NOW_LABEL)).toBeOnTheScreen();
+    expect(screen.getByText(currentLine(new Date(START), TIME_ZONE))).toBeOnTheScreen();
+    expect(screen.getByText(`Анна · Классический массаж, ${serviceMeta(60)}`)).toBeOnTheScreen();
+    expect(appointmentRequests()).toBe(0);
+  });
+
+  it("goes back to the card by id when there is no day", async () => {
+    mockDayValue = undefined;
+    mockCanGoBack.mockImplementation(() => false);
+    await renderScreen();
+    const user = userEvent.setup();
+
+    await user.press(screen.getByRole("button", { name: BACK_LABEL }));
+    expect(mockReplace).toHaveBeenCalledWith({ pathname: "/appointment/[id]", params: { id: "a1" } });
+  });
+
+  it("goes back to the card of the day", async () => {
+    mockCanGoBack.mockImplementation(() => false);
+    await renderScreen();
+    const user = userEvent.setup();
+
+    await user.press(screen.getByRole("button", { name: BACK_LABEL }));
+    expect(mockReplace).toHaveBeenCalledWith({ pathname: "/appointment/[id]", params: { id: "a1", day: DAY } });
   });
 });
