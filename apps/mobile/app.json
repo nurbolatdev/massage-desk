@@ -8,7 +8,8 @@
     },
     "updates": {
       "checkAutomatically": "ON_LOAD",
-      "fallbackToCacheTimeout": 0
+      "fallbackToCacheTimeout": 0,
+      "url": "https://u.expo.dev/1e30dfa7-58e7-42e1-a394-51d6dc162ba8"
     },
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -46,6 +47,12 @@
     "scheme": "massagedesk",
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "1e30dfa7-58e7-42e1-a394-51d6dc162ba8"
+      }
+    },
+    "owner": "nurbo"
   }
 }
