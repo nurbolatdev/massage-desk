@@ -123,9 +123,9 @@ export default function RescheduleScreen() {
           <GoneBlock title={NOT_FOUND_TITLE} text={NOT_FOUND_TEXT} onBack={goBack} />
         ) : (
           <>
-            {state.view === "loading" && <AppointmentSkeleton />}
-            {state.view === "offlineEmpty" && <OfflineBanner savedAt={null} />}
-            {state.view === "error" && state.errorText !== null && (
+            {snapshot === null && state.view === "loading" && <AppointmentSkeleton />}
+            {snapshot === null && state.view === "offlineEmpty" && <OfflineBanner savedAt={null} />}
+            {snapshot === null && state.view === "error" && state.errorText !== null && (
               <View style={styles.errorBox}>
                 <ErrorBanner message={state.errorText} />
                 {state.canRetry && <Button label={RETRY_LABEL} onPress={card.refetch} />}

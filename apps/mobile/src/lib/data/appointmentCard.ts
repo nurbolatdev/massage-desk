@@ -138,7 +138,7 @@ export interface CardLoadInput {
   appointmentsError: Error | null;
 }
 
-/** The card needs the day's list and the settings (time zone): it shows data only when both are present. */
+/** The card needs the appointment (from the day's list or by id) and the settings (time zone): it shows data only when both are present. */
 export function cardLoad({ appointmentsLoaded, settingsLoaded, settingsError, appointmentsError }: CardLoadInput) {
   return {
     hasData: appointmentsLoaded && settingsLoaded,
