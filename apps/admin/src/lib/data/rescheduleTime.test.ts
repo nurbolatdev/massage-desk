@@ -23,6 +23,7 @@ import {
   slotsStatusText,
   slotsView,
   toStarts,
+  withoutStart,
 } from "./rescheduleTime";
 import type { Appointment } from "./schedule";
 
@@ -84,6 +85,17 @@ describe("fetchSlots and toStarts", () => {
       timeZone: TZ,
     });
     expect(starts).toEqual([new Date("2026-11-03T04:00:00Z")]);
+  });
+
+  it("drops the appointment's own current start by moment and keeps undefined", () => {
+    const own = new Date("2026-11-02T05:00:00Z");
+    const ten = new Date("2026-11-02T10:00:00+05:00");
+    const tenThirty = new Date("2026-11-02T10:30:00+05:00");
+    const eleven = new Date("2026-11-02T11:00:00+05:00");
+
+    expect(withoutStart(undefined, own)).toBeUndefined();
+    expect(withoutStart([ten, tenThirty], own)).toEqual([tenThirty]);
+    expect(withoutStart([tenThirty, eleven], own)).toEqual([tenThirty, eleven]);
   });
 });
 

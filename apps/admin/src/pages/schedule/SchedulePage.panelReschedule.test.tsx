@@ -11,15 +11,15 @@ import type { Appointment } from "@/lib/data/schedule";
 import { SchedulePage } from "./SchedulePage";
 
 const { slots, reschedule } = vi.hoisted(() => ({
-  slots: vi.fn<(serviceId: string, day: string) => Promise<SlotsResponse>>(),
+  slots: vi.fn<(serviceId: string, day: string, excludeAppointmentId?: string) => Promise<SlotsResponse>>(),
   reschedule: vi.fn<(vars: { id: string; start: Date }) => Promise<unknown>>(),
 }));
 
 vi.mock("@/lib/data/hooks", () => ({
   useTimeZone: () => "Asia/Tashkent",
   useScheduleRange: vi.fn(),
-  useDaySlots: (serviceId: string, day: string | null) =>
-    useQuery(daySlotsOptions(serviceId, day, slots)),
+  useDaySlots: (serviceId: string, day: string | null, excludeAppointmentId?: string) =>
+    useQuery(daySlotsOptions(serviceId, day, slots, excludeAppointmentId)),
   useRescheduleAppointment: () =>
     useMutation({
       networkMode: "always",
@@ -134,7 +134,7 @@ describe("SchedulePage panel reschedule", () => {
 
     const picker = screen.getByRole("dialog", { name: "Перенос записи" });
     expect(within(picker).getByRole("button", { name: "Завтра" }).getAttribute("aria-pressed")).toBe("true");
-    expect(slots).toHaveBeenCalledWith("s1", "2026-11-03");
+    expect(slots).toHaveBeenCalledWith("s1", "2026-11-03", "a1");
 
     fireEvent.click(await within(picker).findByRole("button", { name: "15:00" }));
 

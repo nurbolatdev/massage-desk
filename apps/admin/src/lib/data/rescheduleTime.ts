@@ -63,6 +63,11 @@ export function toStarts(res: SlotsResponse): Date[] {
   return res.starts.map((s) => new Date(s));
 }
 
+/** Drops the appointment's own current start: moving it there changes nothing. */
+export function withoutStart(starts: Date[] | undefined, own: Date): Date[] | undefined {
+  return starts?.filter((s) => s.getTime() !== own.getTime());
+}
+
 export type DayChoice = "today" | "tomorrow" | "other";
 
 export const DAY_CHOICES: readonly [DayChoice, string][] = [

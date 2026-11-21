@@ -11,12 +11,12 @@ import type { Appointment } from "@/lib/data/schedule";
 import { RescheduleTimeDialog } from "./RescheduleTimeDialog";
 
 const slots = vi.hoisted(() =>
-  vi.fn<(serviceId: string, day: string) => Promise<SlotsResponse>>(),
+  vi.fn<(serviceId: string, day: string, excludeAppointmentId?: string) => Promise<SlotsResponse>>(),
 );
 
 vi.mock("@/lib/data/hooks", () => ({
-  useDaySlots: (serviceId: string, day: string | null) =>
-    useQuery(daySlotsOptions(serviceId, day, slots)),
+  useDaySlots: (serviceId: string, day: string | null, excludeAppointmentId?: string) =>
+    useQuery(daySlotsOptions(serviceId, day, slots, excludeAppointmentId)),
 }));
 
 const TZ = "Asia/Tashkent";
@@ -85,25 +85,52 @@ describe("RescheduleTimeDialog", () => {
     expect(screen.getByRole("button", { name: "Сегодня" }).getAttribute("aria-pressed")).toBe(
       "true",
     );
-    expect(slots).toHaveBeenCalledWith("s1", "2026-11-02");
+    expect(slots).toHaveBeenCalledWith("s1", "2026-11-02", "a1");
 
     const group = await screen.findByRole("group", { name: "Свободное время" });
     const chips = within(group).getAllByRole("button");
     expect(chips.map((b) => b.textContent)).toEqual(["11:00", "15:30"]);
   });
 
+  it("does not offer the start of the appointment being moved", async () => {
+    slots.mockResolvedValue(
+      response("2026-11-02", [
+        "2026-11-02T10:00:00+05:00",
+        "2026-11-02T10:30:00+05:00",
+        "2026-11-02T11:00:00+05:00",
+      ]),
+    );
+    renderDialog();
+
+    expect(slots).toHaveBeenCalledWith("s1", "2026-11-02", "a1");
+    const group = await screen.findByRole("group", { name: "Свободное время" });
+    const chips = within(group).getAllByRole("button");
+    expect(chips.map((b) => b.textContent)).toEqual(["10:30", "11:00"]);
+    expect(screen.queryByRole("button", { name: "10:00" })).toBeNull();
+  });
+
+  it("shows the empty day text when only the appointment's own start is free", async () => {
+    slots.mockResolvedValue(response("2026-11-02", ["2026-11-02T10:00:00+05:00"]));
+    renderDialog();
+
+    expect(
+      await screen.findByText("В этот день нет свободного времени. Выберите другой день."),
+    ).toBeTruthy();
+    expect(screen.queryByRole("group", { name: "Свободное время" })).toBeNull();
+  });
+
   it("switches days and validates date input", async () => {
     slots.mockImplementation(async (_serviceId, day) => response(day, []));
     renderDialog();
-    await waitFor(() => expect(slots).toHaveBeenCalledWith("s1", "2026-11-02"));
+    await waitFor(() => expect(slots).toHaveBeenCalledWith("s1", "2026-11-02", "a1"));
 
     fireEvent.click(screen.getByRole("button", { name: "Завтра" }));
-    await waitFor(() => expect(slots).toHaveBeenCalledWith("s1", "2026-11-03"));
+    await waitFor(() => expect(slots).toHaveBeenCalledWith("s1", "2026-11-03", "a1"));
 
     fireEvent.click(screen.getByRole("button", { name: "Другое число" }));
     const input = screen.getByLabelText<HTMLInputElement>("Дата");
     fireEvent.change(input, { target: { value: "2026-11-10" } });
-    await waitFor(() => expect(slots).toHaveBeenCalledWith("s1", "2026-11-10"));
+    await waitFor(() => expect(slots).toHaveBeenCalledWith("s1", "2026-11-10", "a1"));
 
     const callsBeforeInvalid = slots.mock.calls.length;
     fireEvent.change(input, { target: { value: "2026-11-01" } });
@@ -123,7 +150,7 @@ describe("RescheduleTimeDialog", () => {
       "true",
     );
     expect(screen.getByLabelText<HTMLInputElement>("Дата").value).toBe("2026-11-10");
-    await waitFor(() => expect(slots).toHaveBeenCalledWith("s1", "2026-11-10"));
+    await waitFor(() => expect(slots).toHaveBeenCalledWith("s1", "2026-11-10", "a1"));
 
     cleanup();
     slots.mockClear();
@@ -131,7 +158,7 @@ describe("RescheduleTimeDialog", () => {
     expect(screen.getByRole("button", { name: "Завтра" }).getAttribute("aria-pressed")).toBe(
       "true",
     );
-    await waitFor(() => expect(slots).toHaveBeenCalledWith("s1", "2026-11-03"));
+    await waitFor(() => expect(slots).toHaveBeenCalledWith("s1", "2026-11-03", "a1"));
   });
 
   it("shows loading status and empty day message", async () => {
