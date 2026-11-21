@@ -32,15 +32,16 @@ class ConversationStore {
                 .single();
     }
 
-    void addInbound(UUID conversationId, String waMessageId, @Nullable String body, Instant at) {
-        jdbc.sql("""
+    boolean addInbound(UUID conversationId, String waMessageId, @Nullable String body, Instant at) {
+        return jdbc.sql("""
                 insert into messages (conversation_id, direction, author, body, wa_message_id, created_at)
-                values (:conversationId, 'in', 'client', cast(:body as text), :waMessageId, cast(:at as timestamptz))""")
+                values (:conversationId, 'in', 'client', cast(:body as text), :waMessageId, cast(:at as timestamptz))
+                on conflict (wa_message_id) do nothing""")
                 .param("conversationId", conversationId)
                 .param("body", body)
                 .param("waMessageId", waMessageId)
                 .param("at", at.atOffset(ZoneOffset.UTC))
-                .update();
+                .update() == 1;
     }
 
     void touchInbound(UUID conversationId, Instant at) {

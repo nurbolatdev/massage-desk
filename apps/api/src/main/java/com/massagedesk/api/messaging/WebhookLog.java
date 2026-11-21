@@ -76,6 +76,13 @@ public class WebhookLog {
         this.processedAt = at;
     }
 
+    void markDuplicate(Instant at) {
+        Objects.requireNonNull(at, "at");
+        requireReceived();
+        this.status = WebhookStatus.DUPLICATE;
+        this.processedAt = at;
+    }
+
     void markFailed(String error, Instant at) {
         Objects.requireNonNull(error, "error");
         Objects.requireNonNull(at, "at");

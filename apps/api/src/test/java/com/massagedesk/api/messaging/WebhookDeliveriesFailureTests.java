@@ -53,7 +53,7 @@ class WebhookDeliveriesFailureTests {
 
     @Test
     void successfulProcessingMarksDeliveryProcessed() {
-        when(inbound.store(any())).thenReturn(1);
+        when(inbound.store(any())).thenReturn(new InboundMessages.Stored(1, 0));
 
         deliveries.accept("{\"object\":\"whatsapp_business_account\"}".getBytes(StandardCharsets.UTF_8));
 
@@ -61,6 +61,22 @@ class WebhookDeliveriesFailureTests {
         verify(logs, times(2)).save(captor.capture());
         WebhookLog saved = captor.getValue();
         assertThat(saved.getStatus()).isEqualTo(WebhookStatus.PROCESSED);
+        assertThat(saved.getError()).isNull();
+        assertThat(saved.getProcessedAt()).isEqualTo(NOW);
+        assertThat(saved.getPayload()).isNotNull();
+        assertThat(saved.isSignatureValid()).isTrue();
+    }
+
+    @Test
+    void duplicateDeliveryMarksLogDuplicateWithProcessedAt() {
+        when(inbound.store(any())).thenReturn(new InboundMessages.Stored(0, 2));
+
+        deliveries.accept("{\"object\":\"whatsapp_business_account\"}".getBytes(StandardCharsets.UTF_8));
+
+        ArgumentCaptor<WebhookLog> captor = ArgumentCaptor.forClass(WebhookLog.class);
+        verify(logs, times(2)).save(captor.capture());
+        WebhookLog saved = captor.getValue();
+        assertThat(saved.getStatus()).isEqualTo(WebhookStatus.DUPLICATE);
         assertThat(saved.getError()).isNull();
         assertThat(saved.getProcessedAt()).isEqualTo(NOW);
         assertThat(saved.getPayload()).isNotNull();

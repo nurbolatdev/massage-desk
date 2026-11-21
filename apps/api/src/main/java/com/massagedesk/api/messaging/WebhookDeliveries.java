@@ -11,8 +11,9 @@ import tools.jackson.databind.json.JsonMapper;
 /**
  * Records incoming WhatsApp webhook delivery attempts in {@code webhook_logs}.
  * Signed deliveries are logged with their JSON object payload; refused ones are logged without it.
- * Signed deliveries are then processed in their own transaction: {@code processed}, or {@code failed}
- * with the exception class name in {@code error} (payload kept for replay).
+ * Signed deliveries are then processed in their own transaction: {@code processed}, {@code duplicate} when
+ * every message of the delivery was already stored, or {@code failed} with the exception class name in
+ * {@code error} (payload kept for replay).
  * Each row is saved on its own (no outer transaction), so a refused delivery is persisted even when nothing else runs.
  *
  * <p>Error codes written to {@code webhook_logs.error}:
@@ -94,8 +95,12 @@ class WebhookDeliveries {
         }
         WebhookLog log = logs.save(WebhookLog.received(json));
         try {
-            inbound.store(WebhookPayload.messages(tree));
-            log.markProcessed(clock.instant());
+            InboundMessages.Stored stored = inbound.store(WebhookPayload.messages(tree));
+            if (stored.isDuplicate()) {
+                log.markDuplicate(clock.instant());
+            } else {
+                log.markProcessed(clock.instant());
+            }
         } catch (RuntimeException e) {
             log.markFailed(e.getClass().getName(), clock.instant());
         }

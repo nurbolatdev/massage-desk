@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.massagedesk.api.TestcontainersConfiguration;
 import com.massagedesk.api.clients.ClientService;
 import com.massagedesk.api.events.EventActor;
+import com.massagedesk.api.messaging.InboundMessages.Stored;
 import com.massagedesk.api.messaging.WebhookPayload.InboundMessage;
 import com.massagedesk.api.schedule.FixedClockConfiguration;
 import jakarta.persistence.EntityManager;
@@ -57,7 +58,7 @@ class InboundMessagesTests {
     void newClientTextMessageCreatesClientConversationMessageAndMovesWindow() {
         Instant sentAt = Instant.parse("2026-11-01T10:00:00Z");
 
-        int stored = inbound.store(List.of(new InboundMessage(
+        Stored stored = inbound.store(List.of(new InboundMessage(
                 "wamid.store-1",
                 "998900000981",
                 "Aziza",
@@ -65,7 +66,7 @@ class InboundMessagesTests {
                 "Здравствуйте!",
                 sentAt)));
 
-        assertThat(stored).isEqualTo(1);
+        assertThat(stored).isEqualTo(new Stored(1, 0));
 
         Map<String, Object> client = jdbc.queryForMap(
                 "select id, phone, name from clients where phone = ?",
@@ -100,7 +101,7 @@ class InboundMessagesTests {
         UUID clientId = clients.create("+998900000982", "Master Name", "Notes", EventActor.MASTER).id();
         Instant sentAt = Instant.parse("2026-11-01T11:00:00Z");
 
-        int stored = inbound.store(List.of(new InboundMessage(
+        Stored stored = inbound.store(List.of(new InboundMessage(
                 "wamid.store-2",
                 "998900000982",
                 "WhatsApp Profile",
@@ -108,7 +109,7 @@ class InboundMessagesTests {
                 "Добрый день",
                 sentAt)));
 
-        assertThat(stored).isEqualTo(1);
+        assertThat(stored).isEqualTo(new Stored(1, 0));
         assertThat(jdbc.queryForObject("select name from clients where id = ?", String.class, clientId))
                 .isEqualTo("Master Name");
         List<Map<String, Object>> events = createdEvents(clientId);
@@ -122,11 +123,11 @@ class InboundMessagesTests {
         Instant t1 = Instant.parse("2026-11-01T12:00:00Z");
         Instant t0 = Instant.parse("2026-11-01T11:30:00Z");
 
-        int stored = inbound.store(List.of(
+        Stored stored = inbound.store(List.of(
                 new InboundMessage("wamid.store-3a", "998900000983", "Aziza", "text", "Первое", t1),
                 new InboundMessage("wamid.store-3b", "998900000983", "Aziza", "text", "Раннее", t0)));
 
-        assertThat(stored).isEqualTo(2);
+        assertThat(stored).isEqualTo(new Stored(2, 0));
         UUID clientId = jdbc.queryForObject(
                 "select id from clients where phone = ?",
                 UUID.class,
@@ -145,7 +146,7 @@ class InboundMessagesTests {
     void imageMessageIsStoredWithNullBody() {
         Instant sentAt = Instant.parse("2026-11-01T13:00:00Z");
 
-        int stored = inbound.store(List.of(new InboundMessage(
+        Stored stored = inbound.store(List.of(new InboundMessage(
                 "wamid.store-4",
                 "998900000984",
                 "Aziza",
@@ -153,7 +154,7 @@ class InboundMessagesTests {
                 null,
                 sentAt)));
 
-        assertThat(stored).isEqualTo(1);
+        assertThat(stored).isEqualTo(new Stored(1, 0));
         MessageRow message = messageByWaId("wamid.store-4");
         assertThat(message.body()).isNull();
         assertThat(message.direction()).isEqualTo("in");
@@ -162,7 +163,7 @@ class InboundMessagesTests {
 
     @Test
     void missingSentAtFallsBackToClockInstant() {
-        int stored = inbound.store(List.of(new InboundMessage(
+        Stored stored = inbound.store(List.of(new InboundMessage(
                 "wamid.store-5",
                 "998900000985",
                 "Aziza",
@@ -170,7 +171,7 @@ class InboundMessagesTests {
                 "Без времени",
                 null)));
 
-        assertThat(stored).isEqualTo(1);
+        assertThat(stored).isEqualTo(new Stored(1, 0));
         MessageRow message = messageByWaId("wamid.store-5");
         assertThat(message.createdAt()).isEqualTo(FixedClockConfiguration.NOW);
     }
@@ -181,14 +182,105 @@ class InboundMessagesTests {
         long conversationsBefore = count("conversations");
         long messagesBefore = count("messages");
 
-        int stored = inbound.store(List.of(
+        Stored stored = inbound.store(List.of(
                 new InboundMessage("wamid.store-bad-1", "12", "Aziza", "text", "short", null),
                 new InboundMessage("wamid.store-bad-2", "abc", "Aziza", "text", "letters", null)));
 
-        assertThat(stored).isZero();
+        assertThat(stored).isEqualTo(new Stored(0, 0));
+        assertThat(stored.isDuplicate()).isFalse();
         assertThat(count("clients")).isEqualTo(clientsBefore);
         assertThat(count("conversations")).isEqualTo(conversationsBefore);
         assertThat(count("messages")).isEqualTo(messagesBefore);
+    }
+
+    @Test
+    void repeatingSameMessageReturnsDuplicateWithoutSecondRowOrClientEvent() {
+        Instant sentAt = Instant.parse("2026-11-01T14:00:00Z");
+        InboundMessage message = new InboundMessage(
+                "wamid.store-dup-1",
+                "998900000986",
+                "Aziza",
+                "text",
+                "Повтор",
+                sentAt);
+
+        Stored first = inbound.store(List.of(message));
+        Stored second = inbound.store(List.of(message));
+
+        assertThat(first).isEqualTo(new Stored(1, 0));
+        assertThat(first.isDuplicate()).isFalse();
+        assertThat(second).isEqualTo(new Stored(0, 1));
+        assertThat(second.isDuplicate()).isTrue();
+
+        UUID clientId = jdbc.queryForObject(
+                "select id from clients where phone = ?",
+                UUID.class,
+                "+998900000986");
+        ConversationRow conversation = conversationsOf(clientId).getFirst();
+        assertThat(messagesOf(conversation.id())).hasSize(1);
+        assertThat(createdEvents(clientId)).hasSize(1);
+    }
+
+    @Test
+    void duplicateMessageWithLaterTimestampDoesNotMoveWindow() {
+        Instant initialSentAt = Instant.parse("2026-11-01T14:00:00Z");
+        Instant laterSentAt = Instant.parse("2026-11-01T15:30:00Z");
+
+        inbound.store(List.of(new InboundMessage(
+                "wamid.store-dup-2",
+                "998900000987",
+                "Aziza",
+                "text",
+                "Первое",
+                initialSentAt)));
+
+        Stored duplicate = inbound.store(List.of(new InboundMessage(
+                "wamid.store-dup-2",
+                "998900000987",
+                "Aziza",
+                "text",
+                "Первое снова",
+                laterSentAt)));
+
+        assertThat(duplicate).isEqualTo(new Stored(0, 1));
+        assertThat(duplicate.isDuplicate()).isTrue();
+
+        UUID clientId = jdbc.queryForObject(
+                "select id from clients where phone = ?",
+                UUID.class,
+                "+998900000987");
+        ConversationRow conversation = conversationsOf(clientId).getFirst();
+        assertThat(conversation.lastInboundAt()).isEqualTo(initialSentAt);
+        assertThat(conversation.lastMessageAt()).isEqualTo(initialSentAt);
+    }
+
+    @Test
+    void mixedOldAndNewMessagesAndEmptyListAreNotDuplicates() {
+        Instant t0 = Instant.parse("2026-11-01T16:00:00Z");
+        Instant t1 = Instant.parse("2026-11-01T16:05:00Z");
+        InboundMessage oldMessage = new InboundMessage(
+                "wamid.store-dup-3a",
+                "998900000988",
+                "Aziza",
+                "text",
+                "Старое",
+                t0);
+        InboundMessage newMessage = new InboundMessage(
+                "wamid.store-dup-3b",
+                "998900000988",
+                "Aziza",
+                "text",
+                "Новое",
+                t1);
+
+        inbound.store(List.of(oldMessage));
+        Stored mixed = inbound.store(List.of(oldMessage, newMessage));
+        Stored empty = inbound.store(List.of());
+
+        assertThat(mixed).isEqualTo(new Stored(1, 1));
+        assertThat(mixed.isDuplicate()).isFalse();
+        assertThat(empty).isEqualTo(new Stored(0, 0));
+        assertThat(empty.isDuplicate()).isFalse();
     }
 
     @Test

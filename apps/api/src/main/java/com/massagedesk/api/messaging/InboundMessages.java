@@ -39,9 +39,17 @@ class InboundMessages {
         this.clock = clock;
     }
 
+    record Stored(int added, int duplicates) {
+
+        boolean isDuplicate() {
+            return added == 0 && duplicates > 0;
+        }
+    }
+
     @Transactional
-    int store(List<WebhookPayload.InboundMessage> messages) {
-        int stored = 0;
+    Stored store(List<WebhookPayload.InboundMessage> messages) {
+        int added = 0;
+        int duplicates = 0;
         for (WebhookPayload.InboundMessage m : messages) {
             Optional<String> normalized = phoneOf(m.waId(), phone.defaultRegion());
             if (normalized.isEmpty()) {
@@ -50,11 +58,14 @@ class InboundMessages {
             UUID clientId = clients.findOrCreate(normalized.get(), m.profileName(), EventActor.CLIENT);
             UUID conversationId = conversations.conversationOf(clientId);
             Instant at = m.sentAt() != null ? m.sentAt() : clock.instant();
-            conversations.addInbound(conversationId, m.waMessageId(), m.text(), at);
-            conversations.touchInbound(conversationId, at);
-            stored++;
+            if (conversations.addInbound(conversationId, m.waMessageId(), m.text(), at)) {
+                conversations.touchInbound(conversationId, at);
+                added++;
+            } else {
+                duplicates++;
+            }
         }
-        return stored;
+        return new Stored(added, duplicates);
     }
 
     static Optional<String> phoneOf(String waId, String defaultRegion) {
