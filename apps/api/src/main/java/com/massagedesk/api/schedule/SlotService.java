@@ -1,6 +1,8 @@
 package com.massagedesk.api.schedule;
 
+import com.massagedesk.api.booking.Appointment;
 import com.massagedesk.api.booking.AppointmentRepository;
+import com.massagedesk.api.booking.AppointmentStatus;
 import com.massagedesk.api.schedule.SlotCalculator.Interval;
 import com.massagedesk.api.schedule.SlotCalculator.WorkingBlock;
 import com.massagedesk.api.settings.SettingsRepository;
@@ -13,6 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,7 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class SlotService {
 
-    /** Free start times of one day, with the zone and the service length they were computed for. */
+    /** Free start times of one day, with the zone and the length the starts were computed for. */
     public record DaySlots(LocalDate day, ZoneId zone, Duration duration, List<Instant> starts) {
     }
 
@@ -56,11 +59,32 @@ public class SlotService {
     /** Returns the free starts, or empty when the service is unknown or inactive. */
     @Transactional(readOnly = true)
     public Optional<DaySlots> freeStarts(UUID serviceId, LocalDate day) {
+        return freeStarts(serviceId, day, null);
+    }
+
+    /**
+     * Returns the free starts, or empty when the service is unknown or inactive. When
+     * {@code excludeAppointmentId} points to a confirmed appointment, that appointment does not
+     * occupy time and its booked length is used instead of the service length; an unknown or
+     * non-confirmed appointment is ignored.
+     */
+    @Transactional(readOnly = true)
+    public Optional<DaySlots> freeStarts(
+            UUID serviceId, LocalDate day, @Nullable UUID excludeAppointmentId) {
         Optional<MassageService> found = services.findByIdAndActiveTrue(serviceId);
         if (found.isEmpty()) {
             return Optional.empty();
         }
         MassageService service = found.get();
+        Optional<Appointment> moving = excludeAppointmentId == null
+                ? Optional.empty()
+                : appointments.findById(excludeAppointmentId)
+                        .filter(a -> a.getStatus() == AppointmentStatus.CONFIRMED);
+        Duration duration = moving
+                .map(a -> Duration.between(a.getPeriod().start(), a.getPeriod().end()))
+                .orElseGet(service::getDuration);
+        UUID excludedId = moving.map(Appointment::getId).orElse(null);
+
         ZoneId zone = settings.get().getTimeZone();
         Instant windowStart = day.atStartOfDay(zone).toInstant();
         Instant windowEnd = day.plusDays(1).atStartOfDay(zone).toInstant();
@@ -71,7 +95,8 @@ public class SlotService {
         List<Interval> busy = new ArrayList<>();
         timeOff.findOverlapping(windowStart, windowEnd)
                 .forEach(t -> busy.add(new Interval(t.getPeriod().start(), t.getPeriod().end())));
-        appointments.findConfirmedOverlapping(windowStart, windowEnd)
+        appointments.findConfirmedOverlapping(windowStart, windowEnd).stream()
+                .filter(a -> !a.getId().equals(excludedId))
                 .forEach(a -> busy.add(new Interval(a.getPeriod().start(), a.getPeriod().end())));
 
         List<Instant> starts = calculator.freeStarts(new SlotCalculator.Request(
@@ -79,10 +104,10 @@ public class SlotService {
                 zone,
                 blocks,
                 busy,
-                service.getDuration(),
+                duration,
                 properties.step(),
                 clock.instant().plus(properties.minNotice())));
-        return Optional.of(new DaySlots(day, zone, service.getDuration(), starts));
+        return Optional.of(new DaySlots(day, zone, duration, starts));
     }
 
     /**
