@@ -67,7 +67,9 @@ class ScheduleChangesReachSlotsTests {
             jdbc.update("delete from events where entity_id = ?", UUID.fromString(id));
             jdbc.update("delete from clients where id = ?", UUID.fromString(id));
         }
+        jdbc.update("delete from events where type = 'working_hours_replaced'");
         for (String id : serviceIds) {
+            jdbc.update("delete from events where entity_id = ?", UUID.fromString(id));
             jdbc.update("delete from appointments where service_id = ?", UUID.fromString(id));
             jdbc.update("delete from services where id = ?", UUID.fromString(id));
         }
@@ -136,6 +138,13 @@ class ScheduleChangesReachSlotsTests {
 
     private ResultActions slots(String serviceId) throws Exception {
         return send(get("/slots").param("serviceId", serviceId).param("day", DAY));
+    }
+
+    private ResultActions slotsExcluding(String serviceId, String appointmentId) throws Exception {
+        return send(get("/slots")
+                .param("serviceId", serviceId)
+                .param("day", DAY)
+                .param("excludeAppointmentId", appointmentId));
     }
 
     @Test
@@ -207,5 +216,30 @@ class ScheduleChangesReachSlotsTests {
                 "2026-11-03T21:00:00-05:00",
                 "2026-11-03T21:30:00-05:00",
                 "2026-11-03T22:00:00-05:00")));
+    }
+
+    @Test
+    void rescheduleOntoOwnTimeThroughSlots() throws Exception {
+        String service = createService(60);
+        String client = createClient();
+        putHours("[" + tuesday("10:00", "12:00") + "]");
+        String id = book(client, service, "2026-11-03T10:00:00+05:00");
+
+        sendJson(patch("/services/" + service), "{\"durationMin\":90}").andExpect(status().isOk());
+        slots(service).andExpect(status().isOk()).andExpect(jsonPath("$.starts", empty()));
+
+        slotsExcluding(service, id)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.durationMin").value(60))
+                .andExpect(jsonPath("$.starts", contains(
+                        "2026-11-03T10:00:00+05:00",
+                        "2026-11-03T10:30:00+05:00",
+                        "2026-11-03T11:00:00+05:00")));
+
+        sendJson(post("/appointments/" + id + "/reschedule"),
+                "{\"start\":\"2026-11-03T10:30:00+05:00\"}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.start").value("2026-11-03T10:30:00+05:00"))
+                .andExpect(jsonPath("$.end").value("2026-11-03T11:30:00+05:00"));
     }
 }

@@ -10,7 +10,8 @@ public record SlotsResponse(
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDate day,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "IANA time zone of the master")
         String timeZone,
-        @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "service length in minutes")
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED,
+                description = "length in minutes the starts were computed for: the service length, or the booked length of the excluded appointment")
         int durationMin,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED,
                 description = "free start times, ISO-8601 with the master's UTC offset")
