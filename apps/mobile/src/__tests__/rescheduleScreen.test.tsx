@@ -202,6 +202,24 @@ describe("reschedule screen", () => {
     }
   });
 
+  it("does not offer the start of the appointment being moved", async () => {
+    const baseGet = mockGet.getMockImplementation();
+    mockGet.mockImplementation(async (path, init) => {
+      if (path === "/slots") {
+        const day = (init as { params: { query: { day: string } } }).params.query.day;
+        const starts = [`${day}T09:00:00+05:00`, `${day}T09:30:00+05:00`, `${day}T11:30:00+05:00`];
+        return ok({ day, timeZone: TIME_ZONE, durationMin: 60, starts });
+      }
+      if (baseGet === undefined) throw new Error(`unexpected GET ${path}`);
+      return baseGet(path, init);
+    });
+    await renderScreen();
+
+    expect(await screen.findByText("09:30")).toBeOnTheScreen();
+    expect(screen.getByText("11:30")).toBeOnTheScreen();
+    expect(screen.queryByText("09:00")).toBeNull();
+  });
+
   it("asks first, then keeps a taken time out of reach and moves to the new time", async () => {
     mockPost.mockResolvedValueOnce(failure(409, "TIME_TAKEN")).mockResolvedValueOnce(ok(moved));
     await renderScreen();

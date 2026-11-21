@@ -80,6 +80,8 @@ export default function RescheduleScreen() {
       ? rescheduleDay(localDay(appointment.start, timeZone), days, today)
       : null);
   const slots = useSlots(appointment?.serviceId ?? null, day, appointment?.id);
+  const ownStart = appointment === undefined ? null : new Date(appointment.start).getTime();
+  const starts = (slots.data?.starts ?? []).filter((value) => new Date(value).getTime() !== ownStart);
   const timesState = slots.isError ? "error" : slots.data === undefined ? "loading" : "ready";
 
   const flow = useDestructiveFlow<"reschedule">(async () => {
@@ -149,7 +151,7 @@ export default function RescheduleScreen() {
                   days={days}
                   day={day}
                   onDay={(next) => dispatch({ type: "dayPicked", day: next })}
-                  times={timeChoices(slots.data?.starts ?? [], form.start, form.taken, timeZone)}
+                  times={timeChoices(starts, form.start, form.taken, timeZone)}
                   timesState={timesState}
                   onTime={(value) => dispatch({ type: "timePicked", start: value })}
                   onRetry={() => void slots.refetch()}
