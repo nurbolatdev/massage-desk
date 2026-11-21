@@ -60,12 +60,80 @@ class WebhookDeliveriesTests {
         assertThat(rows).hasSize(1);
         assertThat(rows.getFirst())
                 .containsEntry("signature_valid", true)
-                .containsEntry("status", "received")
+                .containsEntry("status", "processed")
                 .containsEntry("error", null)
                 .containsEntry("payload_object", "whatsapp_business_account")
                 .containsEntry("payload_null", false)
                 .containsEntry("has_created_at", true)
-                .containsEntry("processed_at_null", true);
+                .containsEntry("processed_at_null", false);
+    }
+
+    @Test
+    void acceptStoresTheMessages() {
+        byte[] body = """
+                {
+                  "object": "whatsapp_business_account",
+                  "entry": [
+                    {
+                      "id": "entry-1",
+                      "changes": [
+                        {
+                          "field": "messages",
+                          "value": {
+                            "contacts": [
+                              {
+                                "profile": { "name": "Aziza" },
+                                "wa_id": "998900000991"
+                              }
+                            ],
+                            "messages": [
+                              {
+                                "from": "998900000991",
+                                "id": "wamid.delivery-1",
+                                "timestamp": "1700000000",
+                                "type": "text",
+                                "text": { "body": "Здравствуйте!" }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+                """.getBytes(StandardCharsets.UTF_8);
+
+        deliveries.accept(body);
+        entityManager.flush();
+
+        List<Map<String, Object>> rows = jdbc.queryForList(SELECT_ROWS);
+        assertThat(rows).hasSize(1);
+        assertThat(rows.getFirst())
+                .containsEntry("signature_valid", true)
+                .containsEntry("status", "processed")
+                .containsEntry("error", null)
+                .containsEntry("payload_object", "whatsapp_business_account")
+                .containsEntry("payload_null", false)
+                .containsEntry("has_created_at", true)
+                .containsEntry("processed_at_null", false);
+
+        List<Map<String, Object>> clients = jdbc.queryForList(
+                "select phone, name from clients where phone = ?",
+                "+998900000991");
+        assertThat(clients).hasSize(1);
+        assertThat(clients.getFirst())
+                .containsEntry("phone", "+998900000991")
+                .containsEntry("name", "Aziza");
+
+        List<Map<String, Object>> messages = jdbc.queryForList(
+                "select direction, author, body, wa_message_id from messages where wa_message_id = ?",
+                "wamid.delivery-1");
+        assertThat(messages).hasSize(1);
+        assertThat(messages.getFirst())
+                .containsEntry("direction", "in")
+                .containsEntry("author", "client")
+                .containsEntry("body", "Здравствуйте!")
+                .containsEntry("wa_message_id", "wamid.delivery-1");
     }
 
     @Test

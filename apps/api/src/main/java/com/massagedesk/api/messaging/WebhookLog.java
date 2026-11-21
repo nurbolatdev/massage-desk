@@ -69,6 +69,28 @@ public class WebhookLog {
         return new WebhookLog(false, WebhookStatus.REJECTED, Objects.requireNonNull(error, "error"), null);
     }
 
+    void markProcessed(Instant at) {
+        Objects.requireNonNull(at, "at");
+        requireReceived();
+        this.status = WebhookStatus.PROCESSED;
+        this.processedAt = at;
+    }
+
+    void markFailed(String error, Instant at) {
+        Objects.requireNonNull(error, "error");
+        Objects.requireNonNull(at, "at");
+        requireReceived();
+        this.status = WebhookStatus.FAILED;
+        this.error = error;
+        this.processedAt = at;
+    }
+
+    private void requireReceived() {
+        if (this.status != WebhookStatus.RECEIVED) {
+            throw new IllegalStateException("Expected RECEIVED status, got " + this.status);
+        }
+    }
+
     public UUID getId() {
         return id;
     }
