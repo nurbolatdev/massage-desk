@@ -339,4 +339,58 @@ describe("SchedulePage panel reschedule", () => {
     expect(slots).toHaveBeenCalledTimes(1);
     expect(reschedule).toHaveBeenCalledTimes(1);
   });
+
+  it("after NOT_CONFIRMED the refreshed list hides Reschedule and focus goes to the client name", async () => {
+    slots.mockResolvedValueOnce(response("2026-11-03", ["2026-11-03T15:00:00+05:00"]));
+    reschedule.mockRejectedValueOnce(new ApiError("problem", { status: 409, code: "NOT_CONFIRMED" }));
+    mockedRange.mockReturnValue(rangeResult([AIGUL]));
+    renderPage();
+
+    const panel = screen.getByRole("complementary", { name: "Выбранная запись" });
+    fireEvent.click(screen.getByRole("button", { name: /Айгуль Сапарова/ }));
+    fireEvent.click(within(panel).getByRole("button", { name: "Перенести" }));
+
+    fireEvent.click(await screen.findByRole("button", { name: "15:00" }));
+    const confirm = screen.getByRole("dialog", { name: "Перенести запись?" });
+    fireEvent.click(within(confirm).getByRole("button", { name: "Перенести" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("Запись уже изменилась.");
+
+    mockedRange.mockReturnValue(rangeResult([{ ...AIGUL, status: "cancelled" }]));
+    fireEvent.click(within(confirm).getByRole("button", { name: "Закрыть" }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(within(panel).queryByRole("button", { name: "Перенести" })).toBeNull();
+      expect(document.activeElement?.textContent).toBe("Айгуль Сапарова");
+    });
+  });
+
+  it("after 404 the refreshed list drops the selection", async () => {
+    slots.mockResolvedValueOnce(response("2026-11-03", ["2026-11-03T15:00:00+05:00"]));
+    reschedule.mockRejectedValueOnce(new ApiError("problem", { status: 404 }));
+    mockedRange.mockReturnValue(rangeResult([AIGUL]));
+    renderPage();
+
+    const panel = screen.getByRole("complementary", { name: "Выбранная запись" });
+    fireEvent.click(screen.getByRole("button", { name: /Айгуль Сапарова/ }));
+    fireEvent.click(within(panel).getByRole("button", { name: "Перенести" }));
+
+    fireEvent.click(await screen.findByRole("button", { name: "15:00" }));
+    const confirm = screen.getByRole("dialog", { name: "Перенести запись?" });
+    fireEvent.click(within(confirm).getByRole("button", { name: "Перенести" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("Запись уже изменилась.");
+
+    mockedRange.mockReturnValue(rangeResult([]));
+    fireEvent.click(within(confirm).getByRole("button", { name: "Закрыть" }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(panel.textContent).toContain("На этой неделе записей нет");
+      expect(within(panel).queryByRole("button", { name: "Перенести" })).toBeNull();
+    });
+  });
 });
