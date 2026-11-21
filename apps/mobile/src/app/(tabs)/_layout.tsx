@@ -3,7 +3,7 @@ import { Tabs } from "expo-router";
 import type { ComponentProps } from "react";
 import type { ColorValue } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors, fontSize } from "@/theme";
+import { colors, fontSize, size, space, typography } from "@/theme";
 
 type IconName = ComponentProps<typeof Ionicons>["name"];
 
@@ -22,8 +22,8 @@ export default function TabsLayout() {
       screenOptions={{
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
-        tabBarLabelStyle: { fontSize: 14, fontWeight: "600" },
-        tabBarStyle: { height: 72 + insets.bottom, paddingBottom: insets.bottom, paddingTop: 6 },
+        tabBarLabelStyle: typography.label,
+        tabBarStyle: { height: size.tabBar + insets.bottom, paddingBottom: insets.bottom, paddingTop: space[6] },
         headerTitleStyle: { fontSize: fontSize.title },
       }}
     >

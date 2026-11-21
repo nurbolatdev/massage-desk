@@ -1,12 +1,14 @@
 import { afterEach, describe, expect, it, jest } from "@jest/globals";
 import { cleanup, render } from "@testing-library/react-native";
 import type { ReactNode } from "react";
-import type { ViewStyle } from "react-native";
+import type { TextStyle, ViewStyle } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import TabsLayout from "@/app/(tabs)/_layout";
+import { typography } from "@/theme";
 
 type ScreenOptions = {
+  tabBarLabelStyle?: TextStyle;
   tabBarStyle?: ViewStyle;
 };
 
@@ -60,14 +62,15 @@ describe("tabs layout", () => {
     await cleanup();
   });
 
-  it("keeps the 72dp height when the bottom inset is 0", async () => {
+  it("keeps the 78dp height and theme label style when the bottom inset is 0", async () => {
     await renderTabs(0);
 
     expect(mockCaptured.screenOptions?.tabBarStyle).toEqual({
-      height: 72,
+      height: 78,
       paddingBottom: 0,
       paddingTop: 6,
     });
+    expect(mockCaptured.screenOptions?.tabBarLabelStyle).toEqual(typography.label);
     expect(mockCaptured.screens.map((s) => s.options?.title)).toEqual([
       "Сегодня",
       "Календарь",
@@ -80,7 +83,7 @@ describe("tabs layout", () => {
     await renderTabs(48);
 
     expect(mockCaptured.screenOptions?.tabBarStyle).toEqual({
-      height: 120,
+      height: 126,
       paddingBottom: 48,
       paddingTop: 6,
     });
