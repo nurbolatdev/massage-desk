@@ -57,7 +57,7 @@ Opened from «Перенести» on the card of a confirmed appointment. The m
 - Only free times are offered. If the time was taken meanwhile (409), the master sees an alert and the list of times is refreshed.
 - Offline, the button is disabled.
 - The client gets no message about the move.
-- Known limitation: times that overlap the current appointment are not offered, because the free-time list counts the appointment itself as busy.
+- Times that overlap the current appointment are offered too: the free-time list is asked without the appointment being moved (`excludeAppointmentId`).
 
 ## New appointment
 

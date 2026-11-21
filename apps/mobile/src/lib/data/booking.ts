@@ -21,8 +21,19 @@ export function fetchServices(api: Api): Promise<ServiceResponse[]> {
   return unwrap(api.GET("/services"));
 }
 
-export function fetchSlots(api: Api, serviceId: string, day: string): Promise<SlotsResponse> {
-  return unwrap(api.GET("/slots", { params: { query: { serviceId, day } } }));
+export function fetchSlots(
+  api: Api,
+  serviceId: string,
+  day: string,
+  excludeAppointmentId?: string,
+): Promise<SlotsResponse> {
+  return unwrap(
+    api.GET("/slots", {
+      params: {
+        query: { serviceId, day, ...(excludeAppointmentId === undefined ? {} : { excludeAppointmentId }) },
+      },
+    }),
+  );
 }
 
 export function searchClients(api: Api, q: string): Promise<ClientResponse[]> {

@@ -314,10 +314,10 @@ export function useServices() {
   });
 }
 
-export function useSlots(serviceId: string | null, day: string | null) {
+export function useSlots(serviceId: string | null, day: string | null, excludeAppointmentId?: string) {
   return useQuery({
-    queryKey: queryKeys.slots.one(serviceId ?? "", day ?? ""),
-    queryFn: () => fetchSlots(api, serviceId ?? "", day ?? ""),
+    queryKey: queryKeys.slots.one(serviceId ?? "", day ?? "", excludeAppointmentId),
+    queryFn: () => fetchSlots(api, serviceId ?? "", day ?? "", excludeAppointmentId),
     enabled: serviceId !== null && day !== null,
     staleTime: 0,
     gcTime: SHORT_GC_TIME,
