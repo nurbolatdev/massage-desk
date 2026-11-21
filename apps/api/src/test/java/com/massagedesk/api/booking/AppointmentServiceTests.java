@@ -201,6 +201,19 @@ class AppointmentServiceTests {
     }
 
     @Test
+    void rescheduleWorksForInactiveService() {
+        AppointmentView created = book(TUE_10);
+        classic.deactivate();
+        services.saveAndFlush(classic);
+
+        AppointmentView moved = service.reschedule(created.id(), TUE_13, EventActor.MASTER);
+
+        assertThat(moved.period().start()).isEqualTo(TUE_13);
+        assertThat(moved.period().end()).isEqualTo(TUE_13.plusSeconds(3600));
+        assertThat(moved.serviceId()).isEqualTo(classic.getId());
+    }
+
+    @Test
     void rescheduleOverOwnOldTime() {
         AppointmentView created = book(TUE_10);
 

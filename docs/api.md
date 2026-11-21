@@ -100,7 +100,7 @@ insert into profiles (user_id, role, display_name) values ('<auth user id>', 'ma
 
 ## Free time
 
-`GET /slots?serviceId=<uuid>&day=YYYY-MM-DD` returns the free start times of an active service on one day. `day` is a local date in the master's time zone.
+`GET /slots?serviceId=<uuid>&day=YYYY-MM-DD` returns the free start times of a service on one day (an inactive service only when rescheduling its confirmed appointment, see `excludeAppointmentId`). `day` is a local date in the master's time zone.
 
 ```json
 {"day":"2026-11-03","timeZone":"Asia/Tashkent","durationMin":60,"starts":["2026-11-03T10:00:00+05:00","2026-11-03T10:30:00+05:00"]}
@@ -108,10 +108,10 @@ insert into profiles (user_id, role, display_name) values ('<auth user id>', 'ma
 
 Working hours (with breaks), time off and confirmed appointments are taken into account; times in the past are never offered. A day without working hours gives an empty `starts`.
 
-Optional `excludeAppointmentId=<uuid>` is used when rescheduling: a confirmed appointment with this id does not hold time, and `durationMin` and `starts` are computed for its booked length rather than the current service length (even if the appointment belongs to a different service). If the id is unknown or the appointment is not `confirmed`, the parameter is ignored and the response is the same as without it.
+Optional `excludeAppointmentId=<uuid>` is used when rescheduling: a confirmed appointment with this id does not hold time, and `durationMin` and `starts` are computed for its booked length rather than the current service length (even if the appointment belongs to a different service); an inactive service is also accepted when `excludeAppointmentId` points to a confirmed appointment of that service. If the id is unknown or the appointment is not `confirmed`, the parameter is ignored and the response is the same as without it.
 
 - `400` (`application/problem+json`): `serviceId` or `day` is missing or invalid, or `excludeAppointmentId` is invalid.
-- `404` (`application/problem+json`): the service does not exist or is inactive.
+- `404` (`application/problem+json`): the service does not exist, or is inactive (unless `excludeAppointmentId` is a confirmed appointment of that service).
 
 Configuration: `APP_SLOTS_STEP` (grid of offered start times, default `30m`) and `APP_SLOTS_MIN_NOTICE` (how far ahead the first start is, default `0m`).
 
@@ -228,7 +228,7 @@ Known gaps:
 
 `PATCH /services/{id}` takes any of `name`, `durationMin`, `price`, `sortOrder`, `active`. A missing or `null` field is left unchanged. Inactive services can be edited and re-enabled.
 
-There is no delete: appointments refer to services, so a service is deactivated with `active: false`. A deactivated service gives `404` on `/slots` and cannot be booked; appointments already made keep their service and their booked length, also after a duration change.
+There is no delete: appointments refer to services, so a service is deactivated with `active: false`. A deactivated service gives `404` on `/slots` (except with `excludeAppointmentId` of a confirmed appointment of that service, so it can still be rescheduled) and cannot be booked; appointments already made keep their service and their booked length, also after a duration change.
 
 - `400` (`application/problem+json`): invalid field or id.
 - `404` (`application/problem+json`): `service not found`.

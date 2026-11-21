@@ -33,12 +33,12 @@ class SlotsController {
     @ApiResponse(responseCode = "400", description = "invalid or missing serviceId or day, or invalid excludeAppointmentId",
             content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
                     schema = @Schema(implementation = ApiProblem.class)))
-    @ApiResponse(responseCode = "404", description = "service not found or inactive",
+    @ApiResponse(responseCode = "404", description = "service not found, or inactive and excludeAppointmentId is not a confirmed appointment of that service",
             content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
                     schema = @Schema(implementation = ApiProblem.class)))
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     SlotsResponse slots(
-            @Parameter(description = "id of an active service")
+            @Parameter(description = "id of a service; an inactive one is accepted only with excludeAppointmentId of a confirmed appointment of that service")
             @RequestParam(name = "serviceId") UUID serviceId,
             @Parameter(description = "local date in the master's time zone, YYYY-MM-DD")
             @RequestParam(name = "day") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate day,

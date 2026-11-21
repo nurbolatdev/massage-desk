@@ -1375,7 +1375,7 @@ export interface operations {
     slots: {
         parameters: {
             query: {
-                /** @description id of an active service */
+                /** @description id of a service; an inactive one is accepted only with excludeAppointmentId of a confirmed appointment of that service */
                 serviceId: string;
                 /** @description local date in the master's time zone, YYYY-MM-DD */
                 day: string;
@@ -1406,7 +1406,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ApiProblem"];
                 };
             };
-            /** @description service not found or inactive */
+            /** @description service not found, or inactive and excludeAppointmentId is not a confirmed appointment of that service */
             404: {
                 headers: {
                     [name: string]: unknown;

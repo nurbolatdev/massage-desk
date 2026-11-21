@@ -63,7 +63,8 @@ public class SlotService {
     }
 
     /**
-     * Returns the free starts, or empty when the service is unknown or inactive. When
+     * Returns the free starts, or empty when the service is unknown, or when it is inactive and
+     * {@code excludeAppointmentId} is not a confirmed appointment for that service. When
      * {@code excludeAppointmentId} points to a confirmed appointment, that appointment does not
      * occupy time and its booked length is used instead of the service length; an unknown or
      * non-confirmed appointment is ignored.
@@ -71,15 +72,17 @@ public class SlotService {
     @Transactional(readOnly = true)
     public Optional<DaySlots> freeStarts(
             UUID serviceId, LocalDate day, @Nullable UUID excludeAppointmentId) {
-        Optional<MassageService> found = services.findByIdAndActiveTrue(serviceId);
-        if (found.isEmpty()) {
-            return Optional.empty();
-        }
-        MassageService service = found.get();
         Optional<Appointment> moving = excludeAppointmentId == null
                 ? Optional.empty()
                 : appointments.findById(excludeAppointmentId)
                         .filter(a -> a.getStatus() == AppointmentStatus.CONFIRMED);
+        Optional<MassageService> found = services.findById(serviceId)
+                .filter(s -> s.isActive()
+                        || moving.map(a -> a.getService().getId().equals(serviceId)).orElse(false));
+        if (found.isEmpty()) {
+            return Optional.empty();
+        }
+        MassageService service = found.get();
         Duration duration = moving
                 .map(a -> Duration.between(a.getPeriod().start(), a.getPeriod().end()))
                 .orElseGet(service::getDuration);

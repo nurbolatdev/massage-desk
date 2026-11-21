@@ -946,7 +946,7 @@
       "get" : {
         "operationId" : "slots",
         "parameters" : [ {
-          "description" : "id of an active service",
+          "description" : "id of a service; an inactive one is accepted only with excludeAppointmentId of a confirmed appointment of that service",
           "in" : "query",
           "name" : "serviceId",
           "required" : true,
@@ -1002,7 +1002,7 @@
                 }
               }
             },
-            "description" : "service not found or inactive"
+            "description" : "service not found, or inactive and excludeAppointmentId is not a confirmed appointment of that service"
           }
         },
         "summary" : "Free start times for a service on a day",
