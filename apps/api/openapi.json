@@ -1200,6 +1200,39 @@
         "security" : [ ],
         "summary" : "Meta webhook verification",
         "tags" : [ "webhook" ]
+      },
+      "post" : {
+        "operationId" : "receive",
+        "parameters" : [ {
+          "description" : "sha256=<hex HMAC-SHA256 of the raw body keyed by the app secret>",
+          "in" : "header",
+          "name" : "X-Hub-Signature-256",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : { }
+          },
+          "description" : "WhatsApp Cloud API webhook payload, signed by Meta",
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "signed delivery accepted and logged"
+          },
+          "403" : {
+            "description" : "app secret not set, signature missing or wrong"
+          },
+          "413" : {
+            "description" : "body larger than 3 MiB"
+          }
+        },
+        "security" : [ ],
+        "summary" : "Incoming WhatsApp deliveries",
+        "tags" : [ "webhook" ]
       }
     },
     "/working-hours" : {

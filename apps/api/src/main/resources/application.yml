@@ -60,6 +60,8 @@ app:
     admin-origin: ${ADMIN_ORIGIN:http://localhost:5173}
   whatsapp:
     verify-token: ${WHATSAPP_VERIFY_TOKEN:}
+    # Meta app secret: checks X-Hub-Signature-256 of every webhook POST; empty refuses every POST
+    app-secret: ${WHATSAPP_APP_SECRET:}
   phone:
     # country used to read phone numbers typed without a plus sign
     default-region: UZ
