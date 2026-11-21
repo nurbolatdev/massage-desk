@@ -97,6 +97,24 @@ class InboundMessagesTests {
     }
 
     @Test
+    void futureMessageTimeDoesNotMoveTheWindowPastNow() {
+        Stored stored = inbound.store(List.of(new InboundMessage(
+                "wamid.store-future",
+                "998900000989",
+                null,
+                "text",
+                "From the future",
+                Instant.parse("2099-01-01T00:00:00Z"))));
+
+        assertThat(stored).isEqualTo(new Stored(1, 0));
+        UUID clientId = jdbc.queryForObject(
+                "select id from clients where phone = ?", UUID.class, "+998900000989");
+        ConversationRow conversation = conversationsOf(clientId).getFirst();
+        assertThat(conversation.lastInboundAt()).isEqualTo(FixedClockConfiguration.NOW);
+        assertThat(conversation.lastMessageAt()).isEqualTo(FixedClockConfiguration.NOW);
+    }
+
+    @Test
     void existingClientKeepsMasterNameAndAddsNoClientCreatedEvent() {
         UUID clientId = clients.create("+998900000982", "Master Name", "Notes", EventActor.MASTER).id();
         Instant sentAt = Instant.parse("2026-11-01T11:00:00Z");

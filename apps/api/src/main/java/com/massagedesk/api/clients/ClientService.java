@@ -87,7 +87,7 @@ public class ClientService {
             throw new IllegalArgumentException("phone must be E.164");
         }
         Objects.requireNonNull(actor, "actor");
-        String cleanedName = clean(name);
+        String cleanedName = Client.clean(name);
         Optional<UUID> inserted = jdbc.sql("""
                 insert into clients (phone, name)
                 values (:phone, cast(:name as text))
@@ -228,13 +228,5 @@ public class ClientService {
 
     private static ClientView view(Client c, ZoneId zone) {
         return new ClientView(c.getId(), c.getPhone(), c.getName(), c.getNotes(), c.getCreatedAt(), zone);
-    }
-
-    private static String clean(String value) {
-        if (value == null) {
-            return null;
-        }
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
     }
 }

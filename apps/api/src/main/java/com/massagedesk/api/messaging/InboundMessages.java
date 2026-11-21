@@ -57,7 +57,8 @@ class InboundMessages {
             }
             UUID clientId = clients.findOrCreate(normalized.get(), m.profileName(), EventActor.CLIENT);
             UUID conversationId = conversations.conversationOf(clientId);
-            Instant at = m.sentAt() != null ? m.sentAt() : clock.instant();
+            Instant now = clock.instant();
+            Instant at = m.sentAt() != null && m.sentAt().isBefore(now) ? m.sentAt() : now;
             if (conversations.addInbound(conversationId, m.waMessageId(), m.text(), at)) {
                 conversations.touchInbound(conversationId, at);
                 added++;

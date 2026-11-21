@@ -15,7 +15,8 @@ import org.hibernate.annotations.Generated;
 import org.hibernate.generator.EventType;
 
 /**
- * One row per webhook delivery; append-only, written by the API.
+ * One row per webhook delivery, written by the API; a signed delivery is updated once
+ * from received to processed/duplicate/failed.
  * Refused deliveries store {@code payload = null} and the machine error reason in {@code error}.
  */
 @Entity

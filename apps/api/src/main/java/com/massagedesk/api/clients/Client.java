@@ -61,7 +61,7 @@ public class Client {
         this.notes = clean(notes);
     }
 
-    private static String clean(String value) {
+    static String clean(String value) {
         if (value == null) {
             return null;
         }
