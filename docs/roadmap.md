@@ -731,10 +731,15 @@ Owner step, no code.
 ### M2-2 · Incoming messages webhook
 
 - **Branch:** `feature/bot-inbound`
-- **Pull request:** `feat(messaging): incoming whatsapp messages`
+- **Pull request:** `feat(messaging): signed webhook deliveries`
 - **Depends on:** M2-1, M1-2
+- **Issue:** #129
 - **Commits:**
   1. `feat(messaging): signature verification`
+  1. `feat(messaging): webhook delivery log`
+  1. `feat(messaging): accept signed webhook deliveries`
+  1. `docs: signed webhook deliveries`
+- **Then:** `feature/bot-inbound-messages` — `feat(messaging): incoming whatsapp messages` (closes the issue)
   1. `feat(messaging): store messages and conversations`
   1. `feat(messaging): idempotency by message id`
   1. `test(messaging): duplicate deliveries are ignored`
