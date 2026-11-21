@@ -70,7 +70,7 @@ insert into profiles (user_id, role, display_name) values ('<auth user id>', 'ma
 | GET | `/health` | ✅ M0 | Liveness and readiness |
 | GET | `/webhook/whatsapp` | ✅ M0 | Meta webhook verification |
 | POST | `/webhook/whatsapp` | ✅ M2 | Incoming deliveries: signature checked, delivery logged, client messages stored once per message id |
-| GET | `/slots?serviceId&day` | ✅ M1 | Free start times for a service on a day |
+| GET | `/slots?serviceId&day[&excludeAppointmentId]` | ✅ M1 | Free start times for a service on a day |
 | GET | `/appointments?from&to` | ✅ M1 | Appointments touching the local days |
 | GET | `/appointments/{id}` | ✅ M1 | One appointment with names, any status |
 | POST | `/appointments` | ✅ M1 | Create; `409` when the time is taken; optional `Idempotency-Key` |
@@ -108,7 +108,9 @@ insert into profiles (user_id, role, display_name) values ('<auth user id>', 'ma
 
 Working hours (with breaks), time off and confirmed appointments are taken into account; times in the past are never offered. A day without working hours gives an empty `starts`.
 
-- `400` (`application/problem+json`): `serviceId` or `day` is missing or invalid.
+Optional `excludeAppointmentId=<uuid>` is used when rescheduling: a confirmed appointment with this id does not hold time, and `durationMin` and `starts` are computed for its booked length rather than the current service length (even if the appointment belongs to a different service). If the id is unknown or the appointment is not `confirmed`, the parameter is ignored and the response is the same as without it.
+
+- `400` (`application/problem+json`): `serviceId` or `day` is missing or invalid, or `excludeAppointmentId` is invalid.
 - `404` (`application/problem+json`): the service does not exist or is inactive.
 
 Configuration: `APP_SLOTS_STEP` (grid of offered start times, default `30m`) and `APP_SLOTS_MIN_NOTICE` (how far ahead the first start is, default `0m`).
@@ -163,7 +165,7 @@ All statuses are returned (`confirmed`, `cancelled`, `no_show`, `done`), ordered
 
 ### Reschedule, cancel and no-show
 
-- `POST /appointments/{id}/reschedule` with `{"start":"2026-11-03T13:00:00+05:00"}` moves the appointment. The booked length is kept (not the current service length) and the same time rules as for creation apply. Errors: `400`, `404`, `409` (time taken), `422`.
+- `POST /appointments/{id}/reschedule` with `{"start":"2026-11-03T13:00:00+05:00"}` moves the appointment. The booked length is kept (not the current service length) and the same time rules as for creation apply. To offer free times for rescheduling, call `/slots` with `excludeAppointmentId=<id>`. Errors: `400`, `404`, `409` (time taken), `422`.
 - `POST /appointments/{id}/cancel` (no body) cancels it and frees the time. Errors: `400`, `404`, `409`.
 - `POST /appointments/{id}/no-show` (no body) marks that the client did not come; allowed only once the visit has started, otherwise `409`. Errors: `400`, `404`, `409`.
 
