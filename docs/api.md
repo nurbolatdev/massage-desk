@@ -100,7 +100,7 @@ insert into profiles (user_id, role, display_name) values ('<auth user id>', 'ma
 
 ## Free time
 
-`GET /slots?serviceId=<uuid>&day=YYYY-MM-DD` returns the free start times of an active service on one day. `day` is a local date in the master's time zone.
+`GET /slots?serviceId=<uuid>&day=YYYY-MM-DD` returns the free start times of a service on one day (an inactive service only when rescheduling its confirmed appointment, see `excludeAppointmentId`). `day` is a local date in the master's time zone.
 
 ```json
 {"day":"2026-11-03","timeZone":"Asia/Tashkent","durationMin":60,"starts":["2026-11-03T10:00:00+05:00","2026-11-03T10:30:00+05:00"]}
@@ -228,7 +228,7 @@ Known gaps:
 
 `PATCH /services/{id}` takes any of `name`, `durationMin`, `price`, `sortOrder`, `active`. A missing or `null` field is left unchanged. Inactive services can be edited and re-enabled.
 
-There is no delete: appointments refer to services, so a service is deactivated with `active: false`. A deactivated service gives `404` on `/slots` and cannot be booked; appointments already made keep their service and their booked length, also after a duration change.
+There is no delete: appointments refer to services, so a service is deactivated with `active: false`. A deactivated service gives `404` on `/slots` (except with `excludeAppointmentId` of a confirmed appointment of that service, so it can still be rescheduled) and cannot be booked; appointments already made keep their service and their booked length, also after a duration change.
 
 - `400` (`application/problem+json`): invalid field or id.
 - `404` (`application/problem+json`): `service not found`.
