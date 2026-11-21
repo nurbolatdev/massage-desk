@@ -1,14 +1,19 @@
 import { afterEach, describe, expect, it, jest } from "@jest/globals";
-import { cleanup, render } from "@testing-library/react-native";
-import type { ReactNode } from "react";
-import type { TextStyle, ViewStyle } from "react-native";
+import { cleanup, render, screen } from "@testing-library/react-native";
+import type { ReactElement, ReactNode } from "react";
+import type { ViewStyle } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import TabsLayout from "@/app/(tabs)/_layout";
-import { typography } from "@/theme";
+import { colors, typography } from "@/theme";
+
+type LabelProps = { children: string; color: string; focused: boolean };
 
 type ScreenOptions = {
-  tabBarLabelStyle?: TextStyle;
+  tabBarActiveTintColor?: string;
+  tabBarInactiveTintColor?: string;
+  tabBarItemStyle?: ViewStyle;
+  tabBarLabel?: (props: LabelProps) => ReactElement;
   tabBarStyle?: ViewStyle;
 };
 
@@ -69,8 +74,10 @@ describe("tabs layout", () => {
       height: 78,
       paddingBottom: 0,
       paddingTop: 6,
+      backgroundColor: colors.surface,
+      borderTopColor: colors.line,
+      borderTopWidth: 1,
     });
-    expect(mockCaptured.screenOptions?.tabBarLabelStyle).toEqual(typography.label);
     expect(mockCaptured.screens.map((s) => s.options?.title)).toEqual([
       "Сегодня",
       "Календарь",
@@ -86,6 +93,34 @@ describe("tabs layout", () => {
       height: 126,
       paddingBottom: 48,
       paddingTop: 6,
+      backgroundColor: colors.surface,
+      borderTopColor: colors.line,
+      borderTopWidth: 1,
     });
+  });
+
+  it("uses design-system colours for the tabs and the top border", async () => {
+    await renderTabs(0);
+
+    expect(mockCaptured.screenOptions?.tabBarActiveTintColor).toBe(colors.primaryStrong);
+    expect(mockCaptured.screenOptions?.tabBarInactiveTintColor).toBe(colors.muted);
+    expect(mockCaptured.screenOptions?.tabBarStyle?.borderTopColor).toBe(colors.line);
+  });
+
+  // Jest does not measure layout: these checks cover the settings that keep the labels
+  // whole at a 130% system font, not the pixel result.
+  it("lets labels use the full tab width and shrink instead of being cut", async () => {
+    await renderTabs(0);
+
+    expect(mockCaptured.screenOptions?.tabBarItemStyle?.paddingHorizontal).toBe(0);
+    const label = mockCaptured.screenOptions?.tabBarLabel;
+    expect(label).toBeDefined();
+    await render(label?.({ children: "Календарь", color: colors.muted, focused: false }) ?? <></>);
+
+    const text = screen.getByText("Календарь");
+    expect(text.props.numberOfLines).toBe(1);
+    expect(text.props.adjustsFontSizeToFit).toBe(true);
+    expect(text.props.minimumFontScale).toBeGreaterThanOrEqual(0.77);
+    expect(text.props.style).toEqual([typography.label, { color: colors.muted }]);
   });
 });
