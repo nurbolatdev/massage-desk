@@ -185,6 +185,17 @@ class WhatsAppWebhookControllerTests {
         verify(deliveries).accept(atLimit);
     }
 
+    @Test
+    void refusesAnOversizeBodyWithoutASignature() throws Exception {
+        byte[] overLimit = new byte[WhatsAppWebhookController.MAX_BODY_BYTES + 1];
+
+        mockMvc.perform(post("/webhook/whatsapp").contentType(APPLICATION_JSON).content(overLimit))
+                .andExpect(status().isContentTooLarge());
+
+        verify(deliveries).reject(Rejection.BODY_TOO_LARGE);
+        verify(deliveries, never()).accept(any());
+    }
+
     private static String sign(byte[] body) throws Exception {
         return sign(APP_SECRET, body);
     }

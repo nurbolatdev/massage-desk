@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -79,8 +80,13 @@ class WhatsAppWebhookController {
             @Parameter(description = "sha256=<hex HMAC-SHA256 of the raw body keyed by the app secret>")
                     @RequestHeader(name = "X-Hub-Signature-256", required = false)
                     String signature,
+            @Parameter(hidden = true) HttpServletRequest request,
             @Parameter(hidden = true) InputStream body)
             throws IOException {
+        if (request.getContentLengthLong() > MAX_BODY_BYTES) {
+            deliveries.reject(Rejection.BODY_TOO_LARGE);
+            return ResponseEntity.status(HttpStatus.CONTENT_TOO_LARGE).build();
+        }
         byte[] bytes = body.readNBytes(MAX_BODY_BYTES + 1);
         if (bytes.length > MAX_BODY_BYTES) {
             deliveries.reject(Rejection.BODY_TOO_LARGE);

@@ -75,3 +75,4 @@ The blueprint uses the `free` plan: the service sleeps after 15 minutes without 
 
 - The image is not built in CI, so a broken Dockerfile shows up only on Render; the previous deploy keeps running.
 - There are no alerts when the service goes down (monitoring is planned in M5).
+- The webhook rejects a declared body over 3 MiB before reading it, but a chunked body is read up to the limit and there is no rate limit on `POST /webhook/whatsapp` (planned with monitoring in M5).

@@ -36,6 +36,21 @@ class WebhookDeliveries {
         }
     }
 
+    enum Failure {
+        INVALID_JSON("invalid_json"),
+        NUL_CHARACTER("nul_character");
+
+        private final String code;
+
+        Failure(String code) {
+            this.code = code;
+        }
+
+        String code() {
+            return code;
+        }
+    }
+
     private final WebhookLogRepository logs;
     private final JsonMapper jsonMapper;
 
@@ -58,12 +73,12 @@ class WebhookDeliveries {
             tree = null;
         }
         if (tree == null || !tree.isObject()) {
-            logs.save(WebhookLog.failed("invalid_json"));
+            logs.save(WebhookLog.failed(Failure.INVALID_JSON.code()));
             return;
         }
         String json = jsonMapper.writeValueAsString(tree);
         if (json.contains("\\u0000")) {
-            logs.save(WebhookLog.failed("nul_character"));
+            logs.save(WebhookLog.failed(Failure.NUL_CHARACTER.code()));
             return;
         }
         logs.save(WebhookLog.received(json));
