@@ -58,6 +58,7 @@ erDiagram
 ```
 
 Also: `working_hours` (ISO weekday 1–7, several blocks per day for breaks), `time_off`, `settings` (single row), `profiles` (roles `master` / `admin`), `devices` (push tokens).
+Incoming WhatsApp messages are written by the webhook (`direction = 'in'`, `author = 'client'`): one `conversations` row per client, `messages.wa_message_id` is unique, and `conversations.last_inbound_at` marks the start of the 24-hour reply window (advanced only by newly stored messages).
 
 ## Row level security (Supabase)
 Only with profile `supabase` (`migration-supabase/`). Every policy is select-only and for the `authenticated` role:
@@ -91,7 +92,7 @@ constraint appointments_no_overlap
 - `events` — domain event log: `type` (e.g. `appointment_created`), `entity_type`, `entity_id`, `actor` (client, bot, master, admin, system), `payload` (jsonb object).
   `entity_id` has no foreign key: it may point to any table, and events outlive deleted rows.
 - `ai_runs` — one row per AI assistant call: model, prompt version, intent, status, tokens, cost, latency, tool calls, error.
-- `webhook_logs` — incoming WhatsApp webhooks: `signature_valid`, `status` (`received`, `processed`, `duplicate`, `rejected`, `failed`), `error`, `payload` (jsonb). Refused deliveries (`rejected`: `app_secret_not_set`, `missing_signature`, `invalid_signature`, `body_too_large`, `signature_valid = false`) and unparseable signed ones (`failed`: `invalid_json`, `nul_character`, `signature_valid = true`) are stored with `payload = null`.
+- `webhook_logs` — incoming WhatsApp webhooks: `signature_valid`, `status` (`received`, `processed`, `duplicate`, `rejected`, `failed`), `error`, `payload` (jsonb), `processed_at`. Refused deliveries (`rejected`: `app_secret_not_set`, `missing_signature`, `invalid_signature`, `body_too_large`, `signature_valid = false`) and unparseable signed ones (`failed`: `invalid_json`, `nul_character`, `signature_valid = true`) are stored with `payload = null`. Valid signed deliveries are first saved as `received` with `payload`, then processed and updated with `processed_at` to `processed`, `duplicate` (every message in the delivery was already stored), or `failed` (`error` holds the exception class name and `payload` is kept).
 
 All three are indexed by `created_at`. The API writes them; on Supabase staff can only read them (RLS policy `staff_read`).
 Domain events are written by `DomainEventRecorder` inside the caller's transaction (propagation `MANDATORY`).
@@ -101,8 +102,8 @@ Appointment events (entity type `appointment`, written by `AppointmentService` i
 - `appointment_rescheduled` — `client_id`, `service_id`, `previous_start`, `previous_end`, `start`, `end`
 - `appointment_cancelled`, `appointment_no_show` — `client_id`, `service_id`, `start`, `end`
 
-Client events (entity type `client`, written by `ClientService` in the changing transaction, actor from the token role):
-- `client_created` — payload `{}`
+Client events (entity type `client`, written by `ClientService` in the changing transaction, actor from the token role or `client` on the first incoming WhatsApp message from a new phone):
+- `client_created` — payload `{}` (also written by the WhatsApp webhook with actor `client` when a new phone messages for the first time)
 - `client_updated` — only when something really changed; payload as below, with the changed fields `name` and/or `notes` named only
 
 Service events (entity type `service`, written by `ServiceCatalog`):
