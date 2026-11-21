@@ -108,10 +108,10 @@ insert into profiles (user_id, role, display_name) values ('<auth user id>', 'ma
 
 Working hours (with breaks), time off and confirmed appointments are taken into account; times in the past are never offered. A day without working hours gives an empty `starts`.
 
-Optional `excludeAppointmentId=<uuid>` is used when rescheduling: a confirmed appointment with this id does not hold time, and `durationMin` and `starts` are computed for its booked length rather than the current service length (even if the appointment belongs to a different service). If the id is unknown or the appointment is not `confirmed`, the parameter is ignored and the response is the same as without it.
+Optional `excludeAppointmentId=<uuid>` is used when rescheduling: a confirmed appointment with this id does not hold time, and `durationMin` and `starts` are computed for its booked length rather than the current service length (even if the appointment belongs to a different service); an inactive service is also accepted when `excludeAppointmentId` points to a confirmed appointment of that service. If the id is unknown or the appointment is not `confirmed`, the parameter is ignored and the response is the same as without it.
 
 - `400` (`application/problem+json`): `serviceId` or `day` is missing or invalid, or `excludeAppointmentId` is invalid.
-- `404` (`application/problem+json`): the service does not exist or is inactive.
+- `404` (`application/problem+json`): the service does not exist, or is inactive (unless `excludeAppointmentId` is a confirmed appointment of that service).
 
 Configuration: `APP_SLOTS_STEP` (grid of offered start times, default `30m`) and `APP_SLOTS_MIN_NOTICE` (how far ahead the first start is, default `0m`).
 

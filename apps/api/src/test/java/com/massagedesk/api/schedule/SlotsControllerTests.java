@@ -265,9 +265,70 @@ class SlotsControllerTests {
 
     @Test
     void inactiveServiceIsNotFound() throws Exception {
-        jdbc.update("update services set active = false where id = ?", classic.getId());
+        classic.deactivate();
+        services.saveAndFlush(classic);
 
         getSlots("2026-11-03").andExpect(status().isNotFound())
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+                .andExpect(jsonPath("$.detail").value("service not found"));
+    }
+
+    @Test
+    void confirmedAppointmentOnInactiveServiceCanFetchSlots() throws Exception {
+        block(DayOfWeek.TUESDAY, 10, 12);
+        UUID id = appointment("2026-11-03 10:00+05", "2026-11-03 10:30+05", "confirmed");
+        classic.deactivate();
+        services.saveAndFlush(classic);
+
+        getSlotsExcluding("2026-11-03", id.toString())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.durationMin").value(30))
+                .andExpect(jsonPath("$.starts", contains(
+                        "2026-11-03T10:00:00+05:00",
+                        "2026-11-03T10:30:00+05:00",
+                        "2026-11-03T11:00:00+05:00",
+                        "2026-11-03T11:30:00+05:00")));
+    }
+
+    @Test
+    void inactiveServiceWithExcludedAppointmentOfAnotherServiceIsNotFound() throws Exception {
+        MassageService other = new MassageService("Other", 45, new BigDecimal("100000.00"), 2);
+        other.deactivate();
+        services.saveAndFlush(other);
+        UUID classicAppointment = appointment("2026-11-03 10:00+05", "2026-11-03 11:00+05", "confirmed");
+
+        mvc.perform(get("/slots")
+                        .param("serviceId", other.getId().toString())
+                        .param("day", "2026-11-03")
+                        .param("excludeAppointmentId", classicAppointment.toString())
+                        .with(jwt().authorities(new SimpleGrantedAuthority(StaffRole.MASTER.authority()))))
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+                .andExpect(jsonPath("$.detail").value("service not found"));
+    }
+
+    @Test
+    void inactiveServiceWithCancelledExcludedAppointmentIsNotFound() throws Exception {
+        UUID cancelled = appointment("2026-11-03 10:00+05", "2026-11-03 11:00+05", "cancelled");
+        classic.deactivate();
+        services.saveAndFlush(classic);
+
+        getSlotsExcluding("2026-11-03", cancelled.toString())
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+                .andExpect(jsonPath("$.detail").value("service not found"));
+    }
+
+    @Test
+    void unknownServiceWithExcludedAppointmentIsNotFound() throws Exception {
+        UUID id = appointment("2026-11-03 10:00+05", "2026-11-03 11:00+05", "confirmed");
+
+        mvc.perform(get("/slots")
+                        .param("serviceId", UUID.randomUUID().toString())
+                        .param("day", "2026-11-03")
+                        .param("excludeAppointmentId", id.toString())
+                        .with(jwt().authorities(new SimpleGrantedAuthority(StaffRole.MASTER.authority()))))
+                .andExpect(status().isNotFound())
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
                 .andExpect(jsonPath("$.detail").value("service not found"));
     }
