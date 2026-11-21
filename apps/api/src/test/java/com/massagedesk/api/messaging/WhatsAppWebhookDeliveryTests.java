@@ -74,7 +74,7 @@ class WhatsAppWebhookDeliveryTests {
         assertThat(rows).hasSize(1);
         assertThat(rows.getFirst())
                 .containsEntry("signature_valid", true)
-                .containsEntry("status", "received")
+                .containsEntry("status", "processed")
                 .containsEntry("error", null)
                 .containsEntry("payload_object", "whatsapp_business_account")
                 .containsEntry("payload_null", false);

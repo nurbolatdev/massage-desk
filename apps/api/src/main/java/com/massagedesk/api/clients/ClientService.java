@@ -13,9 +13,12 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -55,6 +58,7 @@ public class ClientService {
     private final DomainEventRecorder recorder;
     private final PhoneProperties phoneProperties;
     private final Clock clock;
+    private final JdbcClient jdbc;
 
     public ClientService(
             ClientRepository clients,
@@ -62,13 +66,46 @@ public class ClientService {
             SettingsRepository settings,
             DomainEventRecorder recorder,
             PhoneProperties phoneProperties,
-            Clock clock) {
+            Clock clock,
+            JdbcClient jdbc) {
         this.clients = clients;
         this.directory = directory;
         this.settings = settings;
         this.recorder = recorder;
         this.phoneProperties = phoneProperties;
         this.clock = clock;
+        this.jdbc = jdbc;
+    }
+
+    /**
+     * Returns the client with this E.164 phone, creating it with the name when absent; an existing
+     * name is kept; safe under parallel calls (the unique phone decides, no exception).
+     */
+    @Transactional
+    public UUID findOrCreate(String phone, String name, EventActor actor) {
+        if (!PhoneNumbers.isE164(phone)) {
+            throw new IllegalArgumentException("phone must be E.164");
+        }
+        Objects.requireNonNull(actor, "actor");
+        String cleanedName = Client.clean(name);
+        Optional<UUID> inserted = jdbc.sql("""
+                insert into clients (phone, name)
+                values (:phone, cast(:name as text))
+                on conflict (phone) do nothing
+                returning id""")
+                .param("phone", phone)
+                .param("name", cleanedName)
+                .query(UUID.class)
+                .optional();
+        if (inserted.isPresent()) {
+            UUID id = inserted.get();
+            recorder.record(DomainEventType.CLIENT_CREATED, id, actor, Map.of());
+            return id;
+        }
+        return jdbc.sql("select id from clients where phone = :phone")
+                .param("phone", phone)
+                .query(UUID.class)
+                .single();
     }
 
     @Transactional

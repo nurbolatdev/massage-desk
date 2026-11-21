@@ -15,7 +15,8 @@ import org.hibernate.annotations.Generated;
 import org.hibernate.generator.EventType;
 
 /**
- * One row per webhook delivery; append-only, written by the API.
+ * One row per webhook delivery, written by the API; a signed delivery is updated once
+ * from received to processed/duplicate/failed.
  * Refused deliveries store {@code payload = null} and the machine error reason in {@code error}.
  */
 @Entity
@@ -67,6 +68,35 @@ public class WebhookLog {
 
     static WebhookLog rejected(String error) {
         return new WebhookLog(false, WebhookStatus.REJECTED, Objects.requireNonNull(error, "error"), null);
+    }
+
+    void markProcessed(Instant at) {
+        Objects.requireNonNull(at, "at");
+        requireReceived();
+        this.status = WebhookStatus.PROCESSED;
+        this.processedAt = at;
+    }
+
+    void markDuplicate(Instant at) {
+        Objects.requireNonNull(at, "at");
+        requireReceived();
+        this.status = WebhookStatus.DUPLICATE;
+        this.processedAt = at;
+    }
+
+    void markFailed(String error, Instant at) {
+        Objects.requireNonNull(error, "error");
+        Objects.requireNonNull(at, "at");
+        requireReceived();
+        this.status = WebhookStatus.FAILED;
+        this.error = error;
+        this.processedAt = at;
+    }
+
+    private void requireReceived() {
+        if (this.status != WebhookStatus.RECEIVED) {
+            throw new IllegalStateException("Expected RECEIVED status, got " + this.status);
+        }
     }
 
     public UUID getId() {

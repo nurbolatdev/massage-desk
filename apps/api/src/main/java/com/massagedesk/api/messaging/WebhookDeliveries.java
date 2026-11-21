@@ -1,5 +1,6 @@
 package com.massagedesk.api.messaging;
 
+import java.time.Clock;
 import java.util.Locale;
 import java.util.Objects;
 import org.springframework.stereotype.Service;
@@ -10,6 +11,9 @@ import tools.jackson.databind.json.JsonMapper;
 /**
  * Records incoming WhatsApp webhook delivery attempts in {@code webhook_logs}.
  * Signed deliveries are logged with their JSON object payload; refused ones are logged without it.
+ * Signed deliveries are then processed in their own transaction: {@code processed}, {@code duplicate} when
+ * every message of the delivery was already stored, or {@code failed} with the exception class name in
+ * {@code error} (payload kept for replay).
  * Each row is saved on its own (no outer transaction), so a refused delivery is persisted even when nothing else runs.
  *
  * <p>Error codes written to {@code webhook_logs.error}:
@@ -53,10 +57,18 @@ class WebhookDeliveries {
 
     private final WebhookLogRepository logs;
     private final JsonMapper jsonMapper;
+    private final InboundMessages inbound;
+    private final Clock clock;
 
-    WebhookDeliveries(WebhookLogRepository logs, JsonMapper jsonMapper) {
+    WebhookDeliveries(
+            WebhookLogRepository logs,
+            JsonMapper jsonMapper,
+            InboundMessages inbound,
+            Clock clock) {
         this.logs = logs;
         this.jsonMapper = jsonMapper;
+        this.inbound = inbound;
+        this.clock = clock;
     }
 
     void reject(Rejection reason) {
@@ -81,6 +93,17 @@ class WebhookDeliveries {
             logs.save(WebhookLog.failed(Failure.NUL_CHARACTER.code()));
             return;
         }
-        logs.save(WebhookLog.received(json));
+        WebhookLog log = logs.save(WebhookLog.received(json));
+        try {
+            InboundMessages.Stored stored = inbound.store(WebhookPayload.messages(tree));
+            if (stored.isDuplicate()) {
+                log.markDuplicate(clock.instant());
+            } else {
+                log.markProcessed(clock.instant());
+            }
+        } catch (RuntimeException e) {
+            log.markFailed(e.getClass().getName(), clock.instant());
+        }
+        logs.save(log);
     }
 }

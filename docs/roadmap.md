@@ -740,9 +740,14 @@ Owner step, no code.
   1. `feat(messaging): accept signed webhook deliveries`
   1. `docs: signed webhook deliveries`
 - **Then:** `feature/bot-inbound-messages` — `feat(messaging): incoming whatsapp messages` (closes the issue)
+  1. `test(messaging): oversized body is refused before it is read`
+  1. `feat(messaging): read incoming messages from webhook payloads`
+  1. `feat(clients): find or create a client by phone`
   1. `feat(messaging): store messages and conversations`
+  1. `feat(messaging): process signed deliveries`
   1. `feat(messaging): idempotency by message id`
   1. `test(messaging): duplicate deliveries are ignored`
+  1. `docs: incoming whatsapp messages`
 
 ### M2-3 · Sending messages
 

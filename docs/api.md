@@ -69,7 +69,7 @@ insert into profiles (user_id, role, display_name) values ('<auth user id>', 'ma
 |---|---|---|---|
 | GET | `/health` | ✅ M0 | Liveness and readiness |
 | GET | `/webhook/whatsapp` | ✅ M0 | Meta webhook verification |
-| POST | `/webhook/whatsapp` | 🟡 M2 | Incoming deliveries: signature checked, delivery logged; messages are stored in the next part |
+| POST | `/webhook/whatsapp` | ✅ M2 | Incoming deliveries: signature checked, delivery logged, client messages stored once per message id |
 | GET | `/slots?serviceId&day` | ✅ M1 | Free start times for a service on a day |
 | GET | `/appointments?from&to` | ✅ M1 | Appointments touching the local days |
 | GET | `/appointments/{id}` | ✅ M1 | One appointment with names, any status |
