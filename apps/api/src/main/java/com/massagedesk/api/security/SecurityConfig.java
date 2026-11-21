@@ -12,7 +12,7 @@ import org.springframework.security.web.SecurityFilterChain;
  * HTTP security: stateless bearer-token API.
  *
  * <p>Open paths: {@code /health} and {@code /health/**} (load balancer probes) and
- * {@code /webhook/whatsapp} (Meta sends no token; the verify token protects it).
+ * {@code /webhook/whatsapp} (Meta sends no token; the verify token and the request signature protect it).
  * {@code /error} is open so error dispatches are not rewritten to 401. {@code /admin/**}
  * needs the admin role; everything else needs a staff role (master or admin), so new
  * endpoints are closed by default. The role comes from {@code profiles}, not from the token.

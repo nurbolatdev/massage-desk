@@ -292,7 +292,8 @@ export interface paths {
         /** Meta webhook verification */
         get: operations["verify"];
         put?: never;
-        post?: never;
+        /** Incoming WhatsApp deliveries */
+        post: operations["receive"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1568,6 +1569,46 @@ export interface operations {
                 content: {
                     "text/plain": string;
                 };
+            };
+        };
+    };
+    receive: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description sha256=<hex HMAC-SHA256 of the raw body keyed by the app secret> */
+                "X-Hub-Signature-256"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        /** @description WhatsApp Cloud API webhook payload, signed by Meta */
+        requestBody: {
+            content: {
+                "application/json": unknown;
+            };
+        };
+        responses: {
+            /** @description signed delivery accepted and logged */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description app secret not set, signature missing or wrong */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description body larger than 3 MiB */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

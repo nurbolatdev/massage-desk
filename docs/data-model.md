@@ -91,7 +91,7 @@ constraint appointments_no_overlap
 - `events` — domain event log: `type` (e.g. `appointment_created`), `entity_type`, `entity_id`, `actor` (client, bot, master, admin, system), `payload` (jsonb object).
   `entity_id` has no foreign key: it may point to any table, and events outlive deleted rows.
 - `ai_runs` — one row per AI assistant call: model, prompt version, intent, status, tokens, cost, latency, tool calls, error.
-- `webhook_logs` — incoming WhatsApp webhooks: signature check, processing status, error, raw payload.
+- `webhook_logs` — incoming WhatsApp webhooks: `signature_valid`, `status` (`received`, `processed`, `duplicate`, `rejected`, `failed`), `error`, `payload` (jsonb). Refused deliveries (`rejected`: `app_secret_not_set`, `missing_signature`, `invalid_signature`, `body_too_large`, `signature_valid = false`) and unparseable signed ones (`failed`: `invalid_json`, `nul_character`, `signature_valid = true`) are stored with `payload = null`.
 
 All three are indexed by `created_at`. The API writes them; on Supabase staff can only read them (RLS policy `staff_read`).
 Domain events are written by `DomainEventRecorder` inside the caller's transaction (propagation `MANDATORY`).

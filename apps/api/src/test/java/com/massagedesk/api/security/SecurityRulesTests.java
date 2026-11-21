@@ -7,10 +7,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.massagedesk.api.TestcontainersConfiguration;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.UUID;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +22,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.TestPropertySource;
@@ -30,7 +35,10 @@ import org.springframework.web.bind.annotation.RestController;
 @AutoConfigureMockMvc
 @Import({TestcontainersConfiguration.class, SecurityRulesTests.Probe.class})
 @Transactional
-@TestPropertySource(properties = "app.whatsapp.verify-token=secret")
+@TestPropertySource(properties = {
+        "app.whatsapp.verify-token=secret",
+        "app.whatsapp.app-secret=test-app-secret"
+})
 class SecurityRulesTests {
 
     private static final TestJwks JWKS = new TestJwks();
@@ -170,7 +178,23 @@ class SecurityRulesTests {
     }
 
     @Test
-    void webhookPostReachesMvcWithoutToken() throws Exception {
-        mvc.perform(post("/webhook/whatsapp")).andExpect(status().isMethodNotAllowed());
+    void signedWebhookPostIsOpenWithoutToken() throws Exception {
+        byte[] body = "{\"object\":\"whatsapp_business_account\"}".getBytes(StandardCharsets.UTF_8);
+        mvc.perform(post("/webhook/whatsapp")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-Hub-Signature-256", signWebhook(body))
+                        .content(body))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void unsignedWebhookPostIsRefusedByTheEndpoint() throws Exception {
+        mvc.perform(post("/webhook/whatsapp")).andExpect(status().isForbidden());
+    }
+
+    private static String signWebhook(byte[] body) throws Exception {
+        Mac mac = Mac.getInstance("HmacSHA256");
+        mac.init(new SecretKeySpec("test-app-secret".getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+        return "sha256=" + HexFormat.of().formatHex(mac.doFinal(body));
     }
 }
