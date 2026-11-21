@@ -119,6 +119,7 @@ export const size = {
   buttonSecondary: 56,
   iconButton: 48,
   progress: 6,
+  tabBar: 78,
 } as const;
 
 // DESIGN.md section 6: level 1 = mobile card / row. No blur, so it takes no layout space.
