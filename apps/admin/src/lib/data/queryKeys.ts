@@ -14,7 +14,10 @@ export const queryKeys = {
   },
   slots: {
     all: ["slots"] as const,
-    one: (serviceId: string, day: string) => ["slots", serviceId, day] as const,
+    one: (serviceId: string, day: string, excludeAppointmentId?: string) =>
+      excludeAppointmentId === undefined
+        ? (["slots", serviceId, day] as const)
+        : (["slots", serviceId, day, excludeAppointmentId] as const),
   },
   clients: {
     all: ["clients"] as const,

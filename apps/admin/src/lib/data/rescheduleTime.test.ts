@@ -1,3 +1,4 @@
+import { QueryClient } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
 
 import { createApi } from "@/lib/api/client";
@@ -58,7 +59,20 @@ describe("fetchSlots and toStarts", () => {
     const { api } = setup(async () => new Response(JSON.stringify(body), { status: 200 }));
     const get = vi.spyOn(api, "GET");
     const res = await fetchSlots(api, "s1", "2026-11-03");
+    const init = get.mock.calls[0]?.[1] as { params: { query: Record<string, unknown> } } | undefined;
     expect(get).toHaveBeenCalledWith("/slots", { params: { query: { serviceId: "s1", day: "2026-11-03" } } });
+    expect(init?.params.query).not.toHaveProperty("excludeAppointmentId");
+    expect(res).toEqual(body);
+  });
+
+  it("includes excludeAppointmentId in the /slots query when given", async () => {
+    const body = { day: "2026-11-03", durationMin: 60, starts: ["2026-11-03T09:00:00+05:00"], timeZone: TZ };
+    const { api } = setup(async () => new Response(JSON.stringify(body), { status: 200 }));
+    const get = vi.spyOn(api, "GET");
+    const res = await fetchSlots(api, "s1", "2026-11-03", "a1");
+    expect(get).toHaveBeenCalledWith("/slots", {
+      params: { query: { serviceId: "s1", day: "2026-11-03", excludeAppointmentId: "a1" } },
+    });
     expect(res).toEqual(body);
   });
 
@@ -185,5 +199,22 @@ describe("slotsRetry and daySlotsOptions", () => {
     expect(opts.staleTime).toBe(0);
     expect(opts.retry).toBe(slotsRetry);
     expect(opts.queryKey).toEqual(["slots", "s1", ""]);
+  });
+
+  it("passes excludeAppointmentId to the query key and load function only when given", async () => {
+    const body = { day: "2026-11-03", durationMin: 60, starts: ["2026-11-03T09:00:00+05:00"], timeZone: TZ };
+    const load = vi.fn().mockResolvedValue(body);
+    const plain = daySlotsOptions("s1", "2026-11-03", load);
+    const excluding = daySlotsOptions("s1", "2026-11-03", load, "a1");
+    expect(plain.queryKey).toEqual(["slots", "s1", "2026-11-03"]);
+    expect(excluding.queryKey).toEqual(["slots", "s1", "2026-11-03", "a1"]);
+
+    const client = new QueryClient();
+    await client.fetchQuery(plain);
+    await client.fetchQuery(excluding);
+    expect(load.mock.calls).toEqual([
+      ["s1", "2026-11-03"],
+      ["s1", "2026-11-03", "a1"],
+    ]);
   });
 });
