@@ -1,17 +1,31 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Tabs } from "expo-router";
 import type { ComponentProps } from "react";
-import type { ColorValue } from "react-native";
+import { type ColorValue, Text } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors, fontSize } from "@/theme";
+import { colors, fontSize, size, space, typography } from "@/theme";
 
 type IconName = ComponentProps<typeof Ionicons>["name"];
 
 function icon(name: IconName) {
   return function TabIcon({ color }: { color: ColorValue }) {
     // Tint colors come from the theme as strings; anything else falls back to the default.
-    return <Ionicons name={name} size={28} color={typeof color === "string" ? color : colors.textMuted} />;
+    return <Ionicons name={name} size={28} color={typeof color === "string" ? color : colors.muted} />;
   };
+}
+
+// Labels shrink to fit the narrow tab at a 130% system font. On Android the lower bound of
+// the shrinking is set by the tab width (minimumFontScale is ignored there; the platform
+// uses minimumFontSize, 4 dp by default). On iOS minimumFontScale applies: 0.77 is
+// 14 / 18.2, the label size at 130%. This is an iOS setting, not a 14 sp guarantee.
+const LABEL_MIN_SCALE = 0.77;
+
+function tabLabel({ children, color }: { children: string; color: ColorValue }) {
+  return (
+    <Text style={[typography.label, { color }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={LABEL_MIN_SCALE}>
+      {children}
+    </Text>
+  );
 }
 
 export default function TabsLayout() {
@@ -20,10 +34,17 @@ export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textMuted,
-        tabBarLabelStyle: { fontSize: 14, fontWeight: "600" },
-        tabBarStyle: { height: 72 + insets.bottom, paddingBottom: insets.bottom, paddingTop: 6 },
+        tabBarActiveTintColor: colors.primaryStrong,
+        tabBarInactiveTintColor: colors.muted,
+        tabBarLabel: tabLabel,
+        tabBarStyle: {
+          height: size.tabBar + insets.bottom,
+          paddingBottom: insets.bottom,
+          paddingTop: space[6],
+          backgroundColor: colors.surface,
+          borderTopColor: colors.line,
+          borderTopWidth: 1,
+        },
         headerTitleStyle: { fontSize: fontSize.title },
       }}
     >
