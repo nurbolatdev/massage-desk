@@ -186,6 +186,41 @@ class SlotServiceTests {
     }
 
     @Test
+    void excludedAppointmentOnAnotherDayGivesItsLength() {
+        block(DayOfWeek.TUESDAY, 10, 12);
+        Client client = clients.saveAndFlush(new Client("+998900000315", "Test client"));
+        Appointment onMonday = appointments.saveAndFlush(new Appointment(
+                client, classic, range("2026-11-02T08:00:00Z", "2026-11-02T08:30:00Z"), AppointmentSource.MANUAL));
+
+        var result = slotService.freeStarts(
+                classic.getId(), LocalDate.parse("2026-11-03"), onMonday.getId()).orElseThrow();
+
+        assertThat(result.duration()).isEqualTo(Duration.ofMinutes(30));
+        assertThat(result.starts()).containsExactly(
+                Instant.parse("2026-11-03T05:00:00Z"),
+                Instant.parse("2026-11-03T05:30:00Z"),
+                Instant.parse("2026-11-03T06:00:00Z"),
+                Instant.parse("2026-11-03T06:30:00Z"));
+    }
+
+    @Test
+    void excludedAppointmentOfAnotherServiceGivesItsLength() {
+        block(DayOfWeek.TUESDAY, 10, 12);
+        MassageService other = services.saveAndFlush(new MassageService("Other", 45, new BigDecimal("1.00"), 2));
+        Client client = clients.saveAndFlush(new Client("+998900000316", "Test client"));
+        Appointment booked = appointments.saveAndFlush(new Appointment(
+                client, other, range("2026-11-03T05:00:00Z", "2026-11-03T06:30:00Z"), AppointmentSource.MANUAL));
+
+        var result = slotService.freeStarts(
+                classic.getId(), LocalDate.parse("2026-11-03"), booked.getId()).orElseThrow();
+
+        assertThat(result.duration()).isEqualTo(Duration.ofMinutes(90));
+        assertThat(result.starts()).containsExactly(
+                Instant.parse("2026-11-03T05:00:00Z"),
+                Instant.parse("2026-11-03T05:30:00Z"));
+    }
+
+    @Test
     void unknownOrNotConfirmedAppointmentIsIgnored() {
         block(DayOfWeek.TUESDAY, 10, 12);
         Client client = clients.saveAndFlush(new Client("+998900000314", "Test client"));
@@ -195,7 +230,6 @@ class SlotServiceTests {
                 client, classic, range("2026-11-03T06:00:00Z", "2026-11-03T06:30:00Z"), AppointmentSource.MANUAL);
         cancelled.cancel();
         appointments.saveAndFlush(cancelled);
-        jdbc.update("update appointments set status = 'cancelled' where id = ?", cancelled.getId());
         LocalDate day = LocalDate.parse("2026-11-03");
 
         var unknown = slotService.freeStarts(classic.getId(), day, UUID.randomUUID()).orElseThrow();

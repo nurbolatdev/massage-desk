@@ -67,7 +67,9 @@ class ScheduleChangesReachSlotsTests {
             jdbc.update("delete from events where entity_id = ?", UUID.fromString(id));
             jdbc.update("delete from clients where id = ?", UUID.fromString(id));
         }
+        jdbc.update("delete from events where type = 'working_hours_replaced'");
         for (String id : serviceIds) {
+            jdbc.update("delete from events where entity_id = ?", UUID.fromString(id));
             jdbc.update("delete from appointments where service_id = ?", UUID.fromString(id));
             jdbc.update("delete from services where id = ?", UUID.fromString(id));
         }
