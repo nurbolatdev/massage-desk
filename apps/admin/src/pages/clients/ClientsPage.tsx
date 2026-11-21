@@ -178,7 +178,10 @@ export function ClientsPage() {
       )}
       {view === "list" && (
         <div className="flex flex-wrap items-start gap-16">
-          <div className="flex min-w-0 shrink grow-999 basis-content flex-col items-start gap-12">
+          <div
+            aria-busy={clients.isPlaceholderData}
+            className="flex min-w-0 shrink grow-999 basis-content flex-col items-start gap-12"
+          >
             <ClientsTable
               clients={rows}
               selectedId={selectedId}

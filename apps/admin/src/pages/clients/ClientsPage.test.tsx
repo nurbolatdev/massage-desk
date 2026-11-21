@@ -6,6 +6,7 @@ import {
   type InfiniteData,
 } from "@tanstack/react-query";
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -840,8 +841,8 @@ describe("ClientsPage", () => {
     );
 
     expect(showMore.getAttribute("aria-disabled")).toBe("true");
+    showMore.focus();
     fireEvent.click(showMore);
-    expect(requestParams().some((p) => p.offset === "50")).toBe(false);
 
     release(jsonResponse([makeClient("c1")]));
     await waitFor(() =>
@@ -850,6 +851,48 @@ describe("ClientsPage", () => {
           "row",
         ),
       ).toHaveLength(2),
+    );
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+    expect(requestParams().some((p) => p.offset === "50")).toBe(false);
+    expect(document.activeElement).not.toBe(
+      screen.getByRole("region", { name: "Клиенты" }),
+    );
+  });
+
+  it("marks the list busy while the old list is shown for a new search", async () => {
+    let release: (r: Response) => void = () => {};
+    listReply.mockImplementation((req) => {
+      const q = new URL(req.url).searchParams.get("q");
+      if (q === "Айг") {
+        return new Promise<Response>((resolve) => {
+          release = resolve;
+        });
+      }
+      return Promise.resolve(jsonResponse([makeClient("c1"), makeClient("c2")]));
+    });
+
+    renderPage();
+    const table = await screen.findByRole("table", { name: "Клиенты" });
+    expect(table.closest("[aria-busy]")?.getAttribute("aria-busy")).toBe("false");
+
+    fireEvent.change(screen.getByRole("searchbox", { name: SEARCH_LABEL }), {
+      target: { value: "Айг" },
+    });
+    await waitFor(() =>
+      expect(requestParams().some((p) => p.q === "Айг")).toBe(true),
+    );
+    expect(table.closest("[aria-busy]")?.getAttribute("aria-busy")).toBe("true");
+
+    release(jsonResponse([makeClient("c1")]));
+    await waitFor(() =>
+      expect(
+        screen
+          .getByRole("table", { name: "Клиенты" })
+          .closest("[aria-busy]")
+          ?.getAttribute("aria-busy"),
+      ).toBe("false"),
     );
   });
 
