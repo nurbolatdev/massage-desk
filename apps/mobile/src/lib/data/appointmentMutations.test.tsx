@@ -33,11 +33,19 @@ function seed() {
   queryClient.setQueryData(queryKeys.appointments.range(DAY, DAY), []);
   queryClient.setQueryData(queryKeys.appointment.one("a1"), {});
   queryClient.setQueryData(queryKeys.slots.one("s1", DAY), {});
+  queryClient.setQueryData(queryKeys.slots.one("s1", DAY, "a1"), {});
 }
 
 function invalidated(key: readonly unknown[]) {
   return queryClient.getQueryState(key)?.isInvalidated;
 }
+
+describe("slot keys", () => {
+  it("appends excludeAppointmentId only when defined", () => {
+    expect(queryKeys.slots.one("s1", DAY)).toEqual(["slots", "s1", DAY]);
+    expect(queryKeys.slots.one("s1", DAY, "a1")).toEqual(["slots", "s1", DAY, "a1"]);
+  });
+});
 
 describe("appointment mutations refresh the single appointment", () => {
   beforeEach(() => {
@@ -71,5 +79,6 @@ describe("appointment mutations refresh the single appointment", () => {
     expect(invalidated(queryKeys.appointments.range(DAY, DAY))).toBe(true);
     expect(invalidated(queryKeys.appointment.one("a1"))).toBe(true);
     expect(invalidated(queryKeys.slots.one("s1", DAY))).toBe(true);
+    expect(invalidated(queryKeys.slots.one("s1", DAY, "a1"))).toBe(true);
   });
 });

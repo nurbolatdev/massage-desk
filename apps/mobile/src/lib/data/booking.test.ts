@@ -51,6 +51,15 @@ describe("fetchSlots", () => {
     expect(sent()).toEqual(["GET https://api.test/slots?serviceId=s1&day=2026-11-03"]);
     expect(result.starts).toEqual([START]);
   });
+
+  it("sends excludeAppointmentId when provided", async () => {
+    const { api, sent } = setup({
+      "GET /slots": { status: 200, body: { day: "2026-11-03", timeZone: "Asia/Tashkent", durationMin: 60, starts: [START] } },
+    });
+    const result = await fetchSlots(api, "s1", "2026-11-03", "a1");
+    expect(sent()).toEqual(["GET https://api.test/slots?serviceId=s1&day=2026-11-03&excludeAppointmentId=a1"]);
+    expect(result.starts).toEqual([START]);
+  });
 });
 
 describe("searchClients", () => {
