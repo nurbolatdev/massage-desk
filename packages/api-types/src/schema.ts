@@ -559,7 +559,7 @@ export interface components {
             day: string;
             /**
              * Format: int32
-             * @description service length in minutes
+             * @description length in minutes the starts were computed for: the service length, or the booked length of the excluded appointment
              */
             durationMin: number;
             /** @description free start times, ISO-8601 with the master's UTC offset */
@@ -1379,6 +1379,8 @@ export interface operations {
                 serviceId: string;
                 /** @description local date in the master's time zone, YYYY-MM-DD */
                 day: string;
+                /** @description id of an appointment being moved: it does not hold time and its booked length is used; ignored when unknown or not confirmed */
+                excludeAppointmentId?: string;
             };
             header?: never;
             path?: never;
@@ -1395,7 +1397,7 @@ export interface operations {
                     "application/json": components["schemas"]["SlotsResponse"];
                 };
             };
-            /** @description invalid or missing serviceId or day */
+            /** @description invalid or missing serviceId or day, or invalid excludeAppointmentId */
             400: {
                 headers: {
                     [name: string]: unknown;

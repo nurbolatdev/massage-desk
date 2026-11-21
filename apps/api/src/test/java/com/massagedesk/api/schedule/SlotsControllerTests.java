@@ -70,11 +70,13 @@ class SlotsControllerTests {
                 """, UUID.randomUUID(), start, end);
     }
 
-    private void appointment(String start, String end, String status) {
+    private UUID appointment(String start, String end, String status) {
+        UUID id = UUID.randomUUID();
         jdbc.update("""
                 insert into appointments (id, client_id, service_id, period, status)
                 values (?, ?, ?, tstzrange(?::timestamptz, ?::timestamptz), ?)
-                """, UUID.randomUUID(), client.getId(), classic.getId(), start, end, status);
+                """, id, client.getId(), classic.getId(), start, end, status);
+        return id;
     }
 
     private ResultActions getSlots(String serviceId, String day, StaffRole role) throws Exception {
@@ -87,6 +89,14 @@ class SlotsControllerTests {
 
     private ResultActions getSlots(String day) throws Exception {
         return getSlots(classic.getId().toString(), day, StaffRole.MASTER);
+    }
+
+    private ResultActions getSlotsExcluding(String day, String excludeId) throws Exception {
+        return mvc.perform(get("/slots")
+                .param("serviceId", classic.getId().toString())
+                .param("day", day)
+                .param("excludeAppointmentId", excludeId)
+                .with(jwt().authorities(new SimpleGrantedAuthority(StaffRole.MASTER.authority()))));
     }
 
     @Test
@@ -270,5 +280,67 @@ class SlotsControllerTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.starts", contains(
                         "2026-11-03T10:00:00+05:00")));
+    }
+
+    @Test
+    void excludedAppointmentCanMoveOntoItsOwnTime() throws Exception {
+        block(DayOfWeek.TUESDAY, 10, 12);
+        UUID id = appointment("2026-11-03 10:00+05", "2026-11-03 11:00+05", "confirmed");
+
+        getSlotsExcluding("2026-11-03", id.toString())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.durationMin").value(60))
+                .andExpect(jsonPath("$.starts", contains(
+                        "2026-11-03T10:00:00+05:00",
+                        "2026-11-03T10:30:00+05:00",
+                        "2026-11-03T11:00:00+05:00")));
+    }
+
+    @Test
+    void excludedAppointmentUsesBookedLength() throws Exception {
+        block(DayOfWeek.TUESDAY, 10, 12);
+        UUID id = appointment("2026-11-03 10:00+05", "2026-11-03 10:30+05", "confirmed");
+
+        getSlotsExcluding("2026-11-03", id.toString())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.durationMin").value(30))
+                .andExpect(jsonPath("$.starts", contains(
+                        "2026-11-03T10:00:00+05:00",
+                        "2026-11-03T10:30:00+05:00",
+                        "2026-11-03T11:00:00+05:00",
+                        "2026-11-03T11:30:00+05:00")));
+    }
+
+    @Test
+    void otherAppointmentsStillBlockWhenExcluding() throws Exception {
+        block(DayOfWeek.TUESDAY, 10, 13);
+        UUID first = appointment("2026-11-03 10:00+05", "2026-11-03 11:00+05", "confirmed");
+        appointment("2026-11-03 11:00+05", "2026-11-03 12:00+05", "confirmed");
+
+        getSlotsExcluding("2026-11-03", first.toString())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.starts", contains(
+                        "2026-11-03T10:00:00+05:00",
+                        "2026-11-03T12:00:00+05:00")));
+    }
+
+    @Test
+    void unknownExcludedAppointmentIsIgnored() throws Exception {
+        block(DayOfWeek.TUESDAY, 10, 12);
+        appointment("2026-11-03 10:00+05", "2026-11-03 11:00+05", "confirmed");
+
+        getSlotsExcluding("2026-11-03", UUID.randomUUID().toString())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.durationMin").value(60))
+                .andExpect(jsonPath("$.starts", contains(
+                        "2026-11-03T11:00:00+05:00")));
+    }
+
+    @Test
+    void invalidExcludedAppointmentIdIsBadRequest() throws Exception {
+        getSlotsExcluding("2026-11-03", "abc")
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+                .andExpect(jsonPath("$.status").value(400));
     }
 }

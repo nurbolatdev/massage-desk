@@ -963,6 +963,15 @@
             "type" : "string",
             "format" : "date"
           }
+        }, {
+          "description" : "id of an appointment being moved: it does not hold time and its booked length is used; ignored when unknown or not confirmed",
+          "in" : "query",
+          "name" : "excludeAppointmentId",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
         } ],
         "responses" : {
           "200" : {
@@ -983,7 +992,7 @@
                 }
               }
             },
-            "description" : "invalid or missing serviceId or day"
+            "description" : "invalid or missing serviceId or day, or invalid excludeAppointmentId"
           },
           "404" : {
             "content" : {
@@ -1728,7 +1737,7 @@
           "durationMin" : {
             "type" : "integer",
             "format" : "int32",
-            "description" : "service length in minutes"
+            "description" : "length in minutes the starts were computed for: the service length, or the booked length of the excluded appointment"
           },
           "starts" : {
             "type" : "array",

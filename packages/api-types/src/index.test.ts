@@ -28,6 +28,11 @@ describe("generated /slots types", () => {
     expectTypeOf<SlotsQuery["day"]>().toEqualTypeOf<string>();
   });
 
+  it("types the optional excludeAppointmentId", () => {
+    expectTypeOf<SlotsQuery["excludeAppointmentId"]>().toEqualTypeOf<string | undefined>();
+    expect(true).toBe(true);
+  });
+
   it("types the 200 body with required fields", () => {
     expectTypeOf<SlotsOk["starts"]>().toEqualTypeOf<string[]>();
     expectTypeOf<SlotsOk["durationMin"]>().toEqualTypeOf<number>();
