@@ -112,6 +112,7 @@ class InboundMessagesTests {
         ConversationRow conversation = conversationsOf(clientId).getFirst();
         assertThat(conversation.lastInboundAt()).isEqualTo(FixedClockConfiguration.NOW);
         assertThat(conversation.lastMessageAt()).isEqualTo(FixedClockConfiguration.NOW);
+        assertThat(messageByWaId("wamid.store-future").createdAt()).isEqualTo(FixedClockConfiguration.NOW);
     }
 
     @Test
