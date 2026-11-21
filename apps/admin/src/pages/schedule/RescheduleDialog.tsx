@@ -23,18 +23,20 @@ type RescheduleDialogProps = {
   start: Date;
   timeZone: string;
   via?: "drag" | "panel";
+  trigger?: HTMLElement | null;
   returnFocus?: () => HTMLElement | null;
   onClose: () => void;
   onGone?: () => void;
   onDone: (id: string) => void;
 };
 
-/** Confirmation dialog showing old and new times and server reschedule errors. */
+/** Confirmation dialog showing old and new times and server reschedule errors; returns focus to the trigger after an outdated appointment is closed. */
 export function RescheduleDialog({
   appointment,
   start,
   timeZone,
   via = "drag",
+  trigger,
   returnFocus,
   onClose,
   onGone,
@@ -42,6 +44,7 @@ export function RescheduleDialog({
 }: RescheduleDialogProps) {
   const slotsId = useId();
   const done = useRef(false);
+  const closedGone = useRef(false);
   const end = new Date(start.getTime() + (appointment.end.getTime() - appointment.start.getTime()));
   const before = slotLines(appointment.start, appointment.end, timeZone);
   const after = slotLines(start, end, timeZone);
@@ -55,8 +58,12 @@ export function RescheduleDialog({
       open
       onOpenChange={(open) => {
         if (!open) {
-          if (gone) onGone();
-          else onClose();
+          if (gone) {
+            closedGone.current = true;
+            onGone();
+          } else {
+            onClose();
+          }
         }
       }}
       title={RESCHEDULE_TITLE}
@@ -78,7 +85,11 @@ export function RescheduleDialog({
         )
       }
       onCloseAutoFocus={(event) => {
-        const target = done.current ? returnFocus?.() : null;
+        const target = done.current
+          ? returnFocus?.()
+          : closedGone.current
+            ? (trigger?.isConnected ? trigger : returnFocus?.())
+            : null;
         if (!target) return;
         event.preventDefault();
         target.focus();

@@ -25,6 +25,7 @@ import {
   SHOW_MORE,
   type SegmentFilter,
   clientsView,
+  nextOffset,
   notFoundTitle,
   uniqueById,
 } from "@/lib/data/clients";
@@ -64,7 +65,15 @@ export function ClientsPage() {
   }, [selectedId]);
   const searchId = useId();
 
-  const rows = clients.data ? uniqueById(clients.data.pages) : [];
+  const pages = clients.data?.pages;
+  const rows = pages ? uniqueById(pages) : [];
+  const hasMore =
+    clients.hasNextPage ||
+    Boolean(
+      clients.isPlaceholderData &&
+        pages &&
+        nextOffset(pages.at(-1) ?? [], pages) !== undefined,
+    );
   const selected = rows.find((c) => c.id === selectedId) ?? null;
   const view = clientsView({
     hasData: clients.data !== undefined,
@@ -74,7 +83,9 @@ export function ClientsPage() {
     segment,
   });
   const filterOffline =
-    !online && (Boolean(term) || segment !== "all") && clients.data === undefined;
+    !online &&
+    (Boolean(term) || segment !== "all") &&
+    (clients.data === undefined || clients.isPlaceholderData);
 
   const pickSegment = (next: SegmentFilter) => {
     if (next === segment) return;
@@ -83,7 +94,7 @@ export function ClientsPage() {
   };
 
   const loadMore = async () => {
-    if (clients.isFetchingNextPage || !online) return;
+    if (clients.isFetchingNextPage || clients.isPlaceholderData || !online) return;
     const requestedTerm = term;
     const requestedSegment = segment;
     const result = await clients.fetchNextPage();
@@ -167,7 +178,10 @@ export function ClientsPage() {
       )}
       {view === "list" && (
         <div className="flex flex-wrap items-start gap-16">
-          <div className="flex min-w-0 shrink grow-999 basis-content flex-col items-start gap-12">
+          <div
+            aria-busy={clients.isPlaceholderData}
+            className="flex min-w-0 shrink grow-999 basis-content flex-col items-start gap-12"
+          >
             <ClientsTable
               clients={rows}
               selectedId={selectedId}
@@ -176,12 +190,12 @@ export function ClientsPage() {
               year={now.getFullYear()}
               tableRef={tableRef}
             />
-            {clients.hasNextPage && (
+            {hasMore && (
               <Button
                 type="button"
                 variant="secondary"
                 ref={moreRef}
-                aria-disabled={clients.isFetchingNextPage || !online}
+                aria-disabled={clients.isFetchingNextPage || clients.isPlaceholderData || !online}
                 className="aria-disabled:bg-disabled-bg aria-disabled:text-neutral-fg aria-disabled:border-disabled-bg"
                 onClick={() => void loadMore()}
               >

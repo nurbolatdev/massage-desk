@@ -6,6 +6,7 @@ import {
   type InfiniteData,
 } from "@tanstack/react-query";
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -716,6 +717,183 @@ describe("ClientsPage", () => {
       const panel = screen.getByRole("complementary", { name: PROFILE_LABEL });
       expect(within(panel).getByText(PICK_CLIENT)).not.toBeNull();
     });
+  });
+
+  it("keeps the card and the unsaved note while the search reloads the list", async () => {
+    const c1 = makeClient("c1", "Айгуль Сапарова");
+    const c2 = makeClient("c2", "Ержан Бекенов");
+    let release: (r: Response) => void = () => {};
+    listReply.mockImplementation((req) => {
+      const url = new URL(req.url);
+      if (url.pathname === "/clients/c1") return Promise.resolve(jsonResponse(c1));
+      if (url.searchParams.get("q") === "Айг") {
+        return new Promise<Response>((resolve) => {
+          release = resolve;
+        });
+      }
+      return Promise.resolve(jsonResponse([c1, c2]));
+    });
+
+    renderPage();
+    const table = await screen.findByRole("table", { name: "Клиенты" });
+    fireEvent.click(
+      within(table).getByRole("button", { name: /Айгуль Сапарова/ }),
+    );
+    const panel = screen.getByRole("complementary", { name: PROFILE_LABEL });
+    const noteField = (await within(panel).findByLabelText(
+      NOTE_FIELD_LABEL,
+    )) as HTMLTextAreaElement;
+    fireEvent.change(noteField, { target: { value: "Черновик" } });
+
+    const searchbox = screen.getByRole("searchbox", { name: SEARCH_LABEL });
+    fireEvent.change(searchbox, { target: { value: "Айг" } });
+    await waitFor(() =>
+      expect(requestParams().some((p) => p.q === "Айг")).toBe(true),
+    );
+
+    expect(
+      within(screen.getByRole("table", { name: "Клиенты" })).getAllByRole("row"),
+    ).toHaveLength(3);
+    expect(
+      within(panel).getByRole("heading", { name: "Айгуль Сапарова" }),
+    ).not.toBeNull();
+    expect(within(panel).queryByText(PICK_CLIENT)).toBeNull();
+    const pendingNote = within(panel).getByLabelText(
+      NOTE_FIELD_LABEL,
+    ) as HTMLTextAreaElement;
+    expect(pendingNote).toBe(noteField);
+    expect(pendingNote.value).toBe("Черновик");
+    expect(
+      within(panel).getByRole("button", { name: NOTE_SAVE_LABEL }),
+    ).not.toBeNull();
+
+    release(jsonResponse([c1]));
+    await waitFor(() =>
+      expect(
+        within(screen.getByRole("table", { name: "Клиенты" })).getAllByRole(
+          "row",
+        ),
+      ).toHaveLength(2),
+    );
+    const afterNote = within(panel).getByLabelText(
+      NOTE_FIELD_LABEL,
+    ) as HTMLTextAreaElement;
+    expect(afterNote).toBe(noteField);
+    expect(afterNote.value).toBe("Черновик");
+  });
+
+  it("does not keep an empty result while the next search loads", async () => {
+    const c1 = makeClient("c1", "Айгуль Сапарова");
+    let release: (r: Response) => void = () => {};
+    listReply.mockImplementation((req) => {
+      const q = new URL(req.url).searchParams.get("q");
+      if (q === "zzz") return Promise.resolve(jsonResponse([]));
+      if (q === "zzzy") {
+        return new Promise<Response>((resolve) => {
+          release = resolve;
+        });
+      }
+      return Promise.resolve(jsonResponse([c1]));
+    });
+
+    renderPage();
+    await screen.findByRole("table", { name: "Клиенты" });
+
+    const searchbox = screen.getByRole("searchbox", { name: SEARCH_LABEL });
+    fireEvent.change(searchbox, { target: { value: "zzz" } });
+    expect(
+      await screen.findByText("По запросу «zzz» ничего нет"),
+    ).not.toBeNull();
+
+    fireEvent.change(searchbox, { target: { value: "zzzy" } });
+    await waitFor(() =>
+      expect(requestParams().some((p) => p.q === "zzzy")).toBe(true),
+    );
+    expect(screen.queryByText("По запросу «zzz» ничего нет")).toBeNull();
+    expect(screen.queryByText("По запросу «zzzy» ничего нет")).toBeNull();
+
+    release(jsonResponse([]));
+    expect(
+      await screen.findByText("По запросу «zzzy» ничего нет"),
+    ).not.toBeNull();
+  });
+
+  it("does not load more pages of the old list while a new search loads", async () => {
+    const page1 = Array.from({ length: 50 }, (_, i) => makeClient(`p1-${i}`));
+    let release: (r: Response) => void = () => {};
+    listReply.mockImplementation((req) => {
+      const q = new URL(req.url).searchParams.get("q");
+      if (q === "Айг") {
+        return new Promise<Response>((resolve) => {
+          release = resolve;
+        });
+      }
+      return Promise.resolve(jsonResponse(page1));
+    });
+
+    renderPage();
+    const showMore = await screen.findByRole("button", { name: SHOW_MORE });
+
+    const searchbox = screen.getByRole("searchbox", { name: SEARCH_LABEL });
+    fireEvent.change(searchbox, { target: { value: "Айг" } });
+    await waitFor(() =>
+      expect(requestParams().some((p) => p.q === "Айг")).toBe(true),
+    );
+
+    expect(showMore.getAttribute("aria-disabled")).toBe("true");
+    showMore.focus();
+    fireEvent.click(showMore);
+
+    release(jsonResponse([makeClient("c1")]));
+    await waitFor(() =>
+      expect(
+        within(screen.getByRole("table", { name: "Клиенты" })).getAllByRole(
+          "row",
+        ),
+      ).toHaveLength(2),
+    );
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+    expect(requestParams().some((p) => p.offset === "50")).toBe(false);
+    expect(document.activeElement).not.toBe(
+      screen.getByRole("region", { name: "Клиенты" }),
+    );
+  });
+
+  it("marks the list busy while the old list is shown for a new search", async () => {
+    let release: (r: Response) => void = () => {};
+    listReply.mockImplementation((req) => {
+      const q = new URL(req.url).searchParams.get("q");
+      if (q === "Айг") {
+        return new Promise<Response>((resolve) => {
+          release = resolve;
+        });
+      }
+      return Promise.resolve(jsonResponse([makeClient("c1"), makeClient("c2")]));
+    });
+
+    renderPage();
+    const table = await screen.findByRole("table", { name: "Клиенты" });
+    expect(table.closest("[aria-busy]")?.getAttribute("aria-busy")).toBe("false");
+
+    fireEvent.change(screen.getByRole("searchbox", { name: SEARCH_LABEL }), {
+      target: { value: "Айг" },
+    });
+    await waitFor(() =>
+      expect(requestParams().some((p) => p.q === "Айг")).toBe(true),
+    );
+    expect(table.closest("[aria-busy]")?.getAttribute("aria-busy")).toBe("true");
+
+    release(jsonResponse([makeClient("c1")]));
+    await waitFor(() =>
+      expect(
+        screen
+          .getByRole("table", { name: "Клиенты" })
+          .closest("[aria-busy]")
+          ?.getAttribute("aria-busy"),
+      ).toBe("false"),
+    );
   });
 
   it("does not render the profile panel on empty list or initial load error", async () => {

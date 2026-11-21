@@ -212,6 +212,9 @@ export function useClients(term: string, segment: SegmentFilter) {
     queryFn: ({ pageParam }) => fetchClients(api, term, segment, pageParam),
     initialPageParam: 0,
     getNextPageParam: nextOffset,
+    // The shown rows (and the open client card) stay while another search or filter loads; an empty result is not kept because its text names the old search.
+    placeholderData: (previous) =>
+      previous?.pages.some((page) => page.length > 0) ? previous : undefined,
   });
 }
 
