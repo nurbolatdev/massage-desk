@@ -178,6 +178,16 @@ describe("new appointment screen", () => {
     expect(requestedSlotDays()).not.toContain("2026-13-40");
   });
 
+  it("asks free times without excludeAppointmentId", async () => {
+    await renderScreen();
+    await waitFor(() => expect(slotRequests()).toBeGreaterThanOrEqual(1));
+    const slotCalls = mockGet.mock.calls.filter(([path]) => path === "/slots");
+    for (const [, init] of slotCalls) {
+      const query = (init as { params: { query: Record<string, unknown> } }).params.query;
+      expect(query).not.toHaveProperty("excludeAppointmentId");
+    }
+  });
+
   it("busy time cannot be chosen", async () => {
     await render(
       <SafeAreaProvider

@@ -176,6 +176,32 @@ describe("reschedule screen", () => {
     expect(screen.getByText(`Анна · Классический массаж, ${serviceMeta(60)}`)).toBeOnTheScreen();
   });
 
+  it("offers a time that overlaps the appointment itself", async () => {
+    const baseGet = mockGet.getMockImplementation();
+    mockGet.mockImplementation(async (path, init) => {
+      if (path === "/slots") {
+        const query = (init as { params: { query: { day: string; serviceId: string; excludeAppointmentId?: string } } })
+          .params.query;
+        const starts =
+          query.excludeAppointmentId === "a1"
+            ? [`${query.day}T09:30:00+05:00`, `${query.day}T10:00:00+05:00`, `${query.day}T11:30:00+05:00`]
+            : [`${query.day}T10:00:00+05:00`, `${query.day}T11:30:00+05:00`];
+        return ok({ day: query.day, timeZone: TIME_ZONE, durationMin: 60, starts });
+      }
+      if (baseGet === undefined) throw new Error(`unexpected GET ${path}`);
+      return baseGet(path, init);
+    });
+    await renderScreen();
+
+    expect(await screen.findByText("09:30")).toBeOnTheScreen();
+    const slotCalls = mockGet.mock.calls.filter(([path]) => path === "/slots");
+    expect(slotCalls.length).toBeGreaterThanOrEqual(1);
+    for (const [, init] of slotCalls) {
+      const query = (init as { params: { query: Record<string, unknown> } }).params.query;
+      expect(query).toMatchObject({ serviceId: "s1", excludeAppointmentId: "a1" });
+    }
+  });
+
   it("asks first, then keeps a taken time out of reach and moves to the new time", async () => {
     mockPost.mockResolvedValueOnce(failure(409, "TIME_TAKEN")).mockResolvedValueOnce(ok(moved));
     await renderScreen();

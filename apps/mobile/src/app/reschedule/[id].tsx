@@ -79,7 +79,7 @@ export default function RescheduleScreen() {
     (appointment !== undefined && timeZone !== undefined && today !== undefined
       ? rescheduleDay(localDay(appointment.start, timeZone), days, today)
       : null);
-  const slots = useSlots(appointment?.serviceId ?? null, day);
+  const slots = useSlots(appointment?.serviceId ?? null, day, appointment?.id);
   const timesState = slots.isError ? "error" : slots.data === undefined ? "loading" : "ready";
 
   const flow = useDestructiveFlow<"reschedule">(async () => {
