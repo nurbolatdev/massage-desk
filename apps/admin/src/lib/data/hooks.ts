@@ -182,9 +182,9 @@ export function useAppointmentAction() {
   });
 }
 
-/** Free start times of a day; computed by the server. */
-export function useDaySlots(serviceId: string, day: string | null) {
-  return useQuery(daySlotsOptions(serviceId, day, (id, d) => fetchSlots(api, id, d)));
+/** Free start times of a day, computed by the server; `excludeAppointmentId` does not count that appointment as busy. */
+export function useDaySlots(serviceId: string, day: string | null, excludeAppointmentId?: string) {
+  return useQuery(daySlotsOptions(serviceId, day, (id, d, ex) => fetchSlots(api, id, d, ex), excludeAppointmentId));
 }
 
 export function useWorkingHours() {

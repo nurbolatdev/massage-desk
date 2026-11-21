@@ -85,8 +85,9 @@ export function RescheduleTimeDialog({ appointment, timeZone, today, day, trigge
   const picked = useRef(false);
   const [pick, setPick] = useState(() => rt.dayPick(day ?? localDay(appointment.start, timeZone), today));
   const online = useOnline();
-  const query = useDaySlots(appointment.serviceId, rt.pickableDay(pick.day, today) ? pick.day : null);
-  const view = rt.slotsView({ day: pick.day, today, online, starts: query.data, error: query.error });
+  const query = useDaySlots(appointment.serviceId, rt.pickableDay(pick.day, today) ? pick.day : null, appointment.id);
+  const starts = rt.withoutStart(query.data, appointment.start);
+  const view = rt.slotsView({ day: pick.day, today, online, starts, error: query.error });
   const statusText = rt.slotsStatusText(view);
 
   return (
@@ -138,7 +139,7 @@ export function RescheduleTimeDialog({ appointment, timeZone, today, day, trigge
               </div>
               <SlotsBody
                 view={view}
-                starts={query.data}
+                starts={starts}
                 error={query.error}
                 timeZone={timeZone}
                 onRetry={() => { void query.refetch(); }}

@@ -1,3 +1,4 @@
+import { QueryClient } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
 
 import { createApi } from "@/lib/api/client";
@@ -22,6 +23,7 @@ import {
   slotsStatusText,
   slotsView,
   toStarts,
+  withoutStart,
 } from "./rescheduleTime";
 import type { Appointment } from "./schedule";
 
@@ -58,7 +60,20 @@ describe("fetchSlots and toStarts", () => {
     const { api } = setup(async () => new Response(JSON.stringify(body), { status: 200 }));
     const get = vi.spyOn(api, "GET");
     const res = await fetchSlots(api, "s1", "2026-11-03");
+    const init = get.mock.calls[0]?.[1] as { params: { query: Record<string, unknown> } } | undefined;
     expect(get).toHaveBeenCalledWith("/slots", { params: { query: { serviceId: "s1", day: "2026-11-03" } } });
+    expect(init?.params.query).not.toHaveProperty("excludeAppointmentId");
+    expect(res).toEqual(body);
+  });
+
+  it("includes excludeAppointmentId in the /slots query when given", async () => {
+    const body = { day: "2026-11-03", durationMin: 60, starts: ["2026-11-03T09:00:00+05:00"], timeZone: TZ };
+    const { api } = setup(async () => new Response(JSON.stringify(body), { status: 200 }));
+    const get = vi.spyOn(api, "GET");
+    const res = await fetchSlots(api, "s1", "2026-11-03", "a1");
+    expect(get).toHaveBeenCalledWith("/slots", {
+      params: { query: { serviceId: "s1", day: "2026-11-03", excludeAppointmentId: "a1" } },
+    });
     expect(res).toEqual(body);
   });
 
@@ -70,6 +85,17 @@ describe("fetchSlots and toStarts", () => {
       timeZone: TZ,
     });
     expect(starts).toEqual([new Date("2026-11-03T04:00:00Z")]);
+  });
+
+  it("drops the appointment's own current start by moment and keeps undefined", () => {
+    const own = new Date("2026-11-02T05:00:00Z");
+    const ten = new Date("2026-11-02T10:00:00+05:00");
+    const tenThirty = new Date("2026-11-02T10:30:00+05:00");
+    const eleven = new Date("2026-11-02T11:00:00+05:00");
+
+    expect(withoutStart(undefined, own)).toBeUndefined();
+    expect(withoutStart([ten, tenThirty], own)).toEqual([tenThirty]);
+    expect(withoutStart([tenThirty, eleven], own)).toEqual([tenThirty, eleven]);
   });
 });
 
@@ -185,5 +211,22 @@ describe("slotsRetry and daySlotsOptions", () => {
     expect(opts.staleTime).toBe(0);
     expect(opts.retry).toBe(slotsRetry);
     expect(opts.queryKey).toEqual(["slots", "s1", ""]);
+  });
+
+  it("passes excludeAppointmentId to the query key and load function only when given", async () => {
+    const body = { day: "2026-11-03", durationMin: 60, starts: ["2026-11-03T09:00:00+05:00"], timeZone: TZ };
+    const load = vi.fn().mockResolvedValue(body);
+    const plain = daySlotsOptions("s1", "2026-11-03", load);
+    const excluding = daySlotsOptions("s1", "2026-11-03", load, "a1");
+    expect(plain.queryKey).toEqual(["slots", "s1", "2026-11-03"]);
+    expect(excluding.queryKey).toEqual(["slots", "s1", "2026-11-03", "a1"]);
+
+    const client = new QueryClient();
+    await client.fetchQuery(plain);
+    await client.fetchQuery(excluding);
+    expect(load.mock.calls).toEqual([
+      ["s1", "2026-11-03"],
+      ["s1", "2026-11-03", "a1"],
+    ]);
   });
 });

@@ -13,13 +13,20 @@ import type { Appointment } from "./schedule";
 
 export type SlotsResponse = components["schemas"]["SlotsResponse"];
 
-/** Fetches free appointment start times for `serviceId` on `day` from the server. */
+/** Fetches free appointment start times for `serviceId` on `day` from the server, optionally excluding `excludeAppointmentId`. */
 export function fetchSlots(
   api: ReturnType<typeof createApi>,
   serviceId: string,
   day: string,
+  excludeAppointmentId?: string,
 ): Promise<SlotsResponse> {
-  return unwrap(api.GET("/slots", { params: { query: { serviceId, day } } }));
+  return unwrap(
+    api.GET("/slots", {
+      params: {
+        query: { serviceId, day, ...(excludeAppointmentId === undefined ? {} : { excludeAppointmentId }) },
+      },
+    }),
+  );
 }
 
 const SLOTS_ATTEMPTS = 3;
@@ -35,11 +42,14 @@ export function slotsRetry(failureCount: number, error: unknown): boolean {
 export function daySlotsOptions(
   serviceId: string,
   day: string | null,
-  load: (serviceId: string, day: string) => Promise<SlotsResponse>,
+  load: (serviceId: string, day: string, excludeAppointmentId?: string) => Promise<SlotsResponse>,
+  excludeAppointmentId?: string,
 ) {
+  const d = day ?? "";
   return queryOptions({
-    queryKey: queryKeys.slots.one(serviceId, day ?? ""),
-    queryFn: () => load(serviceId, day ?? ""),
+    queryKey: queryKeys.slots.one(serviceId, d, excludeAppointmentId),
+    queryFn: () =>
+      excludeAppointmentId === undefined ? load(serviceId, d) : load(serviceId, d, excludeAppointmentId),
     select: toStarts,
     enabled: day !== null,
     staleTime: 0,
@@ -51,6 +61,11 @@ export function daySlotsOptions(
 
 export function toStarts(res: SlotsResponse): Date[] {
   return res.starts.map((s) => new Date(s));
+}
+
+/** Drops the appointment's own current start: moving it there changes nothing. */
+export function withoutStart(starts: Date[] | undefined, own: Date): Date[] | undefined {
+  return starts?.filter((s) => s.getTime() !== own.getTime());
 }
 
 export type DayChoice = "today" | "tomorrow" | "other";
