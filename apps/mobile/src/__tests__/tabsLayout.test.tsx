@@ -12,7 +12,6 @@ type LabelProps = { children: string; color: string; focused: boolean };
 type ScreenOptions = {
   tabBarActiveTintColor?: string;
   tabBarInactiveTintColor?: string;
-  tabBarItemStyle?: ViewStyle;
   tabBarLabel?: (props: LabelProps) => ReactElement;
   tabBarStyle?: ViewStyle;
 };
@@ -109,10 +108,9 @@ describe("tabs layout", () => {
 
   // Jest does not measure layout: these checks cover the settings that keep the labels
   // whole at a 130% system font, not the pixel result.
-  it("lets labels use the full tab width and shrink instead of being cut", async () => {
+  it("sets labels to one line that shrinks to fit instead of being cut", async () => {
     await renderTabs(0);
 
-    expect(mockCaptured.screenOptions?.tabBarItemStyle?.paddingHorizontal).toBe(0);
     const label = mockCaptured.screenOptions?.tabBarLabel;
     expect(label).toBeDefined();
     await render(label?.({ children: "Календарь", color: colors.muted, focused: false }) ?? <></>);
@@ -120,6 +118,7 @@ describe("tabs layout", () => {
     const text = screen.getByText("Календарь");
     expect(text.props.numberOfLines).toBe(1);
     expect(text.props.adjustsFontSizeToFit).toBe(true);
+    // Only checks that the (iOS) setting is present; it is not a size guarantee.
     expect(text.props.minimumFontScale).toBeGreaterThanOrEqual(0.77);
     expect(text.props.style).toEqual([typography.label, { color: colors.muted }]);
   });

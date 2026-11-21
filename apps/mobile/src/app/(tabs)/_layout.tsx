@@ -14,8 +14,10 @@ function icon(name: IconName) {
   };
 }
 
-// Labels shrink to fit the narrow tab at a 130% system font, but never below 14 sp:
-// minimumFontScale is a fraction of the label size (14 / 18.2 of the scaled size = 0.77).
+// Labels shrink to fit the narrow tab at a 130% system font. On Android the lower bound of
+// the shrinking is set by the tab width (minimumFontScale is ignored there; the platform
+// uses minimumFontSize, 4 dp by default). On iOS minimumFontScale applies: 0.77 is
+// 14 / 18.2, the label size at 130%. This is an iOS setting, not a 14 sp guarantee.
 const LABEL_MIN_SCALE = 0.77;
 
 function tabLabel({ children, color }: { children: string; color: ColorValue }) {
@@ -35,7 +37,6 @@ export default function TabsLayout() {
         tabBarActiveTintColor: colors.primaryStrong,
         tabBarInactiveTintColor: colors.muted,
         tabBarLabel: tabLabel,
-        tabBarItemStyle: { paddingHorizontal: 0 },
         tabBarStyle: {
           height: size.tabBar + insets.bottom,
           paddingBottom: insets.bottom,
