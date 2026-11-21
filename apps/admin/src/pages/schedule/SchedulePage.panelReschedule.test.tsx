@@ -290,7 +290,8 @@ describe("SchedulePage panel reschedule", () => {
 
     const panel = screen.getByRole("complementary", { name: "Выбранная запись" });
     fireEvent.click(screen.getByRole("button", { name: /Айгуль Сапарова/ }));
-    fireEvent.click(within(panel).getByRole("button", { name: "Перенести" }));
+    const rescheduleBtn = within(panel).getByRole("button", { name: "Перенести" });
+    fireEvent.click(rescheduleBtn);
 
     fireEvent.click(await screen.findByRole("button", { name: "15:00" }));
     const confirm = screen.getByRole("dialog", { name: "Перенести запись?" });
@@ -304,6 +305,7 @@ describe("SchedulePage panel reschedule", () => {
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).toBeNull();
       expect(screen.queryByRole("dialog", { name: "Перенос записи" })).toBeNull();
+      expect(document.activeElement).toBe(rescheduleBtn);
     });
     expect(slots).toHaveBeenCalledTimes(1);
     expect(reschedule).toHaveBeenCalledTimes(1);
@@ -317,7 +319,8 @@ describe("SchedulePage panel reschedule", () => {
 
     const panel = screen.getByRole("complementary", { name: "Выбранная запись" });
     fireEvent.click(screen.getByRole("button", { name: /Айгуль Сапарова/ }));
-    fireEvent.click(within(panel).getByRole("button", { name: "Перенести" }));
+    const rescheduleBtn = within(panel).getByRole("button", { name: "Перенести" });
+    fireEvent.click(rescheduleBtn);
 
     fireEvent.click(await screen.findByRole("button", { name: "15:00" }));
     const confirm = screen.getByRole("dialog", { name: "Перенести запись?" });
@@ -331,6 +334,7 @@ describe("SchedulePage panel reschedule", () => {
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).toBeNull();
       expect(screen.queryByRole("dialog", { name: "Перенос записи" })).toBeNull();
+      expect(document.activeElement).toBe(rescheduleBtn);
     });
     expect(slots).toHaveBeenCalledTimes(1);
     expect(reschedule).toHaveBeenCalledTimes(1);

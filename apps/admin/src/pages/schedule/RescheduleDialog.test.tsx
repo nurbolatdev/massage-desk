@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider, useMutation } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { useRef, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "@/lib/api/errors";
@@ -235,5 +236,99 @@ describe("RescheduleDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: "Выбрать другое время" }));
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(onGone).not.toHaveBeenCalled();
+  });
+
+  it("returns focus to the trigger after Close on NOT_CONFIRMED, else to returnFocus", async () => {
+    const returnFocusSpy = vi.fn<() => HTMLElement | null>();
+
+    function Harness() {
+      const [open, setOpen] = useState(false);
+      const [trigger, setTrigger] = useState<HTMLElement | null>(null);
+      const nameRef = useRef<HTMLDivElement>(null);
+      returnFocusSpy.mockImplementation(() => nameRef.current);
+
+      return (
+        <div>
+          <div ref={nameRef} tabIndex={-1}>
+            Марат Каримов
+          </div>
+          <button
+            type="button"
+            onClick={(event) => {
+              setTrigger(event.currentTarget);
+              setOpen(true);
+            }}
+          >
+            Открыть перенос
+          </button>
+          {open && (
+            <RescheduleDialog
+              appointment={MARAT}
+              start={THU_START}
+              timeZone={TZ}
+              via="panel"
+              trigger={trigger}
+              returnFocus={() => returnFocusSpy()}
+              onClose={() => setOpen(false)}
+              onGone={() => setOpen(false)}
+              onDone={() => setOpen(false)}
+            />
+          )}
+        </div>
+      );
+    }
+
+    const mountHarness = () => {
+      const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
+      return render(
+        <QueryClientProvider client={client}>
+          <Harness />
+        </QueryClientProvider>,
+      );
+    };
+
+    // Case A: NOT_CONFIRMED with connected trigger focuses the trigger
+    reschedule.mockRejectedValueOnce(new ApiError("problem", { status: 409, code: "NOT_CONFIRMED" }));
+    const viewA = mountHarness();
+    const triggerA = screen.getByRole("button", { name: "Открыть перенос" });
+    fireEvent.click(triggerA);
+    fireEvent.click(screen.getByRole("button", { name: "Перенести" }));
+    await screen.findByRole("alert");
+    fireEvent.click(screen.getByRole("button", { name: "Закрыть" }));
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(document.activeElement).toBe(triggerA);
+    });
+    viewA.unmount();
+
+    // Case B: NOT_CONFIRMED when the trigger was removed falls back to returnFocus
+    reschedule.mockRejectedValueOnce(new ApiError("problem", { status: 409, code: "NOT_CONFIRMED" }));
+    const viewB = mountHarness();
+    const triggerB = screen.getByRole("button", { name: "Открыть перенос" });
+    fireEvent.click(triggerB);
+    fireEvent.click(screen.getByRole("button", { name: "Перенести" }));
+    await screen.findByRole("alert");
+    triggerB.remove();
+    fireEvent.click(screen.getByRole("button", { name: "Закрыть" }));
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(document.activeElement?.textContent).toBe("Марат Каримов");
+    });
+    viewB.unmount();
+
+    // Case C: TIME_TAKEN + "Выбрать другое время" does not focus the trigger or call returnFocus
+    returnFocusSpy.mockClear();
+    reschedule.mockRejectedValueOnce(new ApiError("problem", { status: 409, code: "TIME_TAKEN" }));
+    mountHarness();
+    const triggerC = screen.getByRole("button", { name: "Открыть перенос" });
+    fireEvent.click(triggerC);
+    fireEvent.click(screen.getByRole("button", { name: "Перенести" }));
+    await screen.findByRole("alert");
+    fireEvent.click(screen.getByRole("button", { name: "Выбрать другое время" }));
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+    expect(document.activeElement).not.toBe(triggerC);
+    expect(returnFocusSpy).not.toHaveBeenCalled();
   });
 });

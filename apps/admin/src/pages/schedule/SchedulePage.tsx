@@ -247,6 +247,7 @@ export function SchedulePage() {
           appointment={moving.appointment}
           start={moveStart}
           timeZone={moveTz}
+          trigger={moving.trigger}
           onClose={() =>
             setMoving({ appointment: moving.appointment, trigger: moving.trigger, day: moving.day })
           }
