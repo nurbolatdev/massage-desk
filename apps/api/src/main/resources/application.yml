@@ -62,6 +62,13 @@ app:
     verify-token: ${WHATSAPP_VERIFY_TOKEN:}
     # Meta app secret: checks X-Hub-Signature-256 of every webhook POST; empty refuses every POST
     app-secret: ${WHATSAPP_APP_SECRET:}
+    api:
+      # Cloud API base address with the Graph API version (see docs/deploy.md); any empty value disables sending
+      url: ${WHATSAPP_API_URL:}
+      access-token: ${WHATSAPP_ACCESS_TOKEN:}
+      phone-number-id: ${WHATSAPP_PHONE_NUMBER_ID:}
+      connect-timeout: 5s
+      read-timeout: 15s
   phone:
     # country used to read phone numbers typed without a plus sign
     default-region: UZ
