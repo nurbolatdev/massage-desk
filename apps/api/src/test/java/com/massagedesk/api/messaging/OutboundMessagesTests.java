@@ -2,14 +2,29 @@ package com.massagedesk.api.messaging;
 
 import static com.massagedesk.api.schedule.FixedClockConfiguration.NOW;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.springframework.http.HttpMethod.POST;
+import static org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE;
+import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 import com.massagedesk.api.TestcontainersConfiguration;
 import com.massagedesk.api.clients.ClientService;
 import com.massagedesk.api.events.EventActor;
 import com.massagedesk.api.messaging.ConversationStore.Recipient;
+import com.massagedesk.api.messaging.OutboundMessage.Button;
+import com.massagedesk.api.messaging.OutboundMessage.Buttons;
+import com.massagedesk.api.messaging.OutboundMessage.Text;
+import com.massagedesk.api.messaging.OutboundMessages.Author;
+import com.massagedesk.api.messaging.OutboundMessages.Sent;
+import com.massagedesk.api.messaging.WhatsAppSendException.Reason;
 import com.massagedesk.api.schedule.FixedClockConfiguration;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -18,17 +33,25 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.mock.http.client.MockClientHttpRequest;
+import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestClient;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
 @SpringBootTest
 @Import({TestcontainersConfiguration.class, FixedClockConfiguration.class})
 @Transactional
 class OutboundMessagesTests {
+
+    private static final String MESSAGES_URL = "https://graph.test/v99.0/123456/messages";
 
     private record ConversationRow(UUID id, UUID clientId, Instant lastInboundAt, Instant lastMessageAt) {
     }
@@ -51,6 +74,28 @@ class OutboundMessagesTests {
 
     @Autowired
     private JdbcTemplate jdbc;
+
+    @Autowired
+    private Clock clock;
+
+    @Autowired
+    private JsonMapper json;
+
+    private MockRestServiceServer server;
+    private OutboundMessages outbound;
+
+    @BeforeEach
+    void setUp() {
+        RestClient.Builder builder = RestClient.builder();
+        server = MockRestServiceServer.bindTo(builder).build();
+        outbound = new OutboundMessages(
+                store,
+                new WhatsAppClient(
+                        builder,
+                        new WhatsAppApiProperties("https://graph.test/v99.0", "test-token", "123456", null, null),
+                        json),
+                clock);
+    }
 
     @Test
     void recipientOfReturnsClientPhoneAndLastInboundTimeOrEmptyWhenMissing() {
@@ -129,6 +174,110 @@ class OutboundMessagesTests {
                 first.get(), id, "out", "bot", "Первое", "wamid.out-dup", NOW));
         assertThat(conversationRow(id).lastMessageAt()).isEqualTo(NOW);
         assertThat(store.messageIdOf("wamid.out-dup")).isEqualTo(first.get());
+    }
+
+    @Test
+    void sendsBotTextWithinWindowAndStoresMessage() {
+        Instant inboundAt = NOW.minus(Duration.ofHours(1));
+        UUID id = conversation("+998900001111", inboundAt);
+
+        server.expect(requestTo(MESSAGES_URL))
+                .andExpect(method(POST))
+                .andExpect(request -> {
+                    JsonNode body = json.readTree(((MockClientHttpRequest) request).getBodyAsString());
+                    assertThat(body.path("to").asString()).isEqualTo("998900001111");
+                    assertThat(body.path("type").asString()).isEqualTo("text");
+                })
+                .andRespond(withSuccess(
+                        "{\"messaging_product\":\"whatsapp\",\"messages\":[{\"id\":\"wamid.send-1\"}]}",
+                        APPLICATION_JSON));
+
+        Sent sent = outbound.send(id, Author.BOT, new Text("Запись подтверждена"));
+
+        assertThat(sent.waMessageId()).isEqualTo("wamid.send-1");
+        assertThat(messagesOf(id)).containsExactly(new MessageRow(
+                sent.messageId(), id, "out", "bot", "Запись подтверждена", "wamid.send-1", NOW));
+        ConversationRow row = conversationRow(id);
+        assertThat(row.lastMessageAt()).isEqualTo(NOW);
+        assertThat(row.lastInboundAt()).isEqualTo(inboundAt);
+        server.verify();
+    }
+
+    @Test
+    void sendsMasterButtonsWithinWindowAndStoresButtonsBody() {
+        Instant inboundAt = NOW.minus(Duration.ofHours(1));
+        UUID id = conversation("+998900001112", inboundAt);
+        Buttons buttons = new Buttons(
+                "Выберите время",
+                List.of(new Button("10", "10:00"), new Button("12", "12:00")));
+
+        server.expect(requestTo(MESSAGES_URL))
+                .andExpect(method(POST))
+                .andRespond(withSuccess(
+                        "{\"messaging_product\":\"whatsapp\",\"messages\":[{\"id\":\"wamid.send-2\"}]}",
+                        APPLICATION_JSON));
+
+        Sent sent = outbound.send(id, Author.MASTER, buttons);
+
+        assertThat(messagesOf(id)).containsExactly(new MessageRow(
+                sent.messageId(), id, "out", "master", "Выберите время", "wamid.send-2", NOW));
+        server.verify();
+    }
+
+    @Test
+    void meta503ThrowsUnavailableWithoutStoringOrTouchingConversation() {
+        Instant inboundAt = NOW.minus(Duration.ofHours(1));
+        UUID id = conversation("+998900001113", inboundAt);
+        long messagesBefore = count("messages");
+
+        server.expect(requestTo(MESSAGES_URL))
+                .andExpect(method(POST))
+                .andRespond(withStatus(SERVICE_UNAVAILABLE));
+
+        assertThatThrownBy(() -> outbound.send(id, Author.BOT, new Text("Не уйдёт")))
+                .isInstanceOf(WhatsAppSendException.class)
+                .satisfies(ex -> assertThat(((WhatsAppSendException) ex).reason()).isEqualTo(Reason.UNAVAILABLE));
+
+        assertThat(count("messages")).isEqualTo(messagesBefore);
+        assertThat(conversationRow(id).lastMessageAt()).isEqualTo(inboundAt);
+        server.verify();
+    }
+
+    @Test
+    void twoSendsReturningSameWaMessageIdReturnSameMessageIdAndStoreSingleRow() {
+        Instant inboundAt = NOW.minus(Duration.ofHours(1));
+        UUID id = conversation("+998900001114", inboundAt);
+        String okBody = "{\"messaging_product\":\"whatsapp\",\"messages\":[{\"id\":\"wamid.send-dup\"}]}";
+
+        server.expect(requestTo(MESSAGES_URL))
+                .andExpect(method(POST))
+                .andRespond(withSuccess(okBody, APPLICATION_JSON));
+        server.expect(requestTo(MESSAGES_URL))
+                .andExpect(method(POST))
+                .andRespond(withSuccess(okBody, APPLICATION_JSON));
+
+        Sent first = outbound.send(id, Author.BOT, new Text("Первое"));
+        Sent second = outbound.send(id, Author.BOT, new Text("Второе"));
+
+        assertThat(second).isEqualTo(first);
+        assertThat(messagesOf(id)).containsExactly(new MessageRow(
+                first.messageId(), id, "out", "bot", "Первое", "wamid.send-dup", NOW));
+        server.verify();
+    }
+
+    @Test
+    void unknownConversationThrowsIllegalArgumentBeforeHttp() {
+        UUID unknownId = UUID.randomUUID();
+        long messagesBefore = count("messages");
+
+        assertThatThrownBy(() -> outbound.send(unknownId, Author.BOT, new Text("Кому?")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .satisfies(ex -> assertThat(ex.getMessage())
+                        .isEqualTo("unknown conversation")
+                        .doesNotContain(unknownId.toString()));
+
+        assertThat(count("messages")).isEqualTo(messagesBefore);
+        server.verify();
     }
 
     private UUID conversation(String phone, @Nullable Instant lastInboundAt) {
