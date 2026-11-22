@@ -25,6 +25,9 @@ The API runs on Render as a Docker image and talks to a production Supabase proj
 | `ADMIN_ORIGIN` | secret | exact origin of the admin panel, no path and no trailing slash; `http://localhost:5173` until the admin panel is hosted |
 | `WHATSAPP_VERIFY_TOKEN` | secret | `openssl rand -hex 32`; entered in Meta when the webhook is set up (M2) |
 | `WHATSAPP_APP_SECRET` | secret | App Secret of the Meta app (App settings, Basic); checks the signature of every webhook POST. Empty refuses every POST |
+| `WHATSAPP_API_URL` | secret | Graph API base address with the version the Meta app uses, e.g. `https://graph.facebook.com/v23.0`, no trailing slash |
+| `WHATSAPP_ACCESS_TOKEN` | secret | permanent system user token with `whatsapp_business_messaging`; any of the three empty → sending is off, the API still starts |
+| `WHATSAPP_PHONE_NUMBER_ID` | secret | Phone Number ID from WhatsApp, API Setup; digits only |
 
 Secrets live only in the service Environment on Render. They are not in git, not in the image and not in logs. Changing a value restarts the service. An empty `SUPABASE_URL` or `ADMIN_ORIGIN`, or a missing database, stops the service from starting: this is a safeguard, not a failure.
 

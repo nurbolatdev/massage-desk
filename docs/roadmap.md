@@ -754,10 +754,18 @@ Owner step, no code.
 - **Branch:** `feature/bot-outbound`
 - **Pull request:** `feat(messaging): whatsapp client`
 - **Depends on:** M2-2
+- **Issue:** #152
 - **Commits:**
+  1. `feat(messaging): outbound message types`
+  1. `feat(messaging): whatsapp request bodies`
+  1. `feat(messaging): whatsapp api settings`
   1. `feat(messaging): send text, buttons and lists`
+  1. `docs: whatsapp client`
+- **Then:** `feature/bot-outbound-window` — `feat(messaging): 24-hour window rules` (closes the issue)
   1. `feat(messaging): 24-hour window rules`
+  1. `feat(messaging): store outgoing messages`
   1. `test(messaging): template required outside the window`
+  1. `docs: 24-hour window and outgoing messages`
 
 ### M2-4 · Booking flow with buttons
 
