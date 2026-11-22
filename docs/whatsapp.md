@@ -18,3 +18,28 @@ Official **WhatsApp Cloud API** by Meta. Unofficial clients are not used: they v
   - only `entry[].changes[]` with `field = "messages"` and `value.messages[]` of types `text`, `image`, `audio`, `video`, `document`, `sticker`, `location`, `contacts`, `interactive`, `button`, `unsupported` are stored (`body` is kept only for `text`, otherwise `null`; `reaction`, `system`, unknown types and `statuses` are ignored; messages without non-blank string `id`, `from` or `type` are skipped);
   - client and conversation: a digits-only `from` (`1..15` digits) is normalized as `"+" + from` with the default region (or kept if already E.164); on the first message the client (`client_created` with actor `client`) and their single `conversations` row are created with the trimmed WhatsApp `contacts[].profile.name` (up to 100 code points; an existing client's name is never overwritten);
   - timestamps and idempotency: `messages.created_at` comes from the WhatsApp `timestamp` (epoch seconds, falling back to the server clock; never later than the server clock, a future timestamp is replaced by the receive time); only newly inserted messages advance `conversations.last_inbound_at` and `last_message_at` (`greatest`); retries and parallel deliveries are deduplicated by the unique `messages.wa_message_id` (`on conflict do nothing`).
+
+## Sending messages
+
+- `WhatsAppClient` ✅ — sends `POST {WHATSAPP_API_URL}/{WHATSAPP_PHONE_NUMBER_ID}/messages` with `Authorization: Bearer <WHATSAPP_ACCESS_TOKEN>` and returns the `messages[0].id` (`wa_message_id`).
+- Message kinds (`OutboundMessage`, limits checked in code points before any HTTP request):
+  - `Text`: body `1..4096` (`preview_url = false`);
+  - `Buttons`: body `1..1024`, `1..3` reply buttons (`id` `1..256`, `title` `1..20`, both unique);
+  - `ListMenu`: body `1..1024`, button label `1..20`, `1..10` rows in a single section (`id` `1..200` unique, `title` `1..24`, optional `description` `1..72`);
+  - `Template`: name `^[a-z0-9_]{1,512}$`, language `^[a-z]{2,3}(_[A-Z]{2})?$` (`ru`, `en_US`), body parameters `1..1024` each without `\n`, `\t`, or 5+ consecutive spaces.
+- Recipient: E.164 phone from `clients.phone` (`^\+[1-9][0-9]{6,14}$`), sent in `to` as digits without `+`.
+- Timeouts and redirects: `app.whatsapp.api.connect-timeout` is `5s`, `read-timeout` is `15s` (each `> 0` and `<= 60s`); HTTP redirects are never followed.
+- Empty environment variables: if any of `WHATSAPP_API_URL`, `WHATSAPP_ACCESS_TOKEN`, or `WHATSAPP_PHONE_NUMBER_ID` is empty, the API starts normally and `send` throws `WhatsAppSendException(NOT_CONFIGURED)` without making an HTTP request.
+- Retries and error classification: the client never retries; failures are mapped to `WhatsAppSendException` (whose message never includes tokens, phone numbers, message text, or Meta's `error.message`) in this order:
+
+  | Condition | `Reason` | `retryable` |
+  |---|---|---|
+  | `WHATSAPP_API_URL`, `WHATSAPP_ACCESS_TOKEN`, or `WHATSAPP_PHONE_NUMBER_ID` is empty | `NOT_CONFIGURED` | no |
+  | no response: I/O error or timeout (`ResourceAccessException`) | `UNAVAILABLE` | yes |
+  | HTTP `401` or Meta `error.code = 190` | `UNAUTHORIZED` | no |
+  | HTTP `429` or Meta `error.code` in `{4, 80007, 130429, 131056}` | `RATE_LIMITED` | yes |
+  | HTTP `5xx` | `UNAVAILABLE` | yes |
+  | other HTTP `4xx` (including `131047` outside window and `131026` undeliverable) | `REJECTED` | no |
+  | HTTP `2xx` whose body cannot be read, has no non-blank `messages[0].id`, or is not valid JSON | `INVALID_RESPONSE` | no |
+
+- 24-hour customer service window check (`OutsideWindowException`) and storing outgoing messages in `messages` (`MessageSender`) — planned.
