@@ -764,6 +764,7 @@ Owner step, no code.
 - **Then:** `feature/bot-outbound-window` — `feat(messaging): 24-hour window rules` (closes the issue)
   1. `feat(messaging): 24-hour window rules`
   1. `feat(messaging): store outgoing messages`
+  1. `feat(messaging): send messages within the window`
   1. `test(messaging): template required outside the window`
   1. `docs: 24-hour window and outgoing messages`
 
