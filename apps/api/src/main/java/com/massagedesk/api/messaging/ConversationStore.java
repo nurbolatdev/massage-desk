@@ -1,7 +1,9 @@
 package com.massagedesk.api.messaging;
 
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.Optional;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -53,5 +55,56 @@ class ConversationStore {
                 .param("at", at.atOffset(ZoneOffset.UTC))
                 .param("id", conversationId)
                 .update();
+    }
+
+    record Recipient(String phone, @Nullable Instant lastInboundAt) {
+    }
+
+    Optional<Recipient> recipientOf(UUID conversationId) {
+        return jdbc.sql("""
+                select c.phone, v.last_inbound_at
+                from conversations v
+                join clients c on c.id = v.client_id
+                where v.id = :id""")
+                .param("id", conversationId)
+                .query((rs, rowNum) -> {
+                    OffsetDateTime odt = rs.getObject("last_inbound_at", OffsetDateTime.class);
+                    return new Recipient(rs.getString("phone"), odt == null ? null : odt.toInstant());
+                })
+                .optional();
+    }
+
+    Optional<UUID> addOutbound(
+            UUID conversationId,
+            String author,
+            @Nullable String body,
+            String waMessageId,
+            Instant at) {
+        return jdbc.sql("""
+                with added as (
+                    insert into messages (conversation_id, direction, author, body, wa_message_id, created_at)
+                    values (:conversationId, 'out', :author, cast(:body as text), :waMessageId, cast(:at as timestamptz))
+                    on conflict (wa_message_id) do nothing
+                    returning id
+                ), touched as (
+                    update conversations
+                    set last_message_at = greatest(last_message_at, cast(:at as timestamptz))
+                    where id = :conversationId and exists (select 1 from added)
+                )
+                select id from added""")
+                .param("conversationId", conversationId)
+                .param("author", author)
+                .param("body", body)
+                .param("waMessageId", waMessageId)
+                .param("at", at.atOffset(ZoneOffset.UTC))
+                .query(UUID.class)
+                .optional();
+    }
+
+    UUID messageIdOf(String waMessageId) {
+        return jdbc.sql("select id from messages where wa_message_id = :waMessageId")
+                .param("waMessageId", waMessageId)
+                .query(UUID.class)
+                .single();
     }
 }

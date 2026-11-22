@@ -2,7 +2,7 @@
 
 Official **WhatsApp Cloud API** by Meta. Unofficial clients are not used: they violate WhatsApp terms and risk a ban of the master's number.
 
-- **24-hour window:** free-form replies within 24 h after the client's last message (`conversations.last_inbound_at`); outside it only approved templates.
+- **24-hour window:** free-form replies while `now < last_inbound_at + 24 h` (`conversations.last_inbound_at`); at exactly 24 h or later, or when the client has not sent any message yet, the window is closed and only approved templates can be sent.
 - **Templates** (reminders, confirmations) need Meta approval.
 - **Interactive messages:** reply buttons (up to 3) and lists — service, day and time selection.
 - **Pricing:** client-initiated service conversations are free; templates outside the window are paid.
@@ -39,7 +39,16 @@ Official **WhatsApp Cloud API** by Meta. Unofficial clients are not used: they v
   | HTTP `401` or Meta `error.code = 190` | `UNAUTHORIZED` | no |
   | HTTP `429` or Meta `error.code` in `{4, 80007, 130429, 131056}` | `RATE_LIMITED` | yes |
   | HTTP `5xx` | `UNAVAILABLE` | yes |
-  | other HTTP `4xx` (including `131047` outside window and `131026` undeliverable) | `REJECTED` | no |
+  | other HTTP `4xx` (including `131047` outside window and `131026` undeliverable; `131047` is turned into `OutsideWindowException` by `OutboundMessages`) | `REJECTED` | no |
   | HTTP `2xx` whose body cannot be read, has no non-blank `messages[0].id`, or is not valid JSON | `INVALID_RESPONSE` | no |
 
-- 24-hour customer service window check (`OutsideWindowException`) and storing outgoing messages in `messages` (`MessageSender`) — planned.
+### Window and stored messages
+
+- `OutboundMessages.send(conversationId, author, message)` ✅ — the only entry point for outgoing messages (`Author`: `BOT`, `MASTER`; returns `Sent(messageId, waMessageId)` with the stored `messages.id` and `wa_message_id`).
+- Recipient: read from the conversation's client phone (`clients.phone`); an unknown `conversationId` throws `IllegalArgumentException` before any HTTP request.
+- 24-hour window (`WhatsAppWindow`): open while `now < last_inbound_at + 24 h` (`Clock`); at exactly 24 h or later, or when `last_inbound_at` is `null` (no client message yet), the window is closed and only `OutboundMessage.Template` is allowed.
+- `OutsideWindowException`: thrown for non-template messages outside the window before any HTTP request or database write, and also when WhatsApp rejects a send with Meta error code `131047` (with the `WhatsAppSendException` as cause).
+- Storing accepted messages: written to `messages` only after WhatsApp accepted the send (`direction = 'out'`, `author` = `'bot'` or `'master'`, `body` = text / interactive body for `Text`, `Buttons`, `ListMenu` or `null` for `Template`, `wa_message_id` from the response, `created_at` from the server clock), deduplicated by `wa_message_id` (`on conflict (wa_message_id) do nothing`, returning the existing `messages.id`); `conversations.last_message_at` is advanced with `greatest(last_message_at, at)` only when a new row is inserted, and `last_inbound_at` is never changed.
+- No database transaction during the HTTP request: reading the recipient/window and storing the message are single SQL statements, so the HTTP call never holds a database connection or lock; callers must not call `send` inside a transaction.
+- Failed sends (`WhatsAppSendException` or `OutsideWindowException`) are not stored and not retried; a send accepted by WhatsApp (`200`) whose database write fails afterwards propagates the error and is not resent.
+- `conversations.human_mode` and delivery status webhooks (`statuses`) are not handled here.
