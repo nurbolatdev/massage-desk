@@ -33,11 +33,11 @@ const ARBITRARY_VALUE = /[\w:-]-\[/;
 // tokens, so those utilities are forbidden in every form.
 const TOKEN_RULES: ReadonlyArray<readonly [RegExp, string]> = [
   [
-    /(?<![\w-])(?:(?:drop|inset|text)-shadow-[\w(]|shadow-(?!dialog(?![\w/-]))[\w(])[^\s"'`]*/,
+    /(?<![\w-])(?:(?:drop|inset|text)-shadow(?:-[\w(]|(?![\w/-]))|shadow-(?!dialog(?![\w/-]))[\w(])[^\s"'`]*/,
     "shadow outside the dialog token",
   ],
   [/(?<![\w-])-?z-(?:\d|\((?!--z-))[^\s"'`]*/, "z-index outside the layer tokens"],
-  [/(?<![\w-])opacity-[\w(][^\s"'`]*/, "opacity utility (no opacity token)"],
+  [/(?<![\w-])(?:backdrop-)?opacity-[\w(][^\s"'`]*/, "opacity utility (no opacity token)"],
   [/(?<![\w-])(?:duration|delay)-[\w(][^\s"'`]*/, "duration or delay utility (no motion token)"],
   [/(?<![\w-])ease-[\w(][^\s"'`]*/, "easing utility (no easing token)"],
   [/(?<![\w-])aspect-[\w(][^\s"'`]*/, "aspect ratio utility (no aspect token)"],
@@ -97,6 +97,8 @@ describe("design guard", () => {
       "shadow-ink",
       "hover:shadow-md",
       "shadow-dialog/50",
+      "drop-shadow",
+      "hover:drop-shadow",
       "drop-shadow-sm",
       "inset-shadow-xs",
       "text-shadow-lg",
@@ -105,6 +107,7 @@ describe("design guard", () => {
       "md:z-50",
       "z-(--layer)",
       "opacity-50",
+      "backdrop-opacity-50",
       "opacity-(--fade)",
       "duration-200",
       "delay-100",
@@ -125,6 +128,8 @@ describe("design guard", () => {
       'className="fixed inset-0 z-(--z-overlay) grid place-items-center overflow-y-auto bg-scrim p-16"',
       'className="relative flex w-dialog max-w-full flex-col rounded-18 bg-surface shadow-dialog"',
       'const css = "z-index"',
+      'className="foo-shadow-md"',
+      'className="size-z-10"',
     ];
     for (const s of allowed) {
       expect(violations("x", s), s).toEqual([]);
