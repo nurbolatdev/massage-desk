@@ -40,6 +40,6 @@ Official **WhatsApp Cloud API** by Meta. Unofficial clients are not used: they v
   | HTTP `429` or Meta `error.code` in `{4, 80007, 130429, 131056}` | `RATE_LIMITED` | yes |
   | HTTP `5xx` | `UNAVAILABLE` | yes |
   | other HTTP `4xx` (including `131047` outside window and `131026` undeliverable) | `REJECTED` | no |
-  | HTTP `2xx` without a non-blank `messages[0].id` or not valid JSON | `INVALID_RESPONSE` | no |
+  | HTTP `2xx` whose body cannot be read, has no non-blank `messages[0].id`, or is not valid JSON | `INVALID_RESPONSE` | no |
 
 - 24-hour customer service window check (`OutsideWindowException`) and storing outgoing messages in `messages` (`MessageSender`) — planned.

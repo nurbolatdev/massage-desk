@@ -65,7 +65,7 @@ class WhatsAppClient {
         } catch (ResourceAccessException e) {
             throw new WhatsAppSendException(Reason.UNAVAILABLE, 0, null, e);
         } catch (RestClientException e) {
-            throw new WhatsAppSendException(Reason.UNAVAILABLE, 0, null, e);
+            throw new WhatsAppSendException(Reason.INVALID_RESPONSE, 0, null, e);
         }
         return extractMessageId(response.getBody(), response.getStatusCode().value());
     }

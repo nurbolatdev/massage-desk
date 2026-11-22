@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import tools.jackson.databind.json.JsonMapper;
 
 class WhatsAppApiPropertiesTests {
 
@@ -88,6 +89,14 @@ class WhatsAppApiPropertiesTests {
     }
 
     @ParameterizedTest
+    @ValueSource(strings = {"tok\n", "tok\r", "to ken"})
+    void rejectsTokenWithWhitespaceOrControlCharactersWithoutLeakingValue(String badToken) {
+        assertThatThrownBy(() -> new WhatsAppApiProperties("https://graph.test/v23.0", badToken, "12345", null, null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("app.whatsapp.api.access-token must not contain whitespace or control characters");
+    }
+
+    @ParameterizedTest
     @ValueSource(strings = {"12a", "../1", "+12345", "123456789012345678901234567890123", " "})
     void rejectsInvalidPhoneNumberIdsWithoutLeakingValue(String invalidId) {
         assertThatThrownBy(() -> new WhatsAppApiProperties("https://graph.test/v23.0", "token", invalidId, null, null))
@@ -125,6 +134,7 @@ class WhatsAppApiPropertiesTests {
     @Test
     void contextBindsPropertiesFromConfiguration() {
         new ApplicationContextRunner()
+                .withBean(JsonMapper.class, () -> JsonMapper.builder().build())
                 .withUserConfiguration(WhatsAppConfig.class)
                 .withPropertyValues(
                         "app.whatsapp.api.url=https://graph.test/v23.0/",

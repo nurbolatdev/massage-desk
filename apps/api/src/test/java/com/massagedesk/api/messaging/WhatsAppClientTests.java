@@ -26,6 +26,8 @@ import com.massagedesk.api.messaging.OutboundMessage.Row;
 import com.massagedesk.api.messaging.OutboundMessage.Template;
 import com.massagedesk.api.messaging.OutboundMessage.Text;
 import com.massagedesk.api.messaging.WhatsAppSendException.Reason;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.SocketTimeoutException;
 import java.time.Duration;
 import java.util.List;
@@ -33,7 +35,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.http.HttpStatus;
 import org.springframework.mock.http.client.MockClientHttpRequest;
+import org.springframework.mock.http.client.MockClientHttpResponse;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 import tools.jackson.databind.JsonNode;
@@ -320,6 +324,50 @@ class WhatsAppClientTests {
         assertThatThrownBy(() -> client.send("998901234567", new Text(SAMPLE_BODY)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .satisfies(ex -> assertNoSensitiveDataInMessage(ex));
+        server.verify();
+    }
+
+    @Test
+    void maps429WithAuthErrorCodeToUnauthorized() {
+        server.expect(requestTo(MESSAGES_URL))
+                .andRespond(withStatus(TOO_MANY_REQUESTS)
+                        .contentType(APPLICATION_JSON)
+                        .body("{\"error\":{\"code\":190}}"));
+
+        assertSendFails(Reason.UNAUTHORIZED, 429, 190, false);
+        server.verify();
+    }
+
+    @Test
+    void maps503WithRateLimitCodeToRateLimited() {
+        server.expect(requestTo(MESSAGES_URL))
+                .andRespond(withStatus(SERVICE_UNAVAILABLE)
+                        .contentType(APPLICATION_JSON)
+                        .body("{\"error\":{\"code\":130429}}"));
+
+        assertSendFails(Reason.RATE_LIMITED, 503, 130429, true);
+        server.verify();
+    }
+
+    @Test
+    void mapsUnreadableSuccessBodyToInvalidResponseWithCause() {
+        server.expect(requestTo(MESSAGES_URL))
+                .andRespond(request -> new MockClientHttpResponse(new InputStream() {
+                    @Override
+                    public int read() throws IOException {
+                        throw new IOException("broken body");
+                    }
+                }, HttpStatus.OK));
+
+        assertThatThrownBy(() -> client.send(RECIPIENT_E164, new Text(SAMPLE_BODY)))
+                .isInstanceOf(WhatsAppSendException.class)
+                .satisfies(ex -> {
+                    WhatsAppSendException sendEx = (WhatsAppSendException) ex;
+                    assertThat(sendEx.reason()).isEqualTo(Reason.INVALID_RESPONSE);
+                    assertThat(sendEx.retryable()).isFalse();
+                    assertThat(sendEx.getCause()).isNotNull();
+                    assertNoSensitiveDataInMessage(sendEx);
+                });
         server.verify();
     }
 

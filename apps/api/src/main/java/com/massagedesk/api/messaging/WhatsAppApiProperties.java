@@ -86,6 +86,13 @@ record WhatsAppApiProperties(
             throw new IllegalArgumentException(
                     "app.whatsapp.api.access-token must not be blank");
         }
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if (c < 0x21 || c > 0x7E) {
+                throw new IllegalArgumentException(
+                        "app.whatsapp.api.access-token must not contain whitespace or control characters");
+            }
+        }
         return value;
     }
 
