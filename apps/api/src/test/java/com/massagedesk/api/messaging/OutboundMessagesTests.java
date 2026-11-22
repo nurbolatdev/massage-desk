@@ -4,6 +4,7 @@ import static com.massagedesk.api.schedule.FixedClockConfiguration.NOW;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.http.HttpMethod.POST;
+import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
@@ -17,6 +18,9 @@ import com.massagedesk.api.events.EventActor;
 import com.massagedesk.api.messaging.ConversationStore.Recipient;
 import com.massagedesk.api.messaging.OutboundMessage.Button;
 import com.massagedesk.api.messaging.OutboundMessage.Buttons;
+import com.massagedesk.api.messaging.OutboundMessage.ListMenu;
+import com.massagedesk.api.messaging.OutboundMessage.Row;
+import com.massagedesk.api.messaging.OutboundMessage.Template;
 import com.massagedesk.api.messaging.OutboundMessage.Text;
 import com.massagedesk.api.messaging.OutboundMessages.Author;
 import com.massagedesk.api.messaging.OutboundMessages.Sent;
@@ -277,6 +281,162 @@ class OutboundMessagesTests {
                         .doesNotContain(unknownId.toString()));
 
         assertThat(count("messages")).isEqualTo(messagesBefore);
+        server.verify();
+    }
+
+    @Test
+    void textWhenLastInboundIsNullThrowsOutsideWindowBeforeHttp() {
+        UUID id = conversation("+998900001121", null);
+        long messagesBefore = count("messages");
+
+        assertThatThrownBy(() -> outbound.send(id, Author.BOT, new Text("Привет")))
+                .isInstanceOf(OutsideWindowException.class)
+                .hasNoCause();
+
+        assertThat(count("messages")).isEqualTo(messagesBefore);
+        assertThat(conversationRow(id)).isEqualTo(new ConversationRow(id, conversationRow(id).clientId(), null, null));
+        server.verify();
+    }
+
+    @Test
+    void nonTemplateMessagesAtExact24HourBoundaryThrowOutsideWindowBeforeHttp() {
+        Instant boundary = NOW.minus(Duration.ofHours(24));
+        UUID id = conversation("+998900001122", boundary);
+        long messagesBefore = count("messages");
+        List<OutboundMessage> nonTemplates = List.of(
+                new Text("Текст"),
+                new Buttons("Выберите", List.of(new Button("1", "Да"))),
+                new ListMenu("Услуги", "Открыть", List.of(new Row("r1", "Массаж спины", null))));
+
+        for (OutboundMessage message : nonTemplates) {
+            assertThatThrownBy(() -> outbound.send(id, Author.BOT, message))
+                    .isInstanceOf(OutsideWindowException.class)
+                    .hasNoCause();
+        }
+
+        assertThat(count("messages")).isEqualTo(messagesBefore);
+        ConversationRow row = conversationRow(id);
+        assertThat(row.lastInboundAt()).isEqualTo(boundary);
+        assertThat(row.lastMessageAt()).isEqualTo(boundary);
+        server.verify();
+    }
+
+    @Test
+    void textOneSecondBefore24HourBoundaryIsSentAndStored() {
+        Instant insideBoundary = NOW.minus(Duration.ofHours(24)).plusSeconds(1);
+        UUID id = conversation("+998900001123", insideBoundary);
+
+        server.expect(requestTo(MESSAGES_URL))
+                .andExpect(method(POST))
+                .andRespond(withSuccess(
+                        "{\"messaging_product\":\"whatsapp\",\"messages\":[{\"id\":\"wamid.boundary-1\"}]}",
+                        APPLICATION_JSON));
+
+        Sent sent = outbound.send(id, Author.BOT, new Text("Ещё в окне"));
+
+        assertThat(messagesOf(id)).containsExactly(new MessageRow(
+                sent.messageId(), id, "out", "bot", "Ещё в окне", "wamid.boundary-1", NOW));
+        ConversationRow row = conversationRow(id);
+        assertThat(row.lastInboundAt()).isEqualTo(insideBoundary);
+        assertThat(row.lastMessageAt()).isEqualTo(NOW);
+        server.verify();
+    }
+
+    @Test
+    void templateOutsideWindowIsSentAndStoredWithNullBody() {
+        UUID id = conversation("+998900001124", null);
+
+        server.expect(requestTo(MESSAGES_URL))
+                .andExpect(method(POST))
+                .andExpect(request -> {
+                    JsonNode body = json.readTree(((MockClientHttpRequest) request).getBodyAsString());
+                    assertThat(body.path("to").asString()).isEqualTo("998900001124");
+                    assertThat(body.path("type").asString()).isEqualTo("template");
+                })
+                .andRespond(withSuccess(
+                        "{\"messaging_product\":\"whatsapp\",\"messages\":[{\"id\":\"wamid.tpl-1\"}]}",
+                        APPLICATION_JSON));
+
+        Sent sent = outbound.send(id, Author.BOT, new Template("booking_reminder", "ru", List.of("10:00")));
+
+        assertThat(sent.waMessageId()).isEqualTo("wamid.tpl-1");
+        assertThat(messagesOf(id)).containsExactly(new MessageRow(
+                sent.messageId(), id, "out", "bot", null, "wamid.tpl-1", NOW));
+        ConversationRow row = conversationRow(id);
+        assertThat(row.lastInboundAt()).isNull();
+        assertThat(row.lastMessageAt()).isEqualTo(NOW);
+        server.verify();
+    }
+
+    @Test
+    void meta131047ThrowsOutsideWindowWithSendExceptionCauseWithoutStoring() {
+        Instant inboundAt = NOW.minus(Duration.ofHours(1));
+        UUID id = conversation("+998900001125", inboundAt);
+        long messagesBefore = count("messages");
+
+        server.expect(requestTo(MESSAGES_URL))
+                .andExpect(method(POST))
+                .andRespond(withStatus(BAD_REQUEST).contentType(APPLICATION_JSON).body("{\"error\":{\"code\":131047}}"));
+
+        assertThatThrownBy(() -> outbound.send(id, Author.BOT, new Text("Окно закрылось у Meta")))
+                .isInstanceOf(OutsideWindowException.class)
+                .satisfies(ex -> {
+                    assertThat(ex.getCause()).isInstanceOf(WhatsAppSendException.class);
+                    WhatsAppSendException cause = (WhatsAppSendException) ex.getCause();
+                    assertThat(cause.errorCode()).isEqualTo(131047);
+                    assertThat(cause.reason()).isEqualTo(Reason.REJECTED);
+                });
+
+        assertThat(count("messages")).isEqualTo(messagesBefore);
+        assertThat(conversationRow(id).lastInboundAt()).isEqualTo(inboundAt);
+        assertThat(conversationRow(id).lastMessageAt()).isEqualTo(inboundAt);
+        server.verify();
+    }
+
+    @Test
+    void meta131026ThrowsWhatsAppSendExceptionNotOutsideWindowWithoutStoring() {
+        Instant inboundAt = NOW.minus(Duration.ofHours(1));
+        UUID id = conversation("+998900001126", inboundAt);
+        long messagesBefore = count("messages");
+
+        server.expect(requestTo(MESSAGES_URL))
+                .andExpect(method(POST))
+                .andRespond(withStatus(BAD_REQUEST).contentType(APPLICATION_JSON).body("{\"error\":{\"code\":131026}}"));
+
+        assertThatThrownBy(() -> outbound.send(id, Author.BOT, new Text("Не доставлено")))
+                .isInstanceOf(WhatsAppSendException.class)
+                .isNotInstanceOf(OutsideWindowException.class)
+                .satisfies(ex -> {
+                    WhatsAppSendException sendEx = (WhatsAppSendException) ex;
+                    assertThat(sendEx.reason()).isEqualTo(Reason.REJECTED);
+                    assertThat(sendEx.errorCode()).isEqualTo(131026);
+                });
+
+        assertThat(count("messages")).isEqualTo(messagesBefore);
+        assertThat(conversationRow(id).lastInboundAt()).isEqualTo(inboundAt);
+        assertThat(conversationRow(id).lastMessageAt()).isEqualTo(inboundAt);
+        server.verify();
+    }
+
+    @Test
+    void unconfiguredClientThrowsNotConfiguredBeforeHttpWithoutStoring() {
+        Instant inboundAt = NOW.minus(Duration.ofHours(1));
+        UUID id = conversation("+998900001127", inboundAt);
+        long messagesBefore = count("messages");
+        RestClient.Builder unconfiguredBuilder = RestClient.builder();
+        MockRestServiceServer unconfiguredServer = MockRestServiceServer.bindTo(unconfiguredBuilder).build();
+        WhatsAppApiProperties emptyTokenProps = new WhatsAppApiProperties("https://graph.test/v99.0", "", "123456", null, null);
+        OutboundMessages unconfigured = new OutboundMessages(
+                store, new WhatsAppClient(unconfiguredBuilder, emptyTokenProps, json), clock);
+
+        assertThatThrownBy(() -> unconfigured.send(id, Author.BOT, new Text("Без токена")))
+                .isInstanceOf(WhatsAppSendException.class)
+                .satisfies(ex -> assertThat(((WhatsAppSendException) ex).reason()).isEqualTo(Reason.NOT_CONFIGURED));
+
+        assertThat(count("messages")).isEqualTo(messagesBefore);
+        assertThat(conversationRow(id).lastInboundAt()).isEqualTo(inboundAt);
+        assertThat(conversationRow(id).lastMessageAt()).isEqualTo(inboundAt);
+        unconfiguredServer.verify();
         server.verify();
     }
 
