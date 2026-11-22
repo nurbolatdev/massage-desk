@@ -33,7 +33,7 @@ const ARBITRARY_VALUE = /[\w:-]-\[/;
 // tokens, so those utilities are forbidden in every form.
 const TOKEN_RULES: ReadonlyArray<readonly [RegExp, string]> = [
   [
-    /(?<![\w-])(?:(?:drop|inset|text)-shadow(?:-[\w(]|(?![\w/-]))|shadow-(?!dialog(?![\w/-]))[\w(])[^\s"'`]*/,
+    /(?<![\w-])(?:(?:drop|inset|text)-shadow(?:-[\w(]|(?![\w-]))|shadow-(?!dialog(?![\w/-]))[\w(])[^\s"'`]*/,
     "shadow outside the dialog token",
   ],
   [/(?<![\w-])-?z-(?:\d|\((?!--z-))[^\s"'`]*/, "z-index outside the layer tokens"],
@@ -99,6 +99,9 @@ describe("design guard", () => {
       "shadow-dialog/50",
       "drop-shadow",
       "hover:drop-shadow",
+      "drop-shadow/50",
+      "hover:drop-shadow/25",
+      "inset-shadow/50",
       "drop-shadow-sm",
       "inset-shadow-xs",
       "text-shadow-lg",
