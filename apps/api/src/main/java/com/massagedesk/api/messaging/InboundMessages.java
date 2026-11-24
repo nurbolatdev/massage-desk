@@ -6,6 +6,7 @@ import com.massagedesk.api.clients.PhoneProperties;
 import com.massagedesk.api.events.EventActor;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -39,16 +40,24 @@ class InboundMessages {
         this.clock = clock;
     }
 
-    record Stored(int added, int duplicates) {
+    record Stored(List<ClientMessageReceived> received, int duplicates) {
+
+        Stored {
+            received = List.copyOf(received);
+        }
+
+        int added() {
+            return received.size();
+        }
 
         boolean isDuplicate() {
-            return added == 0 && duplicates > 0;
+            return received.isEmpty() && duplicates > 0;
         }
     }
 
     @Transactional
     Stored store(List<WebhookPayload.InboundMessage> messages) {
-        int added = 0;
+        List<ClientMessageReceived> received = new ArrayList<>();
         int duplicates = 0;
         for (WebhookPayload.InboundMessage m : messages) {
             Optional<String> normalized = phoneOf(m.waId(), phone.defaultRegion());
@@ -61,12 +70,17 @@ class InboundMessages {
             Instant at = m.sentAt() != null && m.sentAt().isBefore(now) ? m.sentAt() : now;
             if (conversations.addInbound(conversationId, m.waMessageId(), m.text(), at)) {
                 conversations.touchInbound(conversationId, at);
-                added++;
+                received.add(new ClientMessageReceived(
+                        conversationId,
+                        clientId,
+                        m.waMessageId(),
+                        m.text(),
+                        m.replyId()));
             } else {
                 duplicates++;
             }
         }
-        return new Stored(added, duplicates);
+        return new Stored(received, duplicates);
     }
 
     static Optional<String> phoneOf(String waId, String defaultRegion) {

@@ -111,6 +111,8 @@ class SupabasePoliciesTests {
 					  start_at, end_at, created_at)
 					  select '%s', gen_random_uuid(), id, client_id, service_id, lower(period), upper(period), now()
 					  from appointments limit 1;
+					insert into bot_sessions (conversation_id, step, updated_at) values
+					  ('30000000-0000-0000-0000-000000000001', 'menu', now());
 					""".formatted(STAFF, STAFF_2, STAFF, STAFF));
 		}
 	}
@@ -296,7 +298,7 @@ class SupabasePoliciesTests {
 	@ParameterizedTest
 	@ValueSource(strings = {"clients", "services", "working_hours", "time_off", "appointments", "conversations",
 			"messages", "profiles", "devices", "settings", "events", "ai_runs", "webhook_logs",
-			"idempotency_keys"})
+			"idempotency_keys", "bot_sessions"})
 	void nonStaffSeesNothing(String table) throws SQLException {
 		long stranger = as("authenticated", STRANGER, c -> count(c, "select count(*) from " + table));
 		long anonymous = as("anon", null, c -> count(c, "select count(*) from " + table));
@@ -310,6 +312,15 @@ class SupabasePoliciesTests {
 		assertThat(staffRows).isZero();
 		try (Connection connection = owner()) {
 			assertThat(count(connection, "select count(*) from idempotency_keys")).isGreaterThanOrEqualTo(1);
+		}
+	}
+
+	@Test
+	void staffSeesNoBotSessions() throws SQLException {
+		long staffRows = as("authenticated", STAFF, c -> count(c, "select count(*) from bot_sessions"));
+		assertThat(staffRows).isZero();
+		try (Connection connection = owner()) {
+			assertThat(count(connection, "select count(*) from bot_sessions")).isGreaterThanOrEqualTo(1);
 		}
 	}
 
@@ -342,7 +353,10 @@ class SupabasePoliciesTests {
 						  start_at, end_at, created_at) values (
 						  '%s', gen_random_uuid(), (select id from appointments limit 1),
 						  '10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001',
-						  '2030-01-01 10:00+00', '2030-01-01 11:00+00', now())""".formatted(STAFF)));
+						  '2030-01-01 10:00+00', '2030-01-01 11:00+00', now())""".formatted(STAFF)),
+				Arguments.of("bot_sessions", """
+						insert into bot_sessions (conversation_id, step, updated_at) values
+						  ('30000000-0000-0000-0000-000000000001', 'menu', now())"""));
 	}
 
 	@ParameterizedTest(name = "{0}")
@@ -371,7 +385,7 @@ class SupabasePoliciesTests {
 	@CsvSource({"clients,name", "services,name", "working_hours,start_time", "time_off,reason",
 			"appointments,status", "conversations,human_mode", "messages,body", "profiles,display_name",
 			"devices,expo_push_token", "settings,address", "events,actor", "ai_runs,model",
-			"webhook_logs,status", "idempotency_keys,created_at"})
+			"webhook_logs,status", "idempotency_keys,created_at", "bot_sessions,step"})
 	void staffUpdatesAndDeletesNothing(String table, String column) throws SQLException {
 		int updated = as("authenticated", STAFF, c -> {
 			try (Statement statement = c.createStatement()) {

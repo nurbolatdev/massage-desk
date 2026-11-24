@@ -1,8 +1,12 @@
 package com.massagedesk.api.messaging;
 
 import java.time.Clock;
+import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
@@ -15,6 +19,8 @@ import tools.jackson.databind.json.JsonMapper;
  * every message of the delivery was already stored, or {@code failed} with the exception class name in
  * {@code error} (payload kept for replay).
  * Each row is saved on its own (no outer transaction), so a refused delivery is persisted even when nothing else runs.
+ * After the log row is saved, {@link ClientMessageReceived} events are published in delivery order for newly stored
+ * messages; a listener failure is logged and does not fail the delivery.
  *
  * <p>Error codes written to {@code webhook_logs.error}:
  * <ul>
@@ -28,6 +34,8 @@ import tools.jackson.databind.json.JsonMapper;
  */
 @Service
 class WebhookDeliveries {
+
+    private static final Logger LOG = LoggerFactory.getLogger(WebhookDeliveries.class);
 
     enum Rejection {
         APP_SECRET_NOT_SET,
@@ -59,16 +67,19 @@ class WebhookDeliveries {
     private final JsonMapper jsonMapper;
     private final InboundMessages inbound;
     private final Clock clock;
+    private final ApplicationEventPublisher events;
 
     WebhookDeliveries(
             WebhookLogRepository logs,
             JsonMapper jsonMapper,
             InboundMessages inbound,
-            Clock clock) {
+            Clock clock,
+            ApplicationEventPublisher events) {
         this.logs = logs;
         this.jsonMapper = jsonMapper;
         this.inbound = inbound;
         this.clock = clock;
+        this.events = events;
     }
 
     void reject(Rejection reason) {
@@ -94,8 +105,10 @@ class WebhookDeliveries {
             return;
         }
         WebhookLog log = logs.save(WebhookLog.received(json));
+        List<ClientMessageReceived> received = List.of();
         try {
             InboundMessages.Stored stored = inbound.store(WebhookPayload.messages(tree));
+            received = stored.received();
             if (stored.isDuplicate()) {
                 log.markDuplicate(clock.instant());
             } else {
@@ -105,5 +118,12 @@ class WebhookDeliveries {
             log.markFailed(e.getClass().getName(), clock.instant());
         }
         logs.save(log);
+        for (ClientMessageReceived message : received) {
+            try {
+                events.publishEvent(message);
+            } catch (RuntimeException e) {
+                LOG.warn("ClientMessageReceived listener failed: {}", e.getClass().getName());
+            }
+        }
     }
 }
