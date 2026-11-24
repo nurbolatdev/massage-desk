@@ -14,7 +14,7 @@ import tools.jackson.databind.JsonNode;
 /**
  * Reads client messages from a WhatsApp Cloud API webhook payload.
  * Tolerant: a malformed message is skipped, not the delivery;
- * statuses and reactions are ignored; only text keeps a body.
+ * statuses and reactions are ignored; body is kept for text and for reply titles.
  */
 final class WebhookPayload {
 
@@ -32,6 +32,7 @@ final class WebhookPayload {
             "unsupported");
 
     static final int MAX_NAME_LENGTH = 100;
+    static final int MAX_REPLY_ID_LENGTH = 256;
 
     private static final Pattern TIMESTAMP_DIGITS = Pattern.compile("^[0-9]{1,12}$");
     private static final long MAX_TIMESTAMP_SECONDS = 999_999_999_999L;
@@ -42,7 +43,8 @@ final class WebhookPayload {
             @Nullable String profileName,
             String type,
             @Nullable String text,
-            @Nullable Instant sentAt) {
+            @Nullable Instant sentAt,
+            @Nullable String replyId) {
 
         InboundMessage {
             Objects.requireNonNull(waMessageId, "waMessageId");
@@ -73,18 +75,46 @@ final class WebhookPayload {
                     if (id == null || from == null || type == null || !STORED_TYPES.contains(type)) {
                         continue;
                     }
-                    String text = "text".equals(type) ? string(message.path("text").path("body")) : null;
+                    JsonNode reply = interactiveReply(message.path("interactive"));
+                    String text = switch (type) {
+                        case "text" -> string(message.path("text").path("body"));
+                        case "interactive" -> reply != null ? string(reply.path("title")) : null;
+                        case "button" -> string(message.path("button").path("text"));
+                        default -> null;
+                    };
+                    String replyId = switch (type) {
+                        case "interactive" -> reply != null ? replyId(reply.path("id")) : null;
+                        case "button" -> replyId(message.path("button").path("payload"));
+                        default -> null;
+                    };
                     result.add(new InboundMessage(
                             id,
                             from,
                             namesByWaId.get(from),
                             type,
                             text,
-                            sentAt(message.path("timestamp"))));
+                            sentAt(message.path("timestamp")),
+                            replyId));
                 }
             }
         }
         return List.copyOf(result);
+    }
+
+    private static @Nullable JsonNode interactiveReply(JsonNode interactive) {
+        String subtype = string(interactive.path("type"));
+        if ("button_reply".equals(subtype) || "list_reply".equals(subtype)) {
+            return interactive.path(subtype);
+        }
+        return null;
+    }
+
+    private static @Nullable String replyId(JsonNode node) {
+        String id = nonBlank(node);
+        if (id == null || id.codePointCount(0, id.length()) > MAX_REPLY_ID_LENGTH) {
+            return null;
+        }
+        return id;
     }
 
     private static Map<String, String> contactNames(JsonNode contacts) {

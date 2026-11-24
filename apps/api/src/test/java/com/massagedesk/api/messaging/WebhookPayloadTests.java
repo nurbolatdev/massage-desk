@@ -62,7 +62,8 @@ class WebhookPayloadTests {
                         "Aziza",
                         "text",
                         "Здравствуйте, можно записаться?",
-                        Instant.ofEpochSecond(1700000000L)));
+                        Instant.ofEpochSecond(1700000000L),
+                        null));
     }
 
     @Test
@@ -118,7 +119,157 @@ class WebhookPayloadTests {
                         null,
                         "image",
                         null,
-                        Instant.ofEpochSecond(1700000001L)));
+                        Instant.ofEpochSecond(1700000001L),
+                        null));
+    }
+
+    @Test
+    void readsButtonReplyListReplyAndTemplateButtonAndRejectsBlankOrOverlongReplyIds() {
+        String id256 = "r".repeat(256);
+        String id257 = "r".repeat(257);
+        JsonNode root = parse("""
+                {
+                  "entry": [
+                    {
+                      "changes": [
+                        {
+                          "field": "messages",
+                          "value": {
+                            "messages": [
+                              {
+                                "from": "998901234567",
+                                "id": "wamid.btn-reply",
+                                "timestamp": "1700000001",
+                                "type": "interactive",
+                                "interactive": {
+                                  "type": "button_reply",
+                                  "button_reply": { "id": "book", "title": "Записаться" }
+                                }
+                              },
+                              {
+                                "from": "998901234567",
+                                "id": "wamid.list-reply",
+                                "timestamp": "1700000002",
+                                "type": "interactive",
+                                "interactive": {
+                                  "type": "list_reply",
+                                  "list_reply": {
+                                    "id": "service:11111111-1111-1111-1111-111111111111",
+                                    "title": "Классический массаж",
+                                    "description": "60 мин · 8 000 ₸"
+                                  }
+                                }
+                              },
+                              {
+                                "from": "998901234567",
+                                "id": "wamid.template-btn",
+                                "timestamp": "1700000003",
+                                "type": "button",
+                                "button": { "payload": "confirm_yes", "text": "Подтвердить" }
+                              },
+                              {
+                                "from": "998901234567",
+                                "id": "wamid.other-interactive",
+                                "timestamp": "1700000004",
+                                "type": "interactive",
+                                "interactive": {
+                                  "type": "nfm_reply",
+                                  "nfm_reply": { "name": "flow" }
+                                }
+                              },
+                              {
+                                "from": "998901234567",
+                                "id": "wamid.blank-reply-id",
+                                "timestamp": "1700000005",
+                                "type": "interactive",
+                                "interactive": {
+                                  "type": "button_reply",
+                                  "button_reply": { "id": "   ", "title": "Записаться" }
+                                }
+                              },
+                              {
+                                "from": "998901234567",
+                                "id": "wamid.overlong-reply-id",
+                                "timestamp": "1700000006",
+                                "type": "interactive",
+                                "interactive": {
+                                  "type": "list_reply",
+                                  "list_reply": { "id": "%s", "title": "Слишком длинный" }
+                                }
+                              },
+                              {
+                                "from": "998901234567",
+                                "id": "wamid.max-reply-id",
+                                "timestamp": "1700000007",
+                                "type": "button",
+                                "button": { "payload": "  %s  ", "text": "Максимум" }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+                """.formatted(id257, id256));
+
+        assertThat(WebhookPayload.messages(root)).containsExactly(
+                new InboundMessage(
+                        "wamid.btn-reply",
+                        "998901234567",
+                        null,
+                        "interactive",
+                        "Записаться",
+                        Instant.ofEpochSecond(1700000001L),
+                        "book"),
+                new InboundMessage(
+                        "wamid.list-reply",
+                        "998901234567",
+                        null,
+                        "interactive",
+                        "Классический массаж",
+                        Instant.ofEpochSecond(1700000002L),
+                        "service:11111111-1111-1111-1111-111111111111"),
+                new InboundMessage(
+                        "wamid.template-btn",
+                        "998901234567",
+                        null,
+                        "button",
+                        "Подтвердить",
+                        Instant.ofEpochSecond(1700000003L),
+                        "confirm_yes"),
+                new InboundMessage(
+                        "wamid.other-interactive",
+                        "998901234567",
+                        null,
+                        "interactive",
+                        null,
+                        Instant.ofEpochSecond(1700000004L),
+                        null),
+                new InboundMessage(
+                        "wamid.blank-reply-id",
+                        "998901234567",
+                        null,
+                        "interactive",
+                        "Записаться",
+                        Instant.ofEpochSecond(1700000005L),
+                        null),
+                new InboundMessage(
+                        "wamid.overlong-reply-id",
+                        "998901234567",
+                        null,
+                        "interactive",
+                        "Слишком длинный",
+                        Instant.ofEpochSecond(1700000006L),
+                        null),
+                new InboundMessage(
+                        "wamid.max-reply-id",
+                        "998901234567",
+                        null,
+                        "button",
+                        "Максимум",
+                        Instant.ofEpochSecond(1700000007L),
+                        id256));
     }
 
     @Test

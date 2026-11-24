@@ -64,9 +64,11 @@ class InboundMessagesTests {
                 "Aziza",
                 "text",
                 "Здравствуйте!",
-                sentAt)));
+                sentAt,
+                null)));
 
-        assertThat(stored).isEqualTo(new Stored(1, 0));
+        assertThat(stored.added()).isEqualTo(1);
+        assertThat(stored.duplicates()).isZero();
 
         Map<String, Object> client = jdbc.queryForMap(
                 "select id, phone, name from clients where phone = ?",
@@ -81,6 +83,12 @@ class InboundMessagesTests {
         ConversationRow conversation = conversations.getFirst();
         assertThat(conversation.lastInboundAt()).isEqualTo(sentAt);
         assertThat(conversation.lastMessageAt()).isEqualTo(sentAt);
+        assertThat(stored.received()).containsExactly(new ClientMessageReceived(
+                conversation.id(),
+                clientId,
+                "wamid.store-1",
+                "Здравствуйте!",
+                null));
 
         List<MessageRow> messages = messagesOf(conversation.id());
         assertThat(messages).containsExactly(new MessageRow(
@@ -104,9 +112,11 @@ class InboundMessagesTests {
                 null,
                 "text",
                 "From the future",
-                Instant.parse("2099-01-01T00:00:00Z"))));
+                Instant.parse("2099-01-01T00:00:00Z"),
+                null)));
 
-        assertThat(stored).isEqualTo(new Stored(1, 0));
+        assertThat(stored.added()).isEqualTo(1);
+        assertThat(stored.duplicates()).isZero();
         UUID clientId = jdbc.queryForObject(
                 "select id from clients where phone = ?", UUID.class, "+998900000989");
         ConversationRow conversation = conversationsOf(clientId).getFirst();
@@ -126,9 +136,11 @@ class InboundMessagesTests {
                 "WhatsApp Profile",
                 "text",
                 "Добрый день",
-                sentAt)));
+                sentAt,
+                null)));
 
-        assertThat(stored).isEqualTo(new Stored(1, 0));
+        assertThat(stored.added()).isEqualTo(1);
+        assertThat(stored.duplicates()).isZero();
         assertThat(jdbc.queryForObject("select name from clients where id = ?", String.class, clientId))
                 .isEqualTo("Master Name");
         List<Map<String, Object>> events = createdEvents(clientId);
@@ -143,10 +155,11 @@ class InboundMessagesTests {
         Instant t0 = Instant.parse("2026-11-01T11:30:00Z");
 
         Stored stored = inbound.store(List.of(
-                new InboundMessage("wamid.store-3a", "998900000983", "Aziza", "text", "Первое", t1),
-                new InboundMessage("wamid.store-3b", "998900000983", "Aziza", "text", "Раннее", t0)));
+                new InboundMessage("wamid.store-3a", "998900000983", "Aziza", "text", "Первое", t1, null),
+                new InboundMessage("wamid.store-3b", "998900000983", "Aziza", "text", "Раннее", t0, null)));
 
-        assertThat(stored).isEqualTo(new Stored(2, 0));
+        assertThat(stored.added()).isEqualTo(2);
+        assertThat(stored.duplicates()).isZero();
         UUID clientId = jdbc.queryForObject(
                 "select id from clients where phone = ?",
                 UUID.class,
@@ -171,9 +184,11 @@ class InboundMessagesTests {
                 "Aziza",
                 "image",
                 null,
-                sentAt)));
+                sentAt,
+                null)));
 
-        assertThat(stored).isEqualTo(new Stored(1, 0));
+        assertThat(stored.added()).isEqualTo(1);
+        assertThat(stored.duplicates()).isZero();
         MessageRow message = messageByWaId("wamid.store-4");
         assertThat(message.body()).isNull();
         assertThat(message.direction()).isEqualTo("in");
@@ -188,9 +203,11 @@ class InboundMessagesTests {
                 "Aziza",
                 "text",
                 "Без времени",
+                null,
                 null)));
 
-        assertThat(stored).isEqualTo(new Stored(1, 0));
+        assertThat(stored.added()).isEqualTo(1);
+        assertThat(stored.duplicates()).isZero();
         MessageRow message = messageByWaId("wamid.store-5");
         assertThat(message.createdAt()).isEqualTo(FixedClockConfiguration.NOW);
     }
@@ -202,10 +219,11 @@ class InboundMessagesTests {
         long messagesBefore = count("messages");
 
         Stored stored = inbound.store(List.of(
-                new InboundMessage("wamid.store-bad-1", "12", "Aziza", "text", "short", null),
-                new InboundMessage("wamid.store-bad-2", "abc", "Aziza", "text", "letters", null)));
+                new InboundMessage("wamid.store-bad-1", "12", "Aziza", "text", "short", null, null),
+                new InboundMessage("wamid.store-bad-2", "abc", "Aziza", "text", "letters", null, null)));
 
-        assertThat(stored).isEqualTo(new Stored(0, 0));
+        assertThat(stored).isEqualTo(new Stored(List.of(), 0));
+        assertThat(stored.added()).isZero();
         assertThat(stored.isDuplicate()).isFalse();
         assertThat(count("clients")).isEqualTo(clientsBefore);
         assertThat(count("conversations")).isEqualTo(conversationsBefore);
@@ -221,14 +239,16 @@ class InboundMessagesTests {
                 "Aziza",
                 "text",
                 "Повтор",
-                sentAt);
+                sentAt,
+                null);
 
         Stored first = inbound.store(List.of(message));
         Stored second = inbound.store(List.of(message));
 
-        assertThat(first).isEqualTo(new Stored(1, 0));
+        assertThat(first.added()).isEqualTo(1);
+        assertThat(first.duplicates()).isZero();
         assertThat(first.isDuplicate()).isFalse();
-        assertThat(second).isEqualTo(new Stored(0, 1));
+        assertThat(second).isEqualTo(new Stored(List.of(), 1));
         assertThat(second.isDuplicate()).isTrue();
 
         UUID clientId = jdbc.queryForObject(
@@ -251,7 +271,8 @@ class InboundMessagesTests {
                 "Aziza",
                 "text",
                 "Первое",
-                initialSentAt)));
+                initialSentAt,
+                null)));
 
         Stored duplicate = inbound.store(List.of(new InboundMessage(
                 "wamid.store-dup-2",
@@ -259,9 +280,10 @@ class InboundMessagesTests {
                 "Aziza",
                 "text",
                 "Первое снова",
-                laterSentAt)));
+                laterSentAt,
+                null)));
 
-        assertThat(duplicate).isEqualTo(new Stored(0, 1));
+        assertThat(duplicate).isEqualTo(new Stored(List.of(), 1));
         assertThat(duplicate.isDuplicate()).isTrue();
 
         UUID clientId = jdbc.queryForObject(
@@ -283,23 +305,55 @@ class InboundMessagesTests {
                 "Aziza",
                 "text",
                 "Старое",
-                t0);
+                t0,
+                null);
         InboundMessage newMessage = new InboundMessage(
                 "wamid.store-dup-3b",
                 "998900000988",
                 "Aziza",
                 "text",
                 "Новое",
-                t1);
+                t1,
+                null);
 
         inbound.store(List.of(oldMessage));
         Stored mixed = inbound.store(List.of(oldMessage, newMessage));
         Stored empty = inbound.store(List.of());
 
-        assertThat(mixed).isEqualTo(new Stored(1, 1));
+        assertThat(mixed.added()).isEqualTo(1);
+        assertThat(mixed.duplicates()).isEqualTo(1);
         assertThat(mixed.isDuplicate()).isFalse();
-        assertThat(empty).isEqualTo(new Stored(0, 0));
+        assertThat(empty).isEqualTo(new Stored(List.of(), 0));
         assertThat(empty.isDuplicate()).isFalse();
+    }
+
+    @Test
+    void textAndButtonReplyProduceReceivedEventsWithStoredTitleAndEmptyOnRepeat() {
+        Instant t0 = Instant.parse("2026-11-01T17:00:00Z");
+        Instant t1 = Instant.parse("2026-11-01T17:01:00Z");
+        List<InboundMessage> delivery = List.of(
+                new InboundMessage("wamid.store-btn-1", "998900000990", "Aziza", "text", "Здравствуйте", t0, null),
+                new InboundMessage("wamid.store-btn-2", "998900000990", "Aziza", "interactive", "Записаться", t1, "book"));
+
+        Stored first = inbound.store(delivery);
+
+        UUID clientId = jdbc.queryForObject(
+                "select id from clients where phone = ?",
+                UUID.class,
+                "+998900000990");
+        UUID conversationId = conversationsOf(clientId).getFirst().id();
+        assertThat(first.added()).isEqualTo(2);
+        assertThat(first.duplicates()).isZero();
+        assertThat(first.received()).containsExactly(
+                new ClientMessageReceived(conversationId, clientId, "wamid.store-btn-1", "Здравствуйте", null),
+                new ClientMessageReceived(conversationId, clientId, "wamid.store-btn-2", "Записаться", "book"));
+        assertThat(messageByWaId("wamid.store-btn-2").body()).isEqualTo("Записаться");
+
+        Stored repeated = inbound.store(delivery);
+        assertThat(repeated.received()).isEmpty();
+        assertThat(repeated.added()).isZero();
+        assertThat(repeated.duplicates()).isEqualTo(2);
+        assertThat(repeated.isDuplicate()).isTrue();
     }
 
     @Test
