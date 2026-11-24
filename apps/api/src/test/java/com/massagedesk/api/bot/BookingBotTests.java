@@ -30,6 +30,7 @@ import com.massagedesk.api.clients.ClientRepository;
 import com.massagedesk.api.messaging.TestOutboundMessages;
 import com.massagedesk.api.messaging.WhatsAppSendException;
 import com.massagedesk.api.schedule.FixedClockConfiguration;
+import com.massagedesk.api.schedule.ServiceCatalog;
 import com.massagedesk.api.settings.SettingsService;
 import java.time.Clock;
 import java.time.Duration;
@@ -53,6 +54,7 @@ class BookingBotTests {
 
     @Autowired private SettingsService settings;
     @Autowired private BotSessionStore sessions;
+    @Autowired private ServiceCatalog services;
     @Autowired private ClientRepository clients;
     @Autowired private JdbcTemplate jdbc;
     @Autowired private JdbcClient jdbcClient;
@@ -68,7 +70,8 @@ class BookingBotTests {
         cleanUp(jdbc);
         RestClient.Builder builder = RestClient.builder();
         server = MockRestServiceServer.bindTo(builder).build();
-        bot = new BookingBot(settings, sessions, TestOutboundMessages.create(jdbcClient, builder, json, clock), clock);
+        bot = new BookingBot(
+                settings, sessions, services, TestOutboundMessages.create(jdbcClient, builder, json, clock), clock);
     }
 
     @AfterEach
@@ -116,7 +119,7 @@ class BookingBotTests {
                 .andExpect(request -> assertThat(buttonIds(requestJson(json, request))).containsExactly("book"))
                 .andRespond(withSuccess(accepted("wamid.bot-2"), APPLICATION_JSON));
 
-        bot.on(reply(id, "book"));
+        bot.on(reply(id, "service:1"));
 
         server.verify();
         assertThat(sessionOf(jdbc, id)).contains(new SessionRow("menu", NOW));

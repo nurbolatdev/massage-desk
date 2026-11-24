@@ -1,10 +1,14 @@
 package com.massagedesk.api.bot;
 
+import com.massagedesk.api.bot.BotReplies.ServiceOption;
+import com.massagedesk.api.bot.BotSession.Step;
 import com.massagedesk.api.bot.BotSessionStore.Loaded;
 import com.massagedesk.api.messaging.ClientMessageReceived;
 import com.massagedesk.api.messaging.OutboundMessage;
 import com.massagedesk.api.messaging.OutboundMessages;
 import com.massagedesk.api.messaging.OutboundMessages.Author;
+import com.massagedesk.api.schedule.MassageService;
+import com.massagedesk.api.schedule.ServiceCatalog;
 import com.massagedesk.api.settings.SettingsService;
 import java.time.Clock;
 import java.time.Duration;
@@ -33,12 +37,19 @@ class BookingBot {
 
     private final SettingsService settings;
     private final BotSessionStore sessions;
+    private final ServiceCatalog services;
     private final OutboundMessages outbound;
     private final Clock clock;
 
-    BookingBot(SettingsService settings, BotSessionStore sessions, OutboundMessages outbound, Clock clock) {
+    BookingBot(
+            SettingsService settings,
+            BotSessionStore sessions,
+            ServiceCatalog services,
+            OutboundMessages outbound,
+            Clock clock) {
         this.settings = Objects.requireNonNull(settings, "settings");
         this.sessions = Objects.requireNonNull(sessions, "sessions");
+        this.services = Objects.requireNonNull(services, "services");
         this.outbound = Objects.requireNonNull(outbound, "outbound");
         this.clock = Objects.requireNonNull(clock, "clock");
     }
@@ -73,8 +84,26 @@ class BookingBot {
 
     private Turn next(BotSession current, ClientMessageReceived message) {
         return switch (current.step()) {
-            case MENU, SERVICE, DAY, TIME, CONFIRM, MOVE_PICK, CANCEL_PICK, CANCEL_CONFIRM ->
-                    new Turn(BotSession.menu(), List.of(BotReplies.menu()));
+            case MENU -> BotReplies.BOOK.equals(message.replyId()) ? serviceList() : menuTurn();
+            case SERVICE -> serviceList();
+            case DAY, TIME, CONFIRM, MOVE_PICK, CANCEL_PICK, CANCEL_CONFIRM -> menuTurn();
         };
+    }
+
+    private static Turn menuTurn() {
+        return new Turn(BotSession.menu(), List.of(BotReplies.menu()));
+    }
+
+    private Turn serviceList() {
+        List<ServiceOption> options = services.all().stream()
+                .filter(MassageService::isActive)
+                .map(s -> new ServiceOption(s.getId(), s.getName(), s.getDurationMin(), s.getPrice()))
+                .toList();
+        if (options.isEmpty()) {
+            return new Turn(BotSession.menu(), List.of(BotReplies.noServices()));
+        }
+        return new Turn(
+                new BotSession(Step.SERVICE, null, null, null, null),
+                List.of(BotReplies.services(options)));
     }
 }
