@@ -126,6 +126,37 @@ class WebhookDeliveriesFailureTests {
     }
 
     @Test
+    void listenerSendFailureLogsOnlyExceptionClassNameAndContinuesToNextEvent(CapturedOutput output) {
+        ClientMessageReceived first = new ClientMessageReceived(
+                UUID.fromString("10000000-0000-0000-0000-000000000001"),
+                UUID.fromString("20000000-0000-0000-0000-000000000001"),
+                "wamid.ev-send-1",
+                "Секретный текст",
+                null);
+        ClientMessageReceived second = new ClientMessageReceived(
+                UUID.fromString("10000000-0000-0000-0000-000000000001"),
+                UUID.fromString("20000000-0000-0000-0000-000000000001"),
+                "wamid.ev-send-2",
+                "Записаться",
+                "book");
+        when(inbound.store(any())).thenReturn(new InboundMessages.Stored(List.of(first, second), 0));
+        doThrow(new WhatsAppSendException(WhatsAppSendException.Reason.UNAVAILABLE, 0, null))
+                .when(events)
+                .publishEvent(first);
+
+        deliveries.accept("{\"object\":\"whatsapp_business_account\"}".getBytes(StandardCharsets.UTF_8));
+
+        verify(events).publishEvent(first);
+        verify(events).publishEvent(second);
+        ArgumentCaptor<WebhookLog> captor = ArgumentCaptor.forClass(WebhookLog.class);
+        verify(logs, times(2)).save(captor.capture());
+        assertThat(captor.getValue().getStatus()).isEqualTo(WebhookStatus.PROCESSED);
+        assertThat(output.getOut())
+                .contains("WhatsAppSendException")
+                .doesNotContain("Секретный текст");
+    }
+
+    @Test
     void duplicateDeliveryMarksLogDuplicateWithProcessedAt() {
         when(inbound.store(any())).thenReturn(new InboundMessages.Stored(List.of(), 2));
 
