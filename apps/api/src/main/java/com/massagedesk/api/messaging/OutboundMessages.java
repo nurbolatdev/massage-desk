@@ -7,12 +7,14 @@ import java.util.Objects;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * Sends one message to the client of a conversation; only templates outside the 24-hour window
  * ({@link OutsideWindowException} before any request or write, also for WhatsApp error 131047);
  * stores the message only after WhatsApp accepted it, idempotent by WhatsApp message id;
- * opens no database transaction and must not be called inside one, so the HTTP request never holds a connection.
+ * opens no database transaction and refuses to run inside a database transaction ({@link IllegalStateException}),
+ * so the HTTP request never holds a connection.
  */
 @Service
 public class OutboundMessages {
@@ -39,6 +41,9 @@ public class OutboundMessages {
         Objects.requireNonNull(conversationId, "conversationId");
         Objects.requireNonNull(author, "author");
         Objects.requireNonNull(message, "message");
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            throw new IllegalStateException("send must not be called inside a database transaction");
+        }
 
         Recipient recipient = conversations.recipientOf(conversationId)
                 .orElseThrow(() -> new IllegalArgumentException("unknown conversation"));
@@ -65,7 +70,9 @@ public class OutboundMessages {
                         bodyOf(message),
                         waMessageId,
                         at)
-                .orElseGet(() -> conversations.messageIdOf(waMessageId));
+                .or(() -> conversations.messageIdOf(conversationId, waMessageId))
+                .orElseThrow(() -> new IllegalStateException(
+                        "WhatsApp message id is already stored for another message"));
 
         return new Sent(messageId, waMessageId);
     }

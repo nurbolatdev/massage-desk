@@ -3,6 +3,7 @@ package com.massagedesk.api.messaging;
 import static com.massagedesk.api.messaging.OutboundRows.conversation;
 import static com.massagedesk.api.messaging.OutboundRows.conversationRow;
 import static com.massagedesk.api.messaging.OutboundRows.count;
+import static com.massagedesk.api.messaging.OutboundRows.deleteByPhoneLike;
 import static com.massagedesk.api.messaging.OutboundRows.messagesOf;
 import static com.massagedesk.api.messaging.TestOutboundMessages.API_URL;
 import static com.massagedesk.api.messaging.TestOutboundMessages.MESSAGES_URL;
@@ -37,6 +38,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,14 +48,12 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.mock.http.client.MockClientHttpRequest;
 import org.springframework.test.web.client.MockRestServiceServer;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 @SpringBootTest
 @Import({TestcontainersConfiguration.class, FixedClockConfiguration.class})
-@Transactional
 class OutboundWindowTests {
 
     @Autowired
@@ -82,6 +82,12 @@ class OutboundWindowTests {
         RestClient.Builder builder = RestClient.builder();
         server = MockRestServiceServer.bindTo(builder).build();
         outbound = TestOutboundMessages.create(jdbcClient, builder, json, clock);
+    }
+
+    @BeforeEach
+    @AfterEach
+    void cleanUp() {
+        deleteByPhoneLike(jdbc, "+99890000112_");
     }
 
     @Test

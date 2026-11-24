@@ -3,6 +3,7 @@ package com.massagedesk.api.messaging;
 import static com.massagedesk.api.messaging.OutboundRows.conversation;
 import static com.massagedesk.api.messaging.OutboundRows.conversationRow;
 import static com.massagedesk.api.messaging.OutboundRows.count;
+import static com.massagedesk.api.messaging.OutboundRows.deleteByPhoneLike;
 import static com.massagedesk.api.messaging.OutboundRows.messagesOf;
 import static com.massagedesk.api.messaging.TestOutboundMessages.MESSAGES_URL;
 import static com.massagedesk.api.messaging.TestOutboundMessages.accepted;
@@ -33,6 +34,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,14 +44,14 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.mock.http.client.MockClientHttpRequest;
 import org.springframework.test.web.client.MockRestServiceServer;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.RestClient;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 @SpringBootTest
 @Import({TestcontainersConfiguration.class, FixedClockConfiguration.class})
-@Transactional
 class OutboundMessagesTests {
 
     @Autowired
@@ -70,6 +72,9 @@ class OutboundMessagesTests {
     @Autowired
     private JsonMapper json;
 
+    @Autowired
+    private PlatformTransactionManager txManager;
+
     private MockRestServiceServer server;
     private OutboundMessages outbound;
 
@@ -78,6 +83,12 @@ class OutboundMessagesTests {
         RestClient.Builder builder = RestClient.builder();
         server = MockRestServiceServer.bindTo(builder).build();
         outbound = TestOutboundMessages.create(jdbcClient, builder, json, clock);
+    }
+
+    @BeforeEach
+    @AfterEach
+    void cleanUp() {
+        deleteByPhoneLike(jdbc, "+99890000111_");
     }
 
     @Test
@@ -177,6 +188,41 @@ class OutboundMessagesTests {
                         .doesNotContain(unknownId.toString()));
 
         assertThat(count(jdbc, "messages")).isEqualTo(messagesBefore);
+        server.verify();
+    }
+
+    @Test
+    void sendInsideTransactionThrowsIllegalStateBeforeHttp() {
+        Instant inboundAt = NOW.minus(Duration.ofHours(1));
+        UUID id = conversation(clients, store, jdbc, "+998900001115", inboundAt);
+        long messagesBefore = count(jdbc, "messages");
+        TransactionTemplate tx = new TransactionTemplate(txManager);
+
+        assertThatThrownBy(() -> tx.execute(status -> outbound.send(id, Author.BOT, new Text("В транзакции"))))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("send must not be called inside a database transaction");
+
+        assertThat(count(jdbc, "messages")).isEqualTo(messagesBefore);
+        server.verify();
+    }
+
+    @Test
+    void sendWhenMetaReturnsExistingInboundWaMessageIdThrowsIllegalStateWithoutTouchingConversation() {
+        Instant inboundAt = NOW.minus(Duration.ofHours(1));
+        UUID id = conversation(clients, store, jdbc, "+998900001116", inboundAt);
+        store.addInbound(id, "wamid.in-existing", "Привет", inboundAt);
+        long messagesBefore = count(jdbc, "messages");
+
+        server.expect(requestTo(MESSAGES_URL))
+                .andExpect(method(POST))
+                .andRespond(withSuccess(accepted("wamid.in-existing"), APPLICATION_JSON));
+
+        assertThatThrownBy(() -> outbound.send(id, Author.BOT, new Text("Ответ")))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("WhatsApp message id is already stored for another message");
+
+        assertThat(count(jdbc, "messages")).isEqualTo(messagesBefore);
+        assertThat(conversationRow(jdbc, id).lastMessageAt()).isEqualTo(inboundAt);
         server.verify();
     }
 }

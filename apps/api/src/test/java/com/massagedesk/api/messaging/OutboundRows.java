@@ -84,6 +84,23 @@ final class OutboundRows {
         return jdbc.queryForObject("select count(*) from " + table, Long.class);
     }
 
+    static void deleteByPhoneLike(JdbcTemplate jdbc, String phonePattern) {
+        jdbc.update("""
+                delete from messages
+                where conversation_id in (
+                    select id from conversations
+                    where client_id in (select id from clients where phone like ?)
+                )""", phonePattern);
+        jdbc.update("""
+                delete from conversations
+                where client_id in (select id from clients where phone like ?)""", phonePattern);
+        jdbc.update("""
+                delete from events
+                where type = 'client_created'
+                  and entity_id in (select id from clients where phone like ?)""", phonePattern);
+        jdbc.update("delete from clients where phone like ?", phonePattern);
+    }
+
     static Instant instant(ResultSet rs, String column) throws SQLException {
         OffsetDateTime odt = rs.getObject(column, OffsetDateTime.class);
         return odt == null ? null : odt.toInstant();

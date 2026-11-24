@@ -114,6 +114,27 @@ class ConversationStoreOutboundTests {
         assertThat(messagesOf(jdbc, id)).containsExactly(new MessageRow(
                 first.get(), id, "out", "bot", "Первое", "wamid.out-dup", NOW));
         assertThat(conversationRow(jdbc, id).lastMessageAt()).isEqualTo(NOW);
-        assertThat(store.messageIdOf("wamid.out-dup")).isEqualTo(first.get());
+        assertThat(store.messageIdOf(id, "wamid.out-dup")).contains(first.get());
+    }
+
+    @Test
+    void messageIdOfFindsOnlyOutboundMessageInSameConversation() {
+        UUID firstConv = conversation(clients, store, jdbc, "+998900001108", NOW);
+        UUID otherConv = conversation(clients, store, jdbc, "+998900001109", NOW);
+        Optional<UUID> outboundId = store.addOutbound(firstConv, "bot", "Исходящее", "wamid.out-scope", NOW);
+        store.addInbound(firstConv, "wamid.in-scope", "Входящее", NOW);
+
+        assertThat(store.messageIdOf(firstConv, "wamid.out-scope")).isEqualTo(outboundId);
+        assertThat(store.messageIdOf(otherConv, "wamid.out-scope")).isEmpty();
+        assertThat(store.messageIdOf(firstConv, "wamid.in-scope")).isEmpty();
+    }
+
+    @Test
+    void recipientToStringHidesPhone() {
+        Recipient recipient = new Recipient("+998900001101", null);
+
+        assertThat(recipient.toString())
+                .doesNotContain("998900001101")
+                .contains("<hidden>");
     }
 }

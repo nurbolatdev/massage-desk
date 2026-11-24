@@ -58,6 +58,11 @@ class ConversationStore {
     }
 
     record Recipient(String phone, @Nullable Instant lastInboundAt) {
+
+        @Override
+        public String toString() {
+            return "Recipient[phone=<hidden>, lastInboundAt=" + lastInboundAt + "]";
+        }
     }
 
     Optional<Recipient> recipientOf(UUID conversationId) {
@@ -101,10 +106,15 @@ class ConversationStore {
                 .optional();
     }
 
-    UUID messageIdOf(String waMessageId) {
-        return jdbc.sql("select id from messages where wa_message_id = :waMessageId")
+    Optional<UUID> messageIdOf(UUID conversationId, String waMessageId) {
+        return jdbc.sql("""
+                select id from messages
+                where wa_message_id = :waMessageId
+                  and conversation_id = :conversationId
+                  and direction = 'out'""")
                 .param("waMessageId", waMessageId)
+                .param("conversationId", conversationId)
                 .query(UUID.class)
-                .single();
+                .optional();
     }
 }
