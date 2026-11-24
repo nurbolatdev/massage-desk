@@ -771,13 +771,31 @@ Owner step, no code.
 ### M2-4 · Booking flow with buttons
 
 - **Branch:** `feature/bot-booking-flow`
-- **Pull request:** `feat(bot): booking flow with buttons`
+- **Pull request:** `feat(bot): conversation state machine`
 - **Depends on:** M2-3, M1-7
+- **Issue:** #155
 - **Commits:**
+  1. `test(messaging): split outbound message tests`
+  1. `fix(messaging): outbound review follow-ups`
+  1. `feat(messaging): button and list replies reach listeners`
+  1. `feat(bot): conversation state storage`
+  1. `feat(bot): menu and service list replies`
   1. `feat(bot): conversation state machine`
-  1. `feat(bot): service, day and time selection`
-  1. `feat(bot): confirmation, reschedule and cancel`
+  1. `feat(bot): service list from the menu`
+  1. `docs: bot state and button replies`
+- **Then:** `feature/bot-booking-selection` — `feat(bot): service, day and time selection`
+  1. `feat(bot): day and time lists`
+  1. `feat(bot): service and day selection`
+  1. `feat(bot): time selection`
+  1. `feat(bot): booking confirmation`
   1. `test(bot): full booking conversation`
+  1. `docs: bot booking`
+- **Then:** `feature/bot-reschedule-cancel` — `feat(bot): reschedule and cancel` (closes the issue)
+  1. `feat(bot): upcoming appointments in the menu`
+  1. `feat(bot): reschedule`
+  1. `feat(bot): cancel`
+  1. `test(bot): reschedule and cancel conversations`
+  1. `docs: bot reschedule and cancel`
 
 ### M2-5 · Chats and take-over
 

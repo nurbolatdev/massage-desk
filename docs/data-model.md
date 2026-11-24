@@ -25,6 +25,7 @@ erDiagram
   services ||--o{ appointments : "booked as"
   clients ||--|| conversations : has
   conversations ||--o{ messages : contains
+  conversations ||--o| bot_sessions : tracks
   profiles ||--o{ devices : "push to"
   clients {
     uuid id
@@ -55,17 +56,27 @@ erDiagram
     text author "client, bot, master"
     text wa_message_id
   }
+  bot_sessions {
+    uuid conversation_id
+    text step "menu..cancel_confirm"
+    uuid service_id
+    date day
+    timestamptz start_at
+    uuid appointment_id
+    timestamptz updated_at
+  }
 ```
 
 Also: `working_hours` (ISO weekday 1–7, several blocks per day for breaks), `time_off`, `settings` (single row), `profiles` (roles `master` / `admin`), `devices` (push tokens).
 Incoming WhatsApp messages are written by the webhook (`direction = 'in'`, `author = 'client'`): one `conversations` row per client, `messages.wa_message_id` is unique, and `conversations.last_inbound_at` marks the start of the 24-hour reply window (advanced only by newly stored messages).
+`bot_sessions` (`V5`) stores one row per conversation (`conversation_id` primary key referencing `conversations(id) on delete cascade`) with the client's current step in the button booking flow (`step` in `menu`, `service`, `day`, `time`, `confirm`, `move_pick`, `cancel_pick`, `cancel_confirm`), optional `service_id`, local `day` (in `settings.time_zone`), `start_at`, `appointment_id`, and `updated_at` written from the API clock (sessions aged 24 hours or older restart from `menu`). There are no foreign keys to `services` or `appointments`: domain services re-check the ids on every use, and foreign keys would block deleting appointments in tests.
 
 ## Row level security (Supabase)
 Only with profile `supabase` (`migration-supabase/`). Every policy is select-only and for the `authenticated` role:
 - `staff_read` — `is_staff()`, on all business tables and the three log tables.
 - `own_profile_read` — on `profiles` a staff member sees only their own row.
 
-There are no insert/update/delete policies: an insert through the Supabase REST API fails (SQLState `42501`), an update or delete changes no rows. Every write goes through the API, which connects as the table owner and is not limited by RLS. `idempotency_keys` has RLS enabled with no policies (`V4_1`): staff cannot read or write it through Supabase, only the API does. `flyway_schema_history` is closed manually (see step 4 above). Without that step a staff token can also update or delete the migration history through the REST API.
+There are no insert/update/delete policies: an insert through the Supabase REST API fails (SQLState `42501`), an update or delete changes no rows. Every write goes through the API, which connects as the table owner and is not limited by RLS. `idempotency_keys` (`V4_1`) and `bot_sessions` (`V5_1`) have RLS enabled with no policies: staff cannot read or write them through Supabase, only the API does. `flyway_schema_history` is closed manually (see step 4 above). Without that step a staff token can also update or delete the migration history through the REST API.
 
 The comments in `V1_1` ("API is not limited") and `V3` ("staff may write these tables directly") are outdated: the current rule is read-only RLS from `V3_1`. Applied migrations are not edited because of Flyway checksums. `V3_1` also pins `is_staff()` to `search_path = public, pg_temp`.
 
