@@ -123,7 +123,8 @@ class BookingBotTimeTests {
                     assertThat(body.path("interactive").path("body").path("text").asString())
                             .isEqualTo(
                                     "Проверьте запись:\nКлассический массаж\nВторник, 3 ноября, 10:00\n60\u00a0мин · 8\u00a0000\u00a0₸");
-                    assertThat(buttonIds(body)).containsExactly("confirm:2026-11-03T05:00:00Z", "other_time");
+                    assertThat(buttonIds(body))
+                            .containsExactly("confirm:" + serviceId + ":" + start, "other_time");
                 })
                 .andRespond(withSuccess(accepted("wamid.bot-time-confirm"), APPLICATION_JSON));
 

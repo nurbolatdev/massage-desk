@@ -5,6 +5,7 @@ import com.massagedesk.api.booking.AppointmentService.AppointmentView;
 import com.massagedesk.api.booking.AppointmentService.RequestKey;
 import com.massagedesk.api.booking.AppointmentSource;
 import com.massagedesk.api.booking.BookingException;
+import com.massagedesk.api.bot.BotReplies.IdAndStart;
 import com.massagedesk.api.bot.BotReplies.ServiceOption;
 import com.massagedesk.api.bot.BotSession.Step;
 import com.massagedesk.api.bot.BotSessionStore.Loaded;
@@ -185,7 +186,9 @@ class BookingBot {
         if (serviceId == null || day == null || start == null || updatedAt == null) {
             return menuTurn();
         }
-        if (BotReplies.confirmedStartOf(message.replyId()).filter(start::equals).isPresent()) {
+        if (BotReplies.confirmationOf(message.replyId())
+                .filter(new IdAndStart(serviceId, start)::equals)
+                .isPresent()) {
             return confirmBooking(message, serviceId, day, start, updatedAt);
         }
         if (BotReplies.OTHER_TIME.equals(message.replyId())) {

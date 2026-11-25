@@ -148,7 +148,8 @@ class BookingBotConversationTests {
             assertThat(body.path("interactive").path("body").path("text").asString())
                     .isEqualTo(CONFIRMATION_TEXT)
                     .contains("Вторник, 3 ноября, 14:00");
-            assertThat(buttonIds(body)).containsExactly("confirm:2026-11-03T09:00:00Z", "other_time");
+            assertThat(buttonIds(body))
+                    .containsExactly("confirm:" + serviceId + ":" + START_14_00, "other_time");
             nextReplyId.set(buttonIds(body).get(0));
         });
         expectReply(7, body -> {
@@ -203,7 +204,7 @@ class BookingBotConversationTests {
                 futures.add(pool.submit(() -> {
                     ready.countDown();
                     start.await();
-                    bot.on(reply(jdbc, id, "confirm:" + START_14_00));
+                    bot.on(reply(jdbc, id, "confirm:" + serviceId + ":" + START_14_00));
                     return null;
                 }));
             }

@@ -77,6 +77,18 @@ final class BotReplies {
         }
     }
 
+    record IdAndStart(UUID id, Instant start) {
+        IdAndStart {
+            Objects.requireNonNull(id, "id");
+            Objects.requireNonNull(start, "start");
+        }
+
+        @Override
+        public String toString() {
+            return id + ":" + start;
+        }
+    }
+
     private BotReplies() {
     }
 
@@ -168,7 +180,7 @@ final class BotReplies {
         return new Buttons(
                 "Проверьте запись:\n" + lines(option, start, zone),
                 List.of(
-                        new Button(CONFIRM_PREFIX + start, "Подтвердить"),
+                        new Button(CONFIRM_PREFIX + option.id() + ":" + start, "Подтвердить"),
                         new Button(OTHER_TIME, "Другое время")));
     }
 
@@ -218,8 +230,15 @@ final class BotReplies {
         return parseCanonical(replyId, MORE_TIMES_PREFIX, Instant::parse);
     }
 
-    static Optional<Instant> confirmedStartOf(@Nullable String replyId) {
-        return parseCanonical(replyId, CONFIRM_PREFIX, Instant::parse);
+    static Optional<IdAndStart> confirmationOf(@Nullable String replyId) {
+        return parseCanonical(replyId, CONFIRM_PREFIX, BotReplies::parseIdAndStart);
+    }
+
+    private static IdAndStart parseIdAndStart(String raw) {
+        if (raw.length() < 38 || raw.charAt(36) != ':') {
+            throw new IllegalArgumentException("not id:start");
+        }
+        return new IdAndStart(UUID.fromString(raw.substring(0, 36)), Instant.parse(raw.substring(37)));
     }
 
     private static <T> Optional<T> parseCanonical(
