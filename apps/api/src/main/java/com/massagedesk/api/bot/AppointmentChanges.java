@@ -6,8 +6,10 @@ import com.massagedesk.api.bot.BotReplies.Upcoming;
 import com.massagedesk.api.bot.BotSession.Step;
 import com.massagedesk.api.events.EventActor;
 import com.massagedesk.api.messaging.ClientMessageReceived;
+import com.massagedesk.api.messaging.OutboundMessage;
 import com.massagedesk.api.messaging.OutboundMessage.Text;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
@@ -18,7 +20,9 @@ import org.springframework.stereotype.Component;
 
 /**
  * Changes only the client's own upcoming confirmed appointments, re-checked on every step; a
- * confirmation step is claimed before the change, so a repeated tap never changes twice.
+ * confirmation step is claimed before the change, so a repeated tap never changes twice. A client
+ * may change an appointment through the bot only while its start is at least the change cutoff
+ * away, checked when the appointment is picked and again after the claim.
  */
 @Component
 class AppointmentChanges {
@@ -27,13 +31,19 @@ class AppointmentChanges {
     private final BotSessionStore sessions;
     private final BotLists lists;
     private final Clock clock;
+    private final Duration changeCutoff;
 
     AppointmentChanges(
-            AppointmentService appointments, BotSessionStore sessions, BotLists lists, Clock clock) {
+            AppointmentService appointments,
+            BotSessionStore sessions,
+            BotLists lists,
+            Clock clock,
+            BotProperties properties) {
         this.appointments = Objects.requireNonNull(appointments, "appointments");
         this.sessions = Objects.requireNonNull(sessions, "sessions");
         this.lists = Objects.requireNonNull(lists, "lists");
         this.clock = Objects.requireNonNull(clock, "clock");
+        this.changeCutoff = Objects.requireNonNull(properties, "properties").changeCutoff();
     }
 
     List<Upcoming> upcoming(UUID clientId) {
@@ -52,6 +62,10 @@ class AppointmentChanges {
                 .findFirst();
     }
 
+    boolean tooLate(Upcoming item) {
+        return clock.instant().plus(changeCutoff).isAfter(item.start());
+    }
+
     Turn menu(UUID clientId) {
         return new Turn(
                 BotSession.menu(),
@@ -59,9 +73,21 @@ class AppointmentChanges {
     }
 
     Turn gone(UUID clientId) {
+        return withMenu(clientId, new Text(BotReplies.GONE_TEXT));
+    }
+
+    Turn tooLateToCancel(UUID clientId) {
+        return withMenu(clientId, BotReplies.tooLateToCancel(changeCutoff));
+    }
+
+    Turn tooLateToMove(UUID clientId) {
+        return withMenu(clientId, BotReplies.tooLateToMove(changeCutoff));
+    }
+
+    private Turn withMenu(UUID clientId, OutboundMessage notice) {
         return new Turn(
                 BotSession.menu(),
-                List.of(new Text(BotReplies.GONE_TEXT), BotReplies.menu(upcoming(clientId), lists.zone())));
+                List.of(notice, BotReplies.menu(upcoming(clientId), lists.zone())));
     }
 
     Turn picks(UUID clientId, Step step, String body) {
@@ -86,6 +112,9 @@ class AppointmentChanges {
                 BotReplies.appointmentIdOf(replyId).flatMap(id -> own(id, clientId));
         if (picked.isPresent()) {
             Upcoming item = picked.get();
+            if (tooLate(item)) {
+                return tooLateToCancel(clientId);
+            }
             return new Turn(
                     new BotSession(Step.CANCEL_CONFIRM, null, null, null, item.id()),
                     List.of(BotReplies.cancelConfirmation(item, lists.zone())));
@@ -118,6 +147,9 @@ class AppointmentChanges {
         Optional<Upcoming> target = own(appointmentId, clientId);
         if (target.isEmpty()) {
             return Optional.of(gone(clientId));
+        }
+        if (tooLate(target.get())) {
+            return Optional.of(tooLateToCancel(clientId));
         }
         try {
             appointments.cancel(appointmentId, EventActor.BOT);

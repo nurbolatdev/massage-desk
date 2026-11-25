@@ -51,6 +51,29 @@ final class BotConversations {
                 context.getBean(Clock.class));
     }
 
+    static BookingBot bot(
+            ApplicationContext context,
+            OutboundMessages outbound,
+            Clock clock,
+            BotProperties properties) {
+        AppointmentService appointments = context.getBean(AppointmentService.class);
+        BotSessionStore sessions = context.getBean(BotSessionStore.class);
+        BotLists lists = context.getBean(BotLists.class);
+        AppointmentChanges changes =
+                new AppointmentChanges(appointments, sessions, lists, clock, properties);
+        Rescheduling moves = new Rescheduling(changes, lists, appointments, sessions, clock);
+        return new BookingBot(
+                context.getBean(SettingsService.class),
+                sessions,
+                lists,
+                changes,
+                moves,
+                context.getBean(SlotService.class),
+                appointments,
+                outbound,
+                clock);
+    }
+
     static UUID conversation(ClientRepository clients, JdbcTemplate jdbc, String phone) {
         return conversation(clients, jdbc, phone, false);
     }
