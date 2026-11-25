@@ -207,6 +207,30 @@ class BotRepliesTests {
     }
 
     @Test
+    void confirmationIncludesFullServiceNameLocalDayAndTimeAndActionButtons() {
+        ZoneId tashkent = ZoneId.of("Asia/Tashkent");
+        Instant start = Instant.parse("2026-11-03T05:00:00Z");
+        ServiceOption classic = new ServiceOption(
+                UUID.fromString("00000000-0000-0000-0000-000000000001"),
+                "Классический массаж",
+                60,
+                new BigDecimal("8000.00"));
+
+        assertThat(BotReplies.confirmation(classic, start, tashkent))
+                .isEqualTo(new Buttons(
+                        "Проверьте запись:\nКлассический массаж\nВторник, 3 ноября, 10:00\n60\u00a0мин · 8\u00a0000\u00a0₸",
+                        List.of(
+                                new Button("confirm", "Подтвердить"),
+                                new Button("other_time", "Другое время"))));
+
+        String longName = "Классический расслабляющий массаж спины и шеи";
+        assertThat(longName.length()).isGreaterThan(24);
+        ServiceOption longOption = new ServiceOption(classic.id(), longName, 90, new BigDecimal("12000.00"));
+        Buttons longConfirmation = (Buttons) BotReplies.confirmation(longOption, start, tashkent);
+        assertThat(longConfirmation.body()).contains("\n" + longName + "\n");
+    }
+
+    @Test
     void replyIdParsersAcceptOnlyCanonicalValuesWithoutThrowing() {
         UUID id = UUID.fromString("00000000-0000-0000-0000-000000000001");
         LocalDate day = LocalDate.of(2026, 11, 3);

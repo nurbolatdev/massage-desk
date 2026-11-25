@@ -164,6 +164,22 @@ final class BotReplies {
         return new ListMenu(dayTitle(day) + ". Выберите время.", TIMES_BUTTON, rows);
     }
 
+    static OutboundMessage confirmation(ServiceOption option, Instant start, ZoneId zone) {
+        return new Buttons(
+                "Проверьте запись:\n" + lines(option, start, zone),
+                List.of(
+                        new Button(CONFIRM, "Подтвердить"),
+                        new Button(OTHER_TIME, "Другое время")));
+    }
+
+    private static String lines(ServiceOption option, Instant start, ZoneId zone) {
+        Objects.requireNonNull(option, "option");
+        Objects.requireNonNull(start, "start");
+        Objects.requireNonNull(zone, "zone");
+        LocalDate day = LocalDate.ofInstant(start, zone);
+        return option.name() + "\n" + dayTitle(day) + ", " + time(start, zone) + "\n" + details(option);
+    }
+
     static String dayTitle(LocalDate day) {
         Objects.requireNonNull(day, "day");
         String dayOfWeek = DAYS_OF_WEEK[day.getDayOfWeek().getValue() - 1];

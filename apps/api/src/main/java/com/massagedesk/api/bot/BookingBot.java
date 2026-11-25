@@ -99,7 +99,8 @@ class BookingBot {
             case MENU -> BotReplies.BOOK.equals(message.replyId()) ? serviceList(0) : menuTurn();
             case SERVICE -> onService(message.replyId());
             case DAY -> onDay(current, message.replyId());
-            case TIME, CONFIRM, MOVE_PICK, CANCEL_PICK, CANCEL_CONFIRM -> menuTurn();
+            case TIME -> onTime(current, message.replyId());
+            case CONFIRM, MOVE_PICK, CANCEL_PICK, CANCEL_CONFIRM -> menuTurn();
         };
     }
 
@@ -125,6 +126,36 @@ class BookingBot {
             return timeList(serviceId, day.get(), null, null);
         }
         return dayList(serviceId, null);
+    }
+
+    private Turn onTime(BotSession current, @Nullable String replyId) {
+        UUID serviceId = current.serviceId();
+        LocalDate day = current.day();
+        if (serviceId == null || day == null) {
+            return menuTurn();
+        }
+        Optional<Instant> start = BotReplies.timeOf(replyId);
+        if (start.isPresent()) {
+            Optional<ServiceOption> option = activeService(serviceId);
+            Optional<DaySlots> daySlots = slots.freeStarts(serviceId, day);
+            if (option.isEmpty() || daySlots.isEmpty()) {
+                return serviceList(0);
+            }
+            if (daySlots.get().starts().contains(start.get())) {
+                return new Turn(
+                        new BotSession(Step.CONFIRM, serviceId, day, start.get(), null),
+                        List.of(BotReplies.confirmation(option.get(), start.get(), daySlots.get().zone())));
+            }
+            return timeList(serviceId, day, null, new Text(BotReplies.TIME_TAKEN_TEXT));
+        }
+        Optional<Instant> after = BotReplies.moreTimesAfterOf(replyId);
+        if (after.isPresent()) {
+            return timeList(serviceId, day, after.get(), null);
+        }
+        if (BotReplies.OTHER_DAY.equals(replyId)) {
+            return dayList(serviceId, null);
+        }
+        return timeList(serviceId, day, null, null);
     }
 
     private static Turn menuTurn() {
