@@ -239,6 +239,21 @@ public class AppointmentService {
         return listViews(appointments.findByClient(clientId, limit, offset), settings.get().getTimeZone());
     }
 
+    /**
+     * Confirmed appointments of one client that start strictly after the current time, earliest
+     * first. An unknown client has none.
+     */
+    @Transactional(readOnly = true)
+    public List<AppointmentListView> upcomingOfClient(UUID clientId, int limit) {
+        Objects.requireNonNull(clientId, "clientId");
+        if (limit < 1) {
+            throw new IllegalArgumentException("limit must be at least 1");
+        }
+        List<Appointment> found =
+                appointments.findConfirmedOfClientStartingAfter(clientId, clock.instant(), limit);
+        return listViews(found, settings.get().getTimeZone());
+    }
+
     /** One appointment of any status with the client and service names, the same shape as a list item. */
     @Transactional(readOnly = true)
     public AppointmentListView byId(UUID id) {

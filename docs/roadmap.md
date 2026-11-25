@@ -790,12 +790,18 @@ Owner step, no code.
   1. `feat(bot): booking confirmation`
   1. `test(bot): full booking conversation`
   1. `docs: bot booking`
-- **Then:** `feature/bot-reschedule-cancel` — `feat(bot): reschedule and cancel` (issue #158) (closes the issue)
+- **Then:** `feature/bot-reschedule-cancel` — `feat(bot): cancel from the menu` (issue #158, part 1)
+  1. `fix(bot): bind confirmation to the service`
+  1. `refactor(bot): move list replies to their own class`
   1. `feat(bot): upcoming appointments in the menu`
-  1. `feat(bot): reschedule`
   1. `feat(bot): cancel`
-  1. `test(bot): reschedule and cancel conversations`
-  1. `docs: bot reschedule and cancel`
+  1. `test(bot): cancel conversations`
+  1. `docs: cancel from the menu`
+- **Then:** `feature/bot-reschedule` — `feat(bot): reschedule` (closes #158 and #155)
+  1. `feat(bot): new time for an upcoming appointment`
+  1. `feat(bot): reschedule`
+  1. `test(bot): reschedule conversations`
+  1. `docs: bot reschedule`
 
 ### M2-5 · Chats and take-over
 

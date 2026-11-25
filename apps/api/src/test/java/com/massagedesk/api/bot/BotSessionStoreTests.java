@@ -105,6 +105,52 @@ class BotSessionStoreTests {
     }
 
     @Test
+    void claimResetsMatchingSessionToMenuOnceAndRejectsMismatchedOrMissingSession() {
+        UUID conversationId = conversation("+998900001206", false);
+        Instant updatedAt = NOW.plus(Duration.ofMinutes(5));
+        Instant claimedAt = updatedAt.plus(Duration.ofMinutes(1));
+
+        assertThat(store.claim(conversationId, Step.CANCEL_CONFIRM, updatedAt, claimedAt)).isFalse();
+        assertThat(store.claim(UUID.randomUUID(), Step.CANCEL_CONFIRM, updatedAt, claimedAt)).isFalse();
+
+        BotSession confirm = new BotSession(
+                Step.CANCEL_CONFIRM,
+                UUID.randomUUID(),
+                LocalDate.of(2026, 11, 3),
+                Instant.parse("2026-11-03T05:00:00Z"),
+                UUID.randomUUID());
+        store.save(conversationId, confirm, updatedAt);
+
+        assertThat(store.claim(conversationId, Step.CONFIRM, updatedAt, claimedAt)).isFalse();
+        assertThat(store.claim(
+                        conversationId,
+                        Step.CANCEL_CONFIRM,
+                        updatedAt.plusSeconds(1),
+                        claimedAt))
+                .isFalse();
+        assertThat(store.load(conversationId)).contains(new Loaded(false, confirm, updatedAt));
+
+        assertThat(store.claim(conversationId, Step.CANCEL_CONFIRM, updatedAt, claimedAt)).isTrue();
+        assertThat(store.load(conversationId))
+                .contains(new Loaded(false, BotSession.menu(), claimedAt));
+
+        assertThat(store.claim(conversationId, Step.CANCEL_CONFIRM, updatedAt, claimedAt.plusSeconds(5)))
+                .isFalse();
+        assertThat(store.load(conversationId))
+                .contains(new Loaded(false, BotSession.menu(), claimedAt));
+    }
+
+    @Test
+    void claimMatchesLoadedUpdatedAtWhenSavedInstantHasNanoseconds() {
+        UUID conversationId = conversation("+998900001207", false);
+        BotSession confirm = new BotSession(Step.CANCEL_CONFIRM, null, null, null, UUID.randomUUID());
+        store.save(conversationId, confirm, Instant.parse("2026-11-02T05:20:00.123456789Z"));
+        Instant updatedAt = store.load(conversationId).orElseThrow().updatedAt();
+
+        assertThat(store.claim(conversationId, Step.CANCEL_CONFIRM, updatedAt, NOW)).isTrue();
+    }
+
+    @Test
     void stepValuesMatchMigrationCheckConstraint() throws IOException {
         String sql = new ClassPathResource("db/migration/V5__bot_sessions.sql")
                 .getContentAsString(StandardCharsets.UTF_8);
