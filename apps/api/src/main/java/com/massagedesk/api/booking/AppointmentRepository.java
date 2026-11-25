@@ -63,4 +63,18 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID> 
             """)
     List<Appointment> findByClient(
             @Param("clientId") UUID clientId, @Param("limit") int limit, @Param("offset") int offset);
+
+    /**
+     * Confirmed appointments of the client that start strictly after {@code after}, earliest first.
+     */
+    @Query(nativeQuery = true, value = """
+            select a.* from appointments a
+            where a.client_id = :clientId
+              and a.status = 'confirmed'
+              and lower(a.period) > cast(:after as timestamptz)
+            order by lower(a.period), a.id
+            limit :limit
+            """)
+    List<Appointment> findConfirmedOfClientStartingAfter(
+            @Param("clientId") UUID clientId, @Param("after") Instant after, @Param("limit") int limit);
 }

@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.massagedesk.api.bot.BotReplies.IdAndStart;
 import com.massagedesk.api.bot.BotReplies.ServiceOption;
+import com.massagedesk.api.bot.BotReplies.Upcoming;
 import com.massagedesk.api.messaging.OutboundMessage.Button;
 import com.massagedesk.api.messaging.OutboundMessage.Buttons;
 import com.massagedesk.api.messaging.OutboundMessage.ListMenu;
@@ -28,6 +29,97 @@ class BotRepliesTests {
         assertThat(BotReplies.menu())
                 .isEqualTo(new Buttons(
                         "Здравствуйте! Я помогу записаться на массаж.",
+                        List.of(new Button("book", "Записаться"))));
+        assertThat(BotReplies.menu(List.of(), ZoneId.of("Asia/Tashkent")))
+                .isEqualTo(BotReplies.menu());
+    }
+
+    @Test
+    void menuWithUpcomingAppointmentsListsThemInMasterZoneAndAddsCancelButton() {
+        ZoneId tashkent = ZoneId.of("Asia/Tashkent");
+        List<Upcoming> two = List.of(
+                new Upcoming(
+                        UUID.fromString("00000000-0000-0000-0000-000000000001"),
+                        "Классический массаж",
+                        Instant.parse("2026-11-03T05:00:00Z")),
+                new Upcoming(
+                        UUID.fromString("00000000-0000-0000-0000-000000000002"),
+                        "Классический массаж",
+                        Instant.parse("2026-11-10T07:00:00Z")));
+
+        assertThat(BotReplies.menu(two, tashkent))
+                .isEqualTo(new Buttons(
+                        """
+                        Здравствуйте! Я помогу записаться на массаж.
+
+                        Ваши записи:
+                        Вторник, 3 ноября, 10:00 — Классический массаж
+                        Вторник, 10 ноября, 12:00 — Классический массаж""",
+                        List.of(
+                                new Button("book", "Записаться"),
+                                new Button("cancel", "Отменить запись"))));
+
+        String fortyChars = "Классический расслабляющий массаж спины!";
+        assertThat(fortyChars).hasSize(40);
+        Instant sundaySept30 = Instant.parse("2029-09-30T05:00:00Z");
+        assertThat(BotReplies.when(sundaySept30, tashkent))
+                .isEqualTo("Воскресенье, 30 сентября, 10:00");
+        List<Upcoming> ten = IntStream.rangeClosed(1, 10)
+                .mapToObj(i -> new Upcoming(
+                        UUID.fromString("00000000-0000-0000-0000-%012d".formatted(i)),
+                        fortyChars,
+                        sundaySept30.plus(Duration.ofMinutes(30L * i))))
+                .toList();
+
+        Buttons tenMenu = (Buttons) BotReplies.menu(ten, tashkent);
+        assertThat(tenMenu.body().length()).isLessThanOrEqualTo(1024);
+        assertThat(tenMenu.buttons())
+                .containsExactly(
+                        new Button("book", "Записаться"),
+                        new Button("cancel", "Отменить запись"));
+    }
+
+    @Test
+    void picksAndNoUpcomingBuildExpectedMessagesAndValidateBounds() {
+        ZoneId tashkent = ZoneId.of("Asia/Tashkent");
+        UUID firstId = UUID.fromString("00000000-0000-0000-0000-000000000001");
+        UUID secondId = UUID.fromString("00000000-0000-0000-0000-000000000002");
+        String longServiceName =
+                "Классический глубокотканный расслабляющий массаж спины, шеи и воротниковой зоны";
+        List<Upcoming> two = List.of(
+                new Upcoming(firstId, "Классический массаж", Instant.parse("2026-11-03T05:00:00Z")),
+                new Upcoming(secondId, longServiceName, Instant.parse("2026-11-10T07:00:00Z")));
+
+        ListMenu menu = (ListMenu) BotReplies.picks(BotReplies.CANCEL_PICK_TEXT, two, tashkent);
+        assertThat(menu.body()).isEqualTo("Какую запись отменить?");
+        assertThat(menu.buttonLabel()).isEqualTo("Выбрать запись");
+        assertThat(menu.rows()).hasSize(2);
+        assertThat(menu.rows().get(0))
+                .isEqualTo(new Row(
+                        "appointment:" + firstId,
+                        "3 ноября, 10:00",
+                        "Вторник · Классический массаж"));
+        assertThat(menu.rows().get(1).id()).isEqualTo("appointment:" + secondId);
+        assertThat(menu.rows().get(1).title()).isEqualTo("10 ноября, 12:00");
+        assertThat(menu.rows().get(1).description())
+                .hasSize(72)
+                .startsWith("Вторник · Классический")
+                .endsWith("…");
+
+        List<Upcoming> eleven = IntStream.rangeClosed(1, 11)
+                .mapToObj(i -> new Upcoming(
+                        UUID.fromString("00000000-0000-0000-0000-%012d".formatted(i)),
+                        "Классический массаж",
+                        Instant.parse("2026-11-03T05:00:00Z")))
+                .toList();
+        assertThatThrownBy(() -> BotReplies.picks(BotReplies.CANCEL_PICK_TEXT, List.of(), tashkent))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> BotReplies.picks(BotReplies.CANCEL_PICK_TEXT, eleven, tashkent))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        assertThat(BotReplies.noUpcoming())
+                .isEqualTo(new Buttons(
+                        "У вас нет предстоящих записей.",
                         List.of(new Button("book", "Записаться"))));
     }
 
@@ -243,6 +335,7 @@ class BotRepliesTests {
         LocalDate day = LocalDate.of(2026, 11, 3);
         Instant start = Instant.parse("2026-11-03T05:00:00Z");
 
+        assertThat(BotReplies.appointmentIdOf("appointment:" + id)).contains(id);
         assertThat(BotReplies.serviceIdOf("service:" + id)).contains(id);
         assertThat(BotReplies.moreServicesOffsetOf("more_services:0")).contains(0);
         assertThat(BotReplies.moreServicesOffsetOf("more_services:9")).contains(9);
@@ -255,6 +348,9 @@ class BotRepliesTests {
         for (String invalid : List.of(
                 "",
                 "book",
+                "cancel",
+                "appointment:",
+                "appointment:1-1-1-1-1",
                 "confirm",
                 "confirm:2026-11-03T05:00:00Z",
                 "confirm:" + id,
@@ -270,6 +366,7 @@ class BotRepliesTests {
                 "more_services:-1",
                 "more_services:07",
                 "more_services:+7")) {
+            assertThat(BotReplies.appointmentIdOf(invalid)).isEmpty();
             assertThat(BotReplies.serviceIdOf(invalid)).isEmpty();
             assertThat(BotReplies.moreServicesOffsetOf(invalid)).isEmpty();
             assertThat(BotReplies.dayOf(invalid)).isEmpty();
@@ -277,6 +374,7 @@ class BotRepliesTests {
             assertThat(BotReplies.moreTimesAfterOf(invalid)).isEmpty();
             assertThat(BotReplies.confirmationOf(invalid)).isEmpty();
         }
+        assertThat(BotReplies.appointmentIdOf(null)).isEmpty();
         assertThat(BotReplies.serviceIdOf(null)).isEmpty();
         assertThat(BotReplies.moreServicesOffsetOf(null)).isEmpty();
         assertThat(BotReplies.dayOf(null)).isEmpty();

@@ -124,7 +124,8 @@ class BookingBotConfirmTests {
                 .andRespond(withSuccess(accepted("wamid.bot-booked-1"), APPLICATION_JSON));
         server.expect(requestTo(MESSAGES_URL))
                 .andExpect(method(POST))
-                .andExpect(request -> assertThat(buttonIds(requestJson(json, request))).containsExactly("book"))
+                .andExpect(request -> assertThat(buttonIds(requestJson(json, request)))
+                        .containsExactly("book", "cancel"))
                 .andRespond(withSuccess(accepted("wamid.bot-booked-menu"), APPLICATION_JSON));
         server.expect(requestTo(MESSAGES_URL))
                 .andExpect(method(POST))

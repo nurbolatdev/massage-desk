@@ -43,6 +43,7 @@ final class BotConversations {
                 context.getBean(SettingsService.class),
                 context.getBean(BotSessionStore.class),
                 context.getBean(BotLists.class),
+                context.getBean(AppointmentChanges.class),
                 context.getBean(SlotService.class),
                 context.getBean(AppointmentService.class),
                 outbound,

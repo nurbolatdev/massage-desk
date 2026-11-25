@@ -47,6 +47,7 @@ class BookingBot {
     private final SettingsService settings;
     private final BotSessionStore sessions;
     private final BotLists lists;
+    private final AppointmentChanges changes;
     private final SlotService slots;
     private final AppointmentService appointments;
     private final OutboundMessages outbound;
@@ -56,6 +57,7 @@ class BookingBot {
             SettingsService settings,
             BotSessionStore sessions,
             BotLists lists,
+            AppointmentChanges changes,
             SlotService slots,
             AppointmentService appointments,
             OutboundMessages outbound,
@@ -63,6 +65,7 @@ class BookingBot {
         this.settings = Objects.requireNonNull(settings, "settings");
         this.sessions = Objects.requireNonNull(sessions, "sessions");
         this.lists = Objects.requireNonNull(lists, "lists");
+        this.changes = Objects.requireNonNull(changes, "changes");
         this.slots = Objects.requireNonNull(slots, "slots");
         this.appointments = Objects.requireNonNull(appointments, "appointments");
         this.outbound = Objects.requireNonNull(outbound, "outbound");
@@ -100,13 +103,24 @@ class BookingBot {
     private Turn next(
             BotSession current, @Nullable Instant updatedAt, ClientMessageReceived message) {
         return switch (current.step()) {
-            case MENU -> BotReplies.BOOK.equals(message.replyId()) ? lists.serviceList(0) : menuTurn();
+            case MENU -> onMenu(message);
             case SERVICE -> onService(message.replyId());
-            case DAY -> onDay(current, message.replyId());
-            case TIME -> onTime(current, message.replyId());
+            case DAY -> onDay(current, message);
+            case TIME -> onTime(current, message);
             case CONFIRM -> onConfirm(current, updatedAt, message);
-            case MOVE_PICK, CANCEL_PICK, CANCEL_CONFIRM -> menuTurn();
+            case CANCEL_PICK -> changes.onPick(message.clientId(), message.replyId());
+            case MOVE_PICK, CANCEL_CONFIRM -> changes.menu(message.clientId());
         };
+    }
+
+    private Turn onMenu(ClientMessageReceived message) {
+        if (BotReplies.BOOK.equals(message.replyId())) {
+            return lists.serviceList(0);
+        }
+        if (BotReplies.CANCEL.equals(message.replyId())) {
+            return changes.pickList(message.clientId());
+        }
+        return changes.menu(message.clientId());
     }
 
     private Turn onService(@Nullable String replyId) {
@@ -119,13 +133,13 @@ class BookingBot {
         return lists.serviceList(BotReplies.moreServicesOffsetOf(replyId).orElse(0));
     }
 
-    private Turn onDay(BotSession current, @Nullable String replyId) {
+    private Turn onDay(BotSession current, ClientMessageReceived message) {
         UUID serviceId = current.serviceId();
         if (serviceId == null) {
-            return menuTurn();
+            return changes.menu(message.clientId());
         }
         LocalDate today = lists.today();
-        Optional<LocalDate> day = BotReplies.dayOf(replyId)
+        Optional<LocalDate> day = BotReplies.dayOf(message.replyId())
                 .filter(d -> !d.isBefore(today) && d.isBefore(today.plusDays(BotLists.DAYS_AHEAD)));
         if (day.isPresent()) {
             return lists.timeList(serviceId, day.get(), null, null);
@@ -133,12 +147,13 @@ class BookingBot {
         return lists.dayList(serviceId, null);
     }
 
-    private Turn onTime(BotSession current, @Nullable String replyId) {
+    private Turn onTime(BotSession current, ClientMessageReceived message) {
         UUID serviceId = current.serviceId();
         LocalDate day = current.day();
         if (serviceId == null || day == null) {
-            return menuTurn();
+            return changes.menu(message.clientId());
         }
+        String replyId = message.replyId();
         Optional<Instant> start = BotReplies.timeOf(replyId);
         if (start.isPresent()) {
             if (!LocalDate.ofInstant(start.get(), lists.zone()).equals(day)) {
@@ -172,7 +187,7 @@ class BookingBot {
         LocalDate day = current.day();
         Instant start = current.start();
         if (serviceId == null || day == null || start == null || updatedAt == null) {
-            return menuTurn();
+            return changes.menu(message.clientId());
         }
         if (BotReplies.confirmationOf(message.replyId())
                 .filter(new IdAndStart(serviceId, start)::equals)
@@ -215,17 +230,13 @@ class BookingBot {
                         APPOINTMENT_NOT_FOUND,
                         NOT_CONFIRMED,
                         NOT_STARTED,
-                        IDEMPOTENCY_KEY_REUSED -> menuTurn();
+                        IDEMPOTENCY_KEY_REUSED -> changes.menu(message.clientId());
             };
         }
         return lists.serviceById(view.serviceId())
                 .map(option -> new Turn(
                         BotSession.menu(),
                         List.of(BotReplies.booked(option, view.period().start(), view.zone()))))
-                .orElseGet(BookingBot::menuTurn);
-    }
-
-    private static Turn menuTurn() {
-        return new Turn(BotSession.menu(), List.of(BotReplies.menu()));
+                .orElseGet(() -> changes.menu(message.clientId()));
     }
 }

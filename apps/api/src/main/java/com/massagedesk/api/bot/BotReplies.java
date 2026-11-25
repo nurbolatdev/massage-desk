@@ -27,6 +27,14 @@ final class BotReplies {
     static final String MENU_TEXT = "Здравствуйте! Я помогу записаться на массаж.";
     static final String BOOK = "book";
     static final String BOOK_TITLE = "Записаться";
+    static final String CANCEL = "cancel";
+    static final String CANCEL_TITLE = "Отменить запись";
+    static final String APPOINTMENT_PREFIX = "appointment:";
+    static final String UPCOMING_HEADER = "Ваши записи:";
+    static final String NO_UPCOMING_TEXT = "У вас нет предстоящих записей.";
+    static final String CANCEL_PICK_TEXT = "Какую запись отменить?";
+    static final String PICK_BUTTON = "Выбрать запись";
+    static final int MAX_UPCOMING = 10;
 
     static final String SERVICES_TEXT = "Выберите массаж из списка.";
     static final String SERVICES_BUTTON = "Выбрать массаж";
@@ -35,6 +43,7 @@ final class BotReplies {
     static final String MORE_SERVICES_TITLE = "Ещё массажи";
     static final int MAX_SERVICES = 10;
     private static final int MAX_TITLE_LENGTH = 24;
+    private static final int MAX_DESCRIPTION_LENGTH = 72;
 
     static final String NO_SERVICES_TEXT =
             "Сейчас запись через бота недоступна. Мастер увидит ваше сообщение и ответит.";
@@ -77,6 +86,14 @@ final class BotReplies {
         }
     }
 
+    record Upcoming(UUID id, String serviceName, Instant start) {
+        Upcoming {
+            Objects.requireNonNull(id, "id");
+            Objects.requireNonNull(serviceName, "serviceName");
+            Objects.requireNonNull(start, "start");
+        }
+    }
+
     record IdAndStart(UUID id, Instant start) {
         IdAndStart {
             Objects.requireNonNull(id, "id");
@@ -94,6 +111,50 @@ final class BotReplies {
 
     static OutboundMessage menu() {
         return new Buttons(MENU_TEXT, List.of(new Button(BOOK, BOOK_TITLE)));
+    }
+
+    static OutboundMessage menu(List<Upcoming> upcoming, ZoneId zone) {
+        Objects.requireNonNull(upcoming, "upcoming");
+        Objects.requireNonNull(zone, "zone");
+        if (upcoming.isEmpty()) {
+            return menu();
+        }
+        StringBuilder body = new StringBuilder(MENU_TEXT).append("\n\n").append(UPCOMING_HEADER);
+        for (Upcoming item : upcoming) {
+            Objects.requireNonNull(item, "item");
+            body.append('\n')
+                    .append(when(item.start(), zone))
+                    .append(" — ")
+                    .append(title(item.serviceName()));
+        }
+        return new Buttons(
+                body.toString(),
+                List.of(new Button(BOOK, BOOK_TITLE), new Button(CANCEL, CANCEL_TITLE)));
+    }
+
+    static OutboundMessage noUpcoming() {
+        return new Buttons(NO_UPCOMING_TEXT, List.of(new Button(BOOK, BOOK_TITLE)));
+    }
+
+    static OutboundMessage picks(String body, List<Upcoming> upcoming, ZoneId zone) {
+        Objects.requireNonNull(body, "body");
+        Objects.requireNonNull(zone, "zone");
+        if (upcoming == null || upcoming.isEmpty() || upcoming.size() > MAX_UPCOMING) {
+            throw new IllegalArgumentException("upcoming count must be 1.." + MAX_UPCOMING);
+        }
+        List<Row> rows = upcoming.stream()
+                .map(item -> {
+                    Objects.requireNonNull(item, "item");
+                    LocalDate day = LocalDate.ofInstant(item.start(), zone);
+                    String dayOfWeek = DAYS_OF_WEEK[day.getDayOfWeek().getValue() - 1];
+                    String month = MONTHS[day.getMonthValue() - 1];
+                    String rowTitle = day.getDayOfMonth() + " " + month + ", " + time(item.start(), zone);
+                    String description =
+                            truncate(dayOfWeek + " · " + item.serviceName(), MAX_DESCRIPTION_LENGTH);
+                    return new Row(APPOINTMENT_PREFIX + item.id(), rowTitle, description);
+                })
+                .toList();
+        return new ListMenu(body, PICK_BUTTON, rows);
     }
 
     static OutboundMessage services(List<ServiceOption> options) {
@@ -190,10 +251,14 @@ final class BotReplies {
 
     private static String lines(ServiceOption option, Instant start, ZoneId zone) {
         Objects.requireNonNull(option, "option");
+        return option.name() + "\n" + when(start, zone) + "\n" + details(option);
+    }
+
+    static String when(Instant start, ZoneId zone) {
         Objects.requireNonNull(start, "start");
         Objects.requireNonNull(zone, "zone");
         LocalDate day = LocalDate.ofInstant(start, zone);
-        return option.name() + "\n" + dayTitle(day) + ", " + time(start, zone) + "\n" + details(option);
+        return dayTitle(day) + ", " + time(start, zone);
     }
 
     static String dayTitle(LocalDate day) {
@@ -207,6 +272,10 @@ final class BotReplies {
         Objects.requireNonNull(start, "start");
         Objects.requireNonNull(zone, "zone");
         return TIME_FORMAT.withZone(zone).format(start);
+    }
+
+    static Optional<UUID> appointmentIdOf(@Nullable String replyId) {
+        return parseCanonical(replyId, APPOINTMENT_PREFIX, UUID::fromString);
     }
 
     static Optional<UUID> serviceIdOf(@Nullable String replyId) {
@@ -259,12 +328,16 @@ final class BotReplies {
     }
 
     static String title(String name) {
-        Objects.requireNonNull(name, "name");
-        if (name.codePointCount(0, name.length()) <= MAX_TITLE_LENGTH) {
-            return name;
+        return truncate(Objects.requireNonNull(name, "name"), MAX_TITLE_LENGTH);
+    }
+
+    private static String truncate(String text, int maxLength) {
+        Objects.requireNonNull(text, "text");
+        if (text.codePointCount(0, text.length()) <= maxLength) {
+            return text;
         }
-        int endIndex = name.offsetByCodePoints(0, MAX_TITLE_LENGTH - 1);
-        return name.substring(0, endIndex) + "…";
+        int endIndex = text.offsetByCodePoints(0, maxLength - 1);
+        return text.substring(0, endIndex) + "…";
     }
 
     static String price(BigDecimal price) {
