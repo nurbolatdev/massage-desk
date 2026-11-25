@@ -25,7 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * The role rule lives in {@code SecurityConfig}: everything outside {@code /admin/**} is open to MASTER and ADMIN only
- * ({@code anyRequest()}). This test keeps every clients, services, working hours, time off and settings operation from
+ * ({@code anyRequest()}). This test keeps every clients, services, working hours, time off, settings and devices operation from
  * leaking to anonymous callers or to tokens without a staff role, and pins the status a staff caller gets for an empty
  * body so a wrong rule cannot hide behind "not 401 and not 403".
  */
@@ -61,7 +61,9 @@ class StaffEndpointsAccessTests {
                         new Operation(HttpMethod.POST, "/time-off", true, 400),
                         new Operation(HttpMethod.DELETE, "/time-off/" + id, false, 404),
                         new Operation(HttpMethod.GET, "/settings", false, 200),
-                        new Operation(HttpMethod.PATCH, "/settings", true, 200))
+                        new Operation(HttpMethod.PATCH, "/settings", true, 200),
+                        new Operation(HttpMethod.POST, "/devices", true, 400),
+                        new Operation(HttpMethod.DELETE, "/devices/" + id, false, 204))
                 .map(op -> Arguments.of(Named.of(op.toString(), op)));
     }
 
@@ -98,6 +100,7 @@ class StaffEndpointsAccessTests {
     }
 
     private static org.springframework.test.web.servlet.request.RequestPostProcessor as(StaffRole role) {
-        return jwt().authorities(new SimpleGrantedAuthority(role.authority()));
+        return jwt().jwt(j -> j.subject(UUID.randomUUID().toString()))
+                .authorities(new SimpleGrantedAuthority(role.authority()));
     }
 }

@@ -289,7 +289,7 @@ class SupabasePoliciesTests {
 
 	@ParameterizedTest
 	@ValueSource(strings = {"clients", "services", "working_hours", "time_off", "appointments", "conversations",
-			"messages", "profiles", "devices", "settings", "events", "ai_runs", "webhook_logs"})
+			"messages", "profiles", "settings", "events", "ai_runs", "webhook_logs"})
 	void staffReadsEveryTable(String table) throws SQLException {
 		long rows = as("authenticated", STAFF, c -> count(c, "select count(*) from " + table));
 		assertThat(rows).as(table).isGreaterThanOrEqualTo(1);
@@ -325,6 +325,17 @@ class SupabasePoliciesTests {
 	}
 
 	@Test
+	void staffSeesNoDevices() throws SQLException {
+		long masterRows = as("authenticated", STAFF, c -> count(c, "select count(*) from devices"));
+		long adminRows = as("authenticated", STAFF_2, c -> count(c, "select count(*) from devices"));
+		assertThat(masterRows).as("master").isZero();
+		assertThat(adminRows).as("admin").isZero();
+		try (Connection connection = owner()) {
+			assertThat(count(connection, "select count(*) from devices")).isGreaterThanOrEqualTo(1);
+		}
+	}
+
+	@Test
 	void staffReadsOwnProfile() throws SQLException {
 		long rows = as("authenticated", STAFF,
 				c -> count(c, "select count(*) from profiles where user_id = '" + STAFF + "'"));
@@ -348,6 +359,8 @@ class SupabasePoliciesTests {
 				Arguments.of("messages", """
 						insert into messages (conversation_id, direction, author, body) values
 						  ('30000000-0000-0000-0000-000000000001', 'out', 'master', 'hi')"""),
+				Arguments.of("devices",
+						"insert into devices (user_id, expo_push_token) values ('" + STAFF + "', 'token-2')"),
 				Arguments.of("idempotency_keys", """
 						insert into idempotency_keys (user_id, idempotency_key, appointment_id, client_id, service_id,
 						  start_at, end_at, created_at) values (
@@ -437,7 +450,7 @@ class SupabasePoliciesTests {
 		}
 		Set<String> expected = new HashSet<>();
 		for (String table : new String[] {"clients", "services", "working_hours", "time_off", "appointments",
-				"conversations", "messages", "devices", "settings", "events", "ai_runs", "webhook_logs"}) {
+				"conversations", "messages", "settings", "events", "ai_runs", "webhook_logs"}) {
 			expected.add(table + ".staff_read");
 		}
 		expected.add("profiles.own_profile_read");
