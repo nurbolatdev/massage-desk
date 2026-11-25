@@ -129,4 +129,4 @@ Schedule and settings events (written in the changing transaction, after the cha
 
 Change payload: `{"changed": [field, ...], "from": {...}, "to": {...}}`, snake_case field names. `from`/`to` hold values only for fields that are not personal data; personal fields (client `name` and `notes`) appear in `changed` only, because events are append-only and outlive the rows, so personal text copied there could never be erased. A change that changes nothing writes no event. Some events are not about a single entity and are stored with `entity_id` null (`DomainEventRecorder.record(type, actor, payload)`).
 
-The actor comes from the token role (`master` or `admin`); the bot will use `bot`. A refused action writes no event.
+The actor comes from the token role (`master` or `admin`); the bot uses `bot` for `appointment_created` and `appointment_cancelled`. A refused action writes no event.
