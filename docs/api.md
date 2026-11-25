@@ -95,7 +95,8 @@ insert into profiles (user_id, role, display_name) values ('<auth user id>', 'ma
 | GET | `/settings` | ✅ M1 | Time zone, address, bot switch |
 | PATCH | `/settings` | ✅ M1 | Change settings |
 | GET/POST | `/conversations/*` | M2 | Chats, master replies, take-over |
-| POST | `/devices` | M4 | Register a push token |
+| POST | `/devices` | ✅ M4 | Register this phone's push token; repeating is safe |
+| DELETE | `/devices/{id}` | ✅ M4 | Stop notifications on this phone |
 | GET | `/admin/*` | M1–M5 | Statistics and diagnostics (admin only) |
 
 ## Free time
@@ -300,3 +301,23 @@ There is no delete: appointments refer to services, so a service is deactivated 
 
 - `400` (`application/problem+json`): invalid field or malformed JSON; `unknown time zone`.
 - `409` (`application/problem+json`): `confirmed appointments are outside the working hours in the new time zone`, with `conflicts`; send `force: true` to store the zone anyway.
+
+## Devices
+
+`POST /devices` registers a phone's Expo push token for the signed-in staff member (`master` or `admin`).
+
+```json
+{"expoPushToken":"ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]"}
+```
+
+Response `200`:
+
+```json
+{"id":"<uuid>"}
+```
+
+- Repeating the request with the same token is safe: it returns `200` with the same `id` and moves the token to the staff member who sent it last.
+- `DELETE /devices/{id}` removes the device if it belongs to the caller and answers `204`; an unknown `id` or another staff member's device is ignored and also answers `204`.
+- Sending notifications arrives in a later release.
+
+- `400` (`application/problem+json`): `expoPushToken` is missing, blank, not an Expo push token (`ExpoPushToken[...]` or `ExponentPushToken[...]`) or longer than 255 characters; malformed JSON; or `id` on `DELETE` is not a UUID.
