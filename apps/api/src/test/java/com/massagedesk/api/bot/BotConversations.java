@@ -2,6 +2,7 @@ package com.massagedesk.api.bot;
 
 import static com.massagedesk.api.schedule.FixedClockConfiguration.NOW;
 
+import com.massagedesk.api.booking.AppointmentService;
 import com.massagedesk.api.clients.Client;
 import com.massagedesk.api.clients.ClientRepository;
 import com.massagedesk.api.messaging.ClientMessageReceived;
@@ -44,6 +45,7 @@ final class BotConversations {
                 context.getBean(BotSessionStore.class),
                 context.getBean(ServiceCatalog.class),
                 context.getBean(SlotService.class),
+                context.getBean(AppointmentService.class),
                 outbound,
                 context.getBean(Clock.class));
     }
@@ -57,9 +59,9 @@ final class BotConversations {
         OffsetDateTime inboundAt = NOW.minus(Duration.ofMinutes(1)).atOffset(ZoneOffset.UTC);
         return jdbc.queryForObject(
                 """
-                insert into conversations (client_id, human_mode, last_inbound_at, last_message_at)
-                values (?, ?, cast(? as timestamptz), cast(? as timestamptz)) returning id""",
-                UUID.class, client.getId(), humanMode, inboundAt, inboundAt);
+                insert into conversations (id, client_id, human_mode, last_inbound_at, last_message_at)
+                values (?, ?, ?, cast(? as timestamptz), cast(? as timestamptz)) returning id""",
+                UUID.class, client.getId(), client.getId(), humanMode, inboundAt, inboundAt);
     }
 
     static Optional<SessionRow> sessionOf(JdbcTemplate jdbc, UUID conversationId) {
@@ -121,10 +123,10 @@ final class BotConversations {
     }
 
     static ClientMessageReceived text(UUID conversationId, String body) {
-        return new ClientMessageReceived(conversationId, UUID.randomUUID(), "wamid.bot-text", body, null);
+        return new ClientMessageReceived(conversationId, conversationId, "wamid.bot-text", body, null);
     }
 
     static ClientMessageReceived reply(UUID conversationId, String replyId) {
-        return new ClientMessageReceived(conversationId, UUID.randomUUID(), "wamid.bot-reply", replyId, replyId);
+        return new ClientMessageReceived(conversationId, conversationId, "wamid.bot-reply", replyId, replyId);
     }
 }

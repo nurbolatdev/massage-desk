@@ -228,6 +228,10 @@ class BotRepliesTests {
         ServiceOption longOption = new ServiceOption(classic.id(), longName, 90, new BigDecimal("12000.00"));
         Buttons longConfirmation = (Buttons) BotReplies.confirmation(longOption, start, tashkent);
         assertThat(longConfirmation.body()).contains("\n" + longName + "\n");
+
+        assertThat(BotReplies.booked(classic, start, tashkent))
+                .isEqualTo(new Text(
+                        "Вы записаны:\nКлассический массаж\nВторник, 3 ноября, 10:00\n60\u00a0мин · 8\u00a0000\u00a0₸\nЖдём вас!"));
     }
 
     @Test

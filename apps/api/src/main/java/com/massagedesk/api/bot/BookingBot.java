@@ -1,8 +1,14 @@
 package com.massagedesk.api.bot;
 
+import com.massagedesk.api.booking.AppointmentService;
+import com.massagedesk.api.booking.AppointmentService.AppointmentView;
+import com.massagedesk.api.booking.AppointmentService.RequestKey;
+import com.massagedesk.api.booking.AppointmentSource;
+import com.massagedesk.api.booking.BookingException;
 import com.massagedesk.api.bot.BotReplies.ServiceOption;
 import com.massagedesk.api.bot.BotSession.Step;
 import com.massagedesk.api.bot.BotSessionStore.Loaded;
+import com.massagedesk.api.events.EventActor;
 import com.massagedesk.api.messaging.ClientMessageReceived;
 import com.massagedesk.api.messaging.OutboundMessage;
 import com.massagedesk.api.messaging.OutboundMessage.Text;
@@ -13,6 +19,7 @@ import com.massagedesk.api.schedule.ServiceCatalog;
 import com.massagedesk.api.schedule.SlotService;
 import com.massagedesk.api.schedule.SlotService.DaySlots;
 import com.massagedesk.api.settings.SettingsService;
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -29,6 +36,8 @@ import org.springframework.stereotype.Service;
 
 /**
  * Button booking conversation; silent when the bot is off or the master took over.
+ * Free time comes from the schedule service; bookings go through the appointment service with an
+ * idempotency key, so a repeated confirmation never books twice.
  * State is saved before replies, and replies are sent outside any transaction.
  */
 @Service
@@ -36,6 +45,8 @@ class BookingBot {
 
     static final Duration SESSION_LIFETIME = Duration.ofHours(24);
     static final int DAYS_AHEAD = 30;
+    static final UUID BOT_REQUEST_USER =
+            UUID.nameUUIDFromBytes("massage-desk-bot".getBytes(StandardCharsets.UTF_8));
 
     record Turn(BotSession next, List<OutboundMessage> replies) {
         Turn {
@@ -48,6 +59,7 @@ class BookingBot {
     private final BotSessionStore sessions;
     private final ServiceCatalog services;
     private final SlotService slots;
+    private final AppointmentService appointments;
     private final OutboundMessages outbound;
     private final Clock clock;
 
@@ -56,12 +68,14 @@ class BookingBot {
             BotSessionStore sessions,
             ServiceCatalog services,
             SlotService slots,
+            AppointmentService appointments,
             OutboundMessages outbound,
             Clock clock) {
         this.settings = Objects.requireNonNull(settings, "settings");
         this.sessions = Objects.requireNonNull(sessions, "sessions");
         this.services = Objects.requireNonNull(services, "services");
         this.slots = Objects.requireNonNull(slots, "slots");
+        this.appointments = Objects.requireNonNull(appointments, "appointments");
         this.outbound = Objects.requireNonNull(outbound, "outbound");
         this.clock = Objects.requireNonNull(clock, "clock");
     }
@@ -78,7 +92,7 @@ class BookingBot {
         }
         Instant now = clock.instant();
         BotSession current = currentSession(loaded.get(), now);
-        Turn turn = next(current, message);
+        Turn turn = next(current, loaded.get().updatedAt(), message);
         sessions.save(message.conversationId(), turn.next(), now);
         for (OutboundMessage reply : turn.replies()) {
             outbound.send(message.conversationId(), Author.BOT, reply);
@@ -94,13 +108,15 @@ class BookingBot {
         return BotSession.menu();
     }
 
-    private Turn next(BotSession current, ClientMessageReceived message) {
+    private Turn next(
+            BotSession current, @Nullable Instant updatedAt, ClientMessageReceived message) {
         return switch (current.step()) {
             case MENU -> BotReplies.BOOK.equals(message.replyId()) ? serviceList(0) : menuTurn();
             case SERVICE -> onService(message.replyId());
             case DAY -> onDay(current, message.replyId());
             case TIME -> onTime(current, message.replyId());
-            case CONFIRM, MOVE_PICK, CANCEL_PICK, CANCEL_CONFIRM -> menuTurn();
+            case CONFIRM -> onConfirm(current, updatedAt, message);
+            case MOVE_PICK, CANCEL_PICK, CANCEL_CONFIRM -> menuTurn();
         };
     }
 
@@ -158,8 +174,72 @@ class BookingBot {
         return timeList(serviceId, day, null, null);
     }
 
+    private Turn onConfirm(
+            BotSession current, @Nullable Instant updatedAt, ClientMessageReceived message) {
+        UUID serviceId = current.serviceId();
+        LocalDate day = current.day();
+        Instant start = current.start();
+        if (serviceId == null || day == null || start == null || updatedAt == null) {
+            return menuTurn();
+        }
+        if (BotReplies.CONFIRM.equals(message.replyId())) {
+            return confirmBooking(message, serviceId, day, start, updatedAt);
+        }
+        if (BotReplies.OTHER_TIME.equals(message.replyId())) {
+            return timeList(serviceId, day, null, null);
+        }
+        return activeService(serviceId)
+                .map(option -> new Turn(
+                        current, List.of(BotReplies.confirmation(option, start, zone()))))
+                .orElseGet(() -> serviceList(0));
+    }
+
+    private Turn confirmBooking(
+            ClientMessageReceived message,
+            UUID serviceId,
+            LocalDate day,
+            Instant start,
+            Instant updatedAt) {
+        UUID key = UUID.nameUUIDFromBytes(
+                (message.conversationId() + "|" + serviceId + "|" + start + "|" + updatedAt)
+                        .getBytes(StandardCharsets.UTF_8));
+        AppointmentView view;
+        try {
+            view = appointments.create(
+                    message.clientId(),
+                    serviceId,
+                    start,
+                    AppointmentSource.BOT,
+                    EventActor.BOT,
+                    new RequestKey(BOT_REQUEST_USER, key));
+        } catch (BookingException e) {
+            return switch (e.reason()) {
+                case TIME_TAKEN, OUTSIDE_SCHEDULE ->
+                        timeList(serviceId, day, null, new Text(BotReplies.TIME_TAKEN_TEXT));
+                case SERVICE_NOT_FOUND -> serviceList(0);
+                case CLIENT_NOT_FOUND,
+                        APPOINTMENT_NOT_FOUND,
+                        NOT_CONFIRMED,
+                        NOT_STARTED,
+                        IDEMPOTENCY_KEY_REUSED -> menuTurn();
+            };
+        }
+        return serviceById(view.serviceId())
+                .map(option -> new Turn(
+                        BotSession.menu(),
+                        List.of(BotReplies.booked(option, view.period().start(), view.zone()))))
+                .orElseGet(BookingBot::menuTurn);
+    }
+
     private static Turn menuTurn() {
         return new Turn(BotSession.menu(), List.of(BotReplies.menu()));
+    }
+
+    private Optional<ServiceOption> serviceById(UUID serviceId) {
+        return services.all().stream()
+                .filter(s -> s.getId().equals(serviceId))
+                .findFirst()
+                .map(s -> new ServiceOption(s.getId(), s.getName(), s.getDurationMin(), s.getPrice()));
     }
 
     private List<ServiceOption> activeOptions() {

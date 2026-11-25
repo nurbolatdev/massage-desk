@@ -172,6 +172,10 @@ final class BotReplies {
                         new Button(OTHER_TIME, "Другое время")));
     }
 
+    static OutboundMessage booked(ServiceOption option, Instant start, ZoneId zone) {
+        return new Text("Вы записаны:\n" + lines(option, start, zone) + "\nЖдём вас!");
+    }
+
     private static String lines(ServiceOption option, Instant start, ZoneId zone) {
         Objects.requireNonNull(option, "option");
         Objects.requireNonNull(start, "start");
