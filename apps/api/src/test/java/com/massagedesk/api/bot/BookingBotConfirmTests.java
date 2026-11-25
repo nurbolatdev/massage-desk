@@ -3,6 +3,7 @@ package com.massagedesk.api.bot;
 import static com.massagedesk.api.bot.BotConversations.bot;
 import static com.massagedesk.api.bot.BotConversations.buttonIds;
 import static com.massagedesk.api.bot.BotConversations.cleanUp;
+import static com.massagedesk.api.bot.BotConversations.clientIdOf;
 import static com.massagedesk.api.bot.BotConversations.conversation;
 import static com.massagedesk.api.bot.BotConversations.reply;
 import static com.massagedesk.api.bot.BotConversations.requestJson;
@@ -134,33 +135,33 @@ class BookingBotConfirmTests {
                 })
                 .andRespond(withSuccess(accepted("wamid.bot-booked-replay"), APPLICATION_JSON));
 
-        bot.on(reply(id, "confirm"));
+        bot.on(reply(jdbc, id, "confirm:" + START));
 
         assertThat(sessions.load(id).orElseThrow().session()).isEqualTo(BotSession.menu());
-        assertThat(appointmentsOf(id))
+        assertThat(appointmentsOf(clientIdOf(jdbc, id)))
                 .containsExactly(new StoredAppointment(START, END, "bot", "confirmed"));
-        assertThat(createdEventsCount(id)).isEqualTo(1);
+        assertThat(createdEventsCount(clientIdOf(jdbc, id))).isEqualTo(1);
         assertThat(jdbc.queryForList(
                         """
                         select user_id from idempotency_keys
                         where appointment_id in (select id from appointments where client_id = ?)""",
                         UUID.class,
-                        id))
+                        clientIdOf(jdbc, id)))
                 .containsExactly(BookingBot.BOT_REQUEST_USER);
 
         // Repeat confirm after session moved to menu -> menu reply, still one appointment.
-        bot.on(reply(id, "confirm"));
+        bot.on(reply(jdbc, id, "confirm:" + START));
         assertThat(sessions.load(id).orElseThrow().session()).isEqualTo(BotSession.menu());
-        assertThat(appointmentsOf(id)).hasSize(1);
+        assertThat(appointmentsOf(clientIdOf(jdbc, id))).hasSize(1);
 
         // Stale read: another worker read the same CONFIRM session with the same updated_at.
         sessions.save(id, confirmSession, sessionAt);
-        bot.on(reply(id, "confirm"));
+        bot.on(reply(jdbc, id, "confirm:" + START));
 
         server.verify();
         assertThat(sessions.load(id).orElseThrow().session()).isEqualTo(BotSession.menu());
-        assertThat(appointmentsOf(id)).hasSize(1);
-        assertThat(createdEventsCount(id)).isEqualTo(1);
+        assertThat(appointmentsOf(clientIdOf(jdbc, id))).hasSize(1);
+        assertThat(createdEventsCount(clientIdOf(jdbc, id))).isEqualTo(1);
     }
 
     @Test
@@ -193,22 +194,22 @@ class BookingBotConfirmTests {
                 id,
                 new BotSession(Step.CONFIRM, serviceId, TUESDAY, START, null),
                 NOW.minus(Duration.ofMinutes(1)));
-        bot.on(reply(id, "confirm"));
+        bot.on(reply(jdbc, id, "confirm:" + START));
         assertThat(sessions.load(id).orElseThrow().session())
                 .isEqualTo(new BotSession(Step.TIME, serviceId, TUESDAY, null, null));
-        assertThat(appointmentsOf(id)).isEmpty();
+        assertThat(appointmentsOf(clientIdOf(jdbc, id))).isEmpty();
 
         // OUTSIDE_SCHEDULE: 12:00Z = 17:00 Asia/Tashkent, outside Tuesday 10:00-16:00.
         sessions.save(
                 id,
                 new BotSession(Step.CONFIRM, serviceId, TUESDAY, Instant.parse("2026-11-03T12:00:00Z"), null),
                 NOW.minus(Duration.ofMinutes(1)));
-        bot.on(reply(id, "confirm"));
+        bot.on(reply(jdbc, id, "confirm:2026-11-03T12:00:00Z"));
 
         server.verify();
         assertThat(sessions.load(id).orElseThrow().session())
                 .isEqualTo(new BotSession(Step.TIME, serviceId, TUESDAY, null, null));
-        assertThat(appointmentsOf(id)).isEmpty();
+        assertThat(appointmentsOf(clientIdOf(jdbc, id))).isEmpty();
     }
 
     @Test
@@ -237,10 +238,10 @@ class BookingBotConfirmTests {
                     id,
                     new BotSession(Step.CONFIRM, serviceId, TUESDAY, START, null),
                     NOW.minus(Duration.ofMinutes(1)));
-            bot.on(reply(id, "confirm"));
+            bot.on(reply(jdbc, id, "confirm:" + START));
             assertThat(sessions.load(id).orElseThrow().session())
                     .isEqualTo(new BotSession(Step.SERVICE, null, null, null, null));
-            assertThat(appointmentsOf(id)).isEmpty();
+            assertThat(appointmentsOf(clientIdOf(jdbc, id))).isEmpty();
 
             jdbc.update("update services set active = false where id = ?", otherServiceId);
             assertThat(jdbc.queryForObject("select count(*) from services where active", Integer.class))
@@ -249,11 +250,11 @@ class BookingBotConfirmTests {
                     id,
                     new BotSession(Step.CONFIRM, serviceId, TUESDAY, START, null),
                     NOW.minus(Duration.ofMinutes(1)));
-            bot.on(reply(id, "confirm"));
+            bot.on(reply(jdbc, id, "confirm:" + START));
 
             server.verify();
             assertThat(sessions.load(id).orElseThrow().session()).isEqualTo(BotSession.menu());
-            assertThat(appointmentsOf(id)).isEmpty();
+            assertThat(appointmentsOf(clientIdOf(jdbc, id))).isEmpty();
         } finally {
             jdbc.update("delete from services where id = ?", otherServiceId);
         }
@@ -277,21 +278,42 @@ class BookingBotConfirmTests {
                     assertThat(body.path("interactive").path("body").path("text").asString())
                             .isEqualTo(
                                     "Проверьте запись:\nКлассический массаж\nВторник, 3 ноября, 10:00\n60\u00a0мин · 8\u00a0000\u00a0₸");
-                    assertThat(buttonIds(body)).containsExactly("confirm", "other_time");
+                    assertThat(buttonIds(body)).containsExactly("confirm:2026-11-03T05:00:00Z", "other_time");
                 })
                 .andRespond(withSuccess(accepted("wamid.bot-confirm-repeat"), APPLICATION_JSON));
 
         sessions.save(id, confirmSession, NOW.minus(Duration.ofMinutes(1)));
-        bot.on(reply(id, "other_time"));
+        bot.on(reply(jdbc, id, "other_time"));
         assertThat(sessions.load(id).orElseThrow().session())
                 .isEqualTo(new BotSession(Step.TIME, serviceId, TUESDAY, null, null));
 
         sessions.save(id, confirmSession, NOW.minus(Duration.ofMinutes(1)));
-        bot.on(text(id, "да"));
+        bot.on(text(jdbc, id, "да"));
 
         server.verify();
         assertThat(sessions.load(id).orElseThrow().session()).isEqualTo(confirmSession);
-        assertThat(appointmentsOf(id)).isEmpty();
+        assertThat(appointmentsOf(clientIdOf(jdbc, id))).isEmpty();
+    }
+
+    @Test
+    void staleOrBareConfirmButtonRepeatsCurrentConfirmationWithoutBooking() {
+        UUID id = conversation(clients, jdbc, "+998900001205");
+        BotSession confirmSession = new BotSession(Step.CONFIRM, serviceId, TUESDAY, START, null);
+        sessions.save(id, confirmSession, NOW.minus(Duration.ofMinutes(1)));
+        for (int attempt = 1; attempt <= 2; attempt++) {
+            server.expect(requestTo(MESSAGES_URL))
+                    .andExpect(method(POST))
+                    .andExpect(request -> assertThat(buttonIds(requestJson(json, request)))
+                            .containsExactly("confirm:2026-11-03T05:00:00Z", "other_time"))
+                    .andRespond(withSuccess(accepted("wamid.bot-confirm-stale-" + attempt), APPLICATION_JSON));
+        }
+
+        bot.on(reply(jdbc, id, "confirm:2026-11-03T06:00:00Z"));
+        bot.on(reply(jdbc, id, "confirm"));
+
+        server.verify();
+        assertThat(sessions.load(id).orElseThrow().session()).isEqualTo(confirmSession);
+        assertThat(appointmentsOf(clientIdOf(jdbc, id))).isEmpty();
     }
 
     private List<StoredAppointment> appointmentsOf(UUID clientId) {

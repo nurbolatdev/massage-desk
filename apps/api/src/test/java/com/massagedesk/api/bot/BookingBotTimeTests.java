@@ -123,11 +123,11 @@ class BookingBotTimeTests {
                     assertThat(body.path("interactive").path("body").path("text").asString())
                             .isEqualTo(
                                     "Проверьте запись:\nКлассический массаж\nВторник, 3 ноября, 10:00\n60\u00a0мин · 8\u00a0000\u00a0₸");
-                    assertThat(buttonIds(body)).containsExactly("confirm", "other_time");
+                    assertThat(buttonIds(body)).containsExactly("confirm:2026-11-03T05:00:00Z", "other_time");
                 })
                 .andRespond(withSuccess(accepted("wamid.bot-time-confirm"), APPLICATION_JSON));
 
-        bot.on(reply(id, "time:2026-11-03T05:00:00Z"));
+        bot.on(reply(jdbc, id, "time:2026-11-03T05:00:00Z"));
 
         server.verify();
         assertThat(sessions.load(id).orElseThrow().session())
@@ -162,11 +162,11 @@ class BookingBotTimeTests {
                         .containsExactlyElementsOf(FIRST_PAGE_TIME_IDS))
                 .andRespond(withSuccess(accepted("wamid.bot-more-times-wrap"), APPLICATION_JSON));
 
-        bot.on(reply(id, "more_times:2026-11-03T08:30:00Z"));
+        bot.on(reply(jdbc, id, "more_times:2026-11-03T08:30:00Z"));
         assertThat(sessions.load(id).orElseThrow().session())
                 .isEqualTo(new BotSession(Step.TIME, serviceId, TUESDAY, null, null));
 
-        bot.on(reply(id, "more_times:2026-11-03T10:00:00Z"));
+        bot.on(reply(jdbc, id, "more_times:2026-11-03T10:00:00Z"));
 
         server.verify();
         assertThat(sessions.load(id).orElseThrow().session())
@@ -205,11 +205,11 @@ class BookingBotTimeTests {
                     .andRespond(withSuccess(accepted("wamid.bot-taken-list-" + currentAttempt), APPLICATION_JSON));
         }
 
-        bot.on(reply(id, "time:2026-11-03T05:00:00Z"));
+        bot.on(reply(jdbc, id, "time:2026-11-03T05:00:00Z"));
         assertThat(sessions.load(id).orElseThrow().session())
                 .isEqualTo(new BotSession(Step.TIME, serviceId, TUESDAY, null, null));
 
-        bot.on(reply(id, "time:2026-11-03T05:10:00Z"));
+        bot.on(reply(jdbc, id, "time:2026-11-03T05:10:00Z"));
 
         server.verify();
         assertThat(sessions.load(id).orElseThrow().session())
@@ -236,15 +236,32 @@ class BookingBotTimeTests {
                         .containsExactlyElementsOf(FIRST_PAGE_TIME_IDS))
                 .andRespond(withSuccess(accepted("wamid.bot-text-times"), APPLICATION_JSON));
 
-        bot.on(reply(id, "other_day"));
+        bot.on(reply(jdbc, id, "other_day"));
         assertThat(sessions.load(id).orElseThrow().session())
                 .isEqualTo(new BotSession(Step.DAY, serviceId, null, null, null));
 
         sessions.save(id, new BotSession(Step.TIME, serviceId, TUESDAY, null, null), NOW.minus(Duration.ofMinutes(1)));
-        bot.on(text(id, "в 10"));
+        bot.on(text(jdbc, id, "в 10"));
 
         server.verify();
         assertThat(sessions.load(id).orElseThrow().session())
                 .isEqualTo(new BotSession(Step.TIME, serviceId, TUESDAY, null, null));
+    }
+
+    @Test
+    void timeFromAnotherDayRepeatsSessionDayListWithoutTimeTakenText() {
+        UUID id = conversation(clients, jdbc, "+998900001205");
+        BotSession timeSession = new BotSession(Step.TIME, serviceId, TUESDAY, null, null);
+        sessions.save(id, timeSession, NOW.minus(Duration.ofMinutes(1)));
+        server.expect(requestTo(MESSAGES_URL))
+                .andExpect(method(POST))
+                .andExpect(request -> assertThat(rowIds(requestJson(json, request)))
+                        .containsExactlyElementsOf(FIRST_PAGE_TIME_IDS))
+                .andRespond(withSuccess(accepted("wamid.bot-other-day-time"), APPLICATION_JSON));
+
+        bot.on(reply(jdbc, id, "time:2026-11-10T05:00:00Z"));
+
+        server.verify();
+        assertThat(sessions.load(id).orElseThrow().session()).isEqualTo(timeSession);
     }
 }

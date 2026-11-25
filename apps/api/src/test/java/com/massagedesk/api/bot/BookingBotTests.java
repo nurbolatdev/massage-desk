@@ -28,6 +28,7 @@ import com.massagedesk.api.bot.BotConversations.SessionRow;
 import com.massagedesk.api.bot.BotConversations.StoredMessage;
 import com.massagedesk.api.bot.BotSession.Step;
 import com.massagedesk.api.clients.ClientRepository;
+import com.massagedesk.api.messaging.ClientMessageReceived;
 import com.massagedesk.api.messaging.TestOutboundMessages;
 import com.massagedesk.api.messaging.WhatsAppSendException;
 import com.massagedesk.api.schedule.FixedClockConfiguration;
@@ -85,7 +86,7 @@ class BookingBotTests {
                 .andExpect(request -> assertThat(buttonIds(requestJson(json, request))).containsExactly("book"))
                 .andRespond(withSuccess(accepted("wamid.bot-1"), APPLICATION_JSON));
 
-        bot.on(text(id, "Здравствуйте"));
+        bot.on(text(jdbc, id, "Здравствуйте"));
 
         server.verify();
         assertThat(sessionOf(jdbc, id)).contains(new SessionRow("menu", NOW));
@@ -96,13 +97,14 @@ class BookingBotTests {
     void silentWhenBotIsDisabledHumanModeIsOnOrConversationIsUnknown() {
         UUID offConv = conversation(clients, jdbc, "+998900001202");
         jdbc.update("update settings set bot_enabled = false");
-        bot.on(text(offConv, "Здравствуйте"));
+        bot.on(text(jdbc, offConv, "Здравствуйте"));
         assertThat(sessionOf(jdbc, offConv)).isEmpty();
 
         jdbc.update("update settings set bot_enabled = true");
         UUID humanConv = conversation(clients, jdbc, "+998900001203", true);
-        bot.on(text(humanConv, "Здравствуйте"));
-        bot.on(text(UUID.randomUUID(), "Здравствуйте"));
+        bot.on(text(jdbc, humanConv, "Здравствуйте"));
+        bot.on(new ClientMessageReceived(
+                UUID.randomUUID(), UUID.randomUUID(), "wamid.bot-unknown", "Здравствуйте", null));
 
         server.verify();
         assertThat(sessionOf(jdbc, humanConv)).isEmpty();
@@ -117,7 +119,7 @@ class BookingBotTests {
                 .andExpect(request -> assertThat(buttonIds(requestJson(json, request))).containsExactly("book"))
                 .andRespond(withSuccess(accepted("wamid.bot-2"), APPLICATION_JSON));
 
-        bot.on(reply(id, "service:1"));
+        bot.on(reply(jdbc, id, "service:1"));
 
         server.verify();
         assertThat(sessionOf(jdbc, id)).contains(new SessionRow("menu", NOW));
@@ -130,7 +132,7 @@ class BookingBotTests {
                 .andExpect(method(POST))
                 .andRespond(withStatus(SERVICE_UNAVAILABLE));
 
-        assertThatThrownBy(() -> bot.on(text(id, "Здравствуйте")))
+        assertThatThrownBy(() -> bot.on(text(jdbc, id, "Здравствуйте")))
                 .isInstanceOf(WhatsAppSendException.class);
 
         server.verify();
@@ -141,7 +143,7 @@ class BookingBotTests {
     void publishedEventReachesSpringListenerAndSavesSession() {
         UUID id = conversation(clients, jdbc, "+998900001206");
 
-        catchThrowable(() -> events.publishEvent(text(id, "Здравствуйте")));
+        catchThrowable(() -> events.publishEvent(text(jdbc, id, "Здравствуйте")));
 
         assertThat(sessionOf(jdbc, id)).contains(new SessionRow("menu", NOW));
     }

@@ -3,6 +3,7 @@ package com.massagedesk.api.bot;
 import static com.massagedesk.api.bot.BotConversations.bot;
 import static com.massagedesk.api.bot.BotConversations.buttonIds;
 import static com.massagedesk.api.bot.BotConversations.cleanUp;
+import static com.massagedesk.api.bot.BotConversations.clientIdOf;
 import static com.massagedesk.api.bot.BotConversations.conversation;
 import static com.massagedesk.api.bot.BotConversations.messagesOf;
 import static com.massagedesk.api.bot.BotConversations.reply;
@@ -39,7 +40,9 @@ import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Queue;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -145,7 +148,7 @@ class BookingBotConversationTests {
             assertThat(body.path("interactive").path("body").path("text").asString())
                     .isEqualTo(CONFIRMATION_TEXT)
                     .contains("Вторник, 3 ноября, 14:00");
-            assertThat(buttonIds(body)).containsExactly("confirm", "other_time");
+            assertThat(buttonIds(body)).containsExactly("confirm:2026-11-03T09:00:00Z", "other_time");
             nextReplyId.set(buttonIds(body).get(0));
         });
         expectReply(7, body -> {
@@ -155,16 +158,16 @@ class BookingBotConversationTests {
                     .contains("Вторник, 3 ноября, 14:00");
         });
 
-        bot.on(text(id, "Здравствуйте"));
+        bot.on(text(jdbc, id, "Здравствуйте"));
         for (int turn = 0; turn < 6; turn++) {
             String replyId = nextReplyId.getAndSet(null);
             assertThat(replyId).isNotNull();
-            bot.on(reply(id, replyId));
+            bot.on(reply(jdbc, id, replyId));
         }
 
         server.verify();
         assertThat(sessions.load(id).orElseThrow().session()).isEqualTo(BotSession.menu());
-        assertThat(appointmentsOf(id))
+        assertThat(appointmentsOf(clientIdOf(jdbc, id)))
                 .containsExactly(new StoredAppointment(START_14_00, END_15_00, "bot", "confirmed"));
         List<StoredMessage> messages = messagesOf(jdbc, id);
         assertThat(messages).hasSize(7).allSatisfy(m -> {
@@ -182,8 +185,10 @@ class BookingBotConversationTests {
                 new BotSession(Step.CONFIRM, serviceId, TUESDAY, START_14_00, null),
                 NOW.minus(Duration.ofMinutes(1)));
         AtomicInteger sequence = new AtomicInteger();
+        Queue<JsonNode> bodies = new ConcurrentLinkedQueue<>();
         server.expect(ExpectedCount.times(2), requestTo(MESSAGES_URL))
                 .andExpect(method(POST))
+                .andExpect(request -> bodies.add(requestJson(json, request)))
                 .andRespond(request -> withSuccess(
                                 accepted("wamid.bot-concurrent-" + sequence.incrementAndGet()),
                                 APPLICATION_JSON)
@@ -198,7 +203,7 @@ class BookingBotConversationTests {
                 futures.add(pool.submit(() -> {
                     ready.countDown();
                     start.await();
-                    bot.on(reply(id, "confirm"));
+                    bot.on(reply(jdbc, id, "confirm:" + START_14_00));
                     return null;
                 }));
             }
@@ -212,10 +217,21 @@ class BookingBotConversationTests {
         }
 
         server.verify();
+        assertThat(bodies)
+                .hasSize(2)
+                .anySatisfy(body -> assertThat(textOf(body)).isEqualTo(BOOKED_TEXT))
+                .noneSatisfy(body -> assertThat(textOf(body)).isEqualTo(BotReplies.TIME_TAKEN_TEXT))
+                .allSatisfy(body -> assertThat(
+                                BOOKED_TEXT.equals(textOf(body)) || buttonIds(body).equals(List.of("book")))
+                        .isTrue());
         assertThat(sessions.load(id).orElseThrow().session()).isEqualTo(BotSession.menu());
-        assertThat(appointmentsOf(id))
+        assertThat(appointmentsOf(clientIdOf(jdbc, id)))
                 .containsExactly(new StoredAppointment(START_14_00, END_15_00, "bot", "confirmed"));
-        assertThat(createdEventsCount(id)).isEqualTo(1);
+        assertThat(createdEventsCount(clientIdOf(jdbc, id))).isEqualTo(1);
+    }
+
+    private static String textOf(JsonNode body) {
+        return body.path("text").path("body").asString("");
     }
 
     private void expectReply(int step, Consumer<JsonNode> assertion) {

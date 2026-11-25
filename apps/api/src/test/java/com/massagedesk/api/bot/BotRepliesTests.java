@@ -220,7 +220,7 @@ class BotRepliesTests {
                 .isEqualTo(new Buttons(
                         "Проверьте запись:\nКлассический массаж\nВторник, 3 ноября, 10:00\n60\u00a0мин · 8\u00a0000\u00a0₸",
                         List.of(
-                                new Button("confirm", "Подтвердить"),
+                                new Button("confirm:2026-11-03T05:00:00Z", "Подтвердить"),
                                 new Button("other_time", "Другое время"))));
 
         String longName = "Классический расслабляющий массаж спины и шеи";
@@ -246,10 +246,13 @@ class BotRepliesTests {
         assertThat(BotReplies.dayOf("day:" + day)).contains(day);
         assertThat(BotReplies.timeOf("time:" + start)).contains(start);
         assertThat(BotReplies.moreTimesAfterOf("more_times:" + start)).contains(start);
+        assertThat(BotReplies.confirmedStartOf("confirm:" + start)).contains(start);
 
         for (String invalid : List.of(
                 "",
                 "book",
+                "confirm",
+                "confirm:2026-11-03T05:00Z",
                 "day:2026-1-3",
                 "day:2026-02-30",
                 "time:2026-11-03T05:00Z",
@@ -263,11 +266,13 @@ class BotRepliesTests {
             assertThat(BotReplies.dayOf(invalid)).isEmpty();
             assertThat(BotReplies.timeOf(invalid)).isEmpty();
             assertThat(BotReplies.moreTimesAfterOf(invalid)).isEmpty();
+            assertThat(BotReplies.confirmedStartOf(invalid)).isEmpty();
         }
         assertThat(BotReplies.serviceIdOf(null)).isEmpty();
         assertThat(BotReplies.moreServicesOffsetOf(null)).isEmpty();
         assertThat(BotReplies.dayOf(null)).isEmpty();
         assertThat(BotReplies.timeOf(null)).isEmpty();
         assertThat(BotReplies.moreTimesAfterOf(null)).isEmpty();
+        assertThat(BotReplies.confirmedStartOf(null)).isEmpty();
     }
 }

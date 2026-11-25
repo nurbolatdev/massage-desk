@@ -61,7 +61,12 @@ final class BotConversations {
                 """
                 insert into conversations (id, client_id, human_mode, last_inbound_at, last_message_at)
                 values (?, ?, ?, cast(? as timestamptz), cast(? as timestamptz)) returning id""",
-                UUID.class, client.getId(), client.getId(), humanMode, inboundAt, inboundAt);
+                UUID.class, UUID.randomUUID(), client.getId(), humanMode, inboundAt, inboundAt);
+    }
+
+    static UUID clientIdOf(JdbcTemplate jdbc, UUID conversationId) {
+        return jdbc.queryForObject(
+                "select client_id from conversations where id = ?", UUID.class, conversationId);
     }
 
     static Optional<SessionRow> sessionOf(JdbcTemplate jdbc, UUID conversationId) {
@@ -122,11 +127,13 @@ final class BotConversations {
         return ids;
     }
 
-    static ClientMessageReceived text(UUID conversationId, String body) {
-        return new ClientMessageReceived(conversationId, conversationId, "wamid.bot-text", body, null);
+    static ClientMessageReceived text(JdbcTemplate jdbc, UUID conversationId, String body) {
+        return new ClientMessageReceived(
+                conversationId, clientIdOf(jdbc, conversationId), "wamid.bot-text", body, null);
     }
 
-    static ClientMessageReceived reply(UUID conversationId, String replyId) {
-        return new ClientMessageReceived(conversationId, conversationId, "wamid.bot-reply", replyId, replyId);
+    static ClientMessageReceived reply(JdbcTemplate jdbc, UUID conversationId, String replyId) {
+        return new ClientMessageReceived(
+                conversationId, clientIdOf(jdbc, conversationId), "wamid.bot-reply", replyId, replyId);
     }
 }

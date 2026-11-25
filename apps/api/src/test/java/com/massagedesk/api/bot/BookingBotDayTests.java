@@ -117,7 +117,7 @@ class BookingBotDayTests {
                 })
                 .andRespond(withSuccess(accepted("wamid.bot-day-1"), APPLICATION_JSON));
 
-        bot.on(reply(id, BotReplies.SERVICE_PREFIX + serviceId));
+        bot.on(reply(jdbc, id, BotReplies.SERVICE_PREFIX + serviceId));
 
         server.verify();
         assertThat(sessions.load(id).orElseThrow().session())
@@ -154,7 +154,7 @@ class BookingBotDayTests {
                 })
                 .andRespond(withSuccess(accepted("wamid.bot-day-times"), APPLICATION_JSON));
 
-        bot.on(reply(id, "day:2026-11-03"));
+        bot.on(reply(jdbc, id, "day:2026-11-03"));
 
         server.verify();
         assertThat(sessions.load(id).orElseThrow().session())
@@ -190,15 +190,15 @@ class BookingBotDayTests {
                         .containsExactlyElementsOf(TUESDAY_DAY_IDS))
                 .andRespond(withSuccess(accepted("wamid.bot-text-days"), APPLICATION_JSON));
 
-        bot.on(reply(id, "day:2026-11-02"));
+        bot.on(reply(jdbc, id, "day:2026-11-02"));
         assertThat(sessions.load(id).orElseThrow().session())
                 .isEqualTo(new BotSession(Step.DAY, serviceId, null, null, null));
 
-        bot.on(reply(id, "day:2026-12-02"));
+        bot.on(reply(jdbc, id, "day:2026-12-02"));
         assertThat(sessions.load(id).orElseThrow().session())
                 .isEqualTo(new BotSession(Step.DAY, serviceId, null, null, null));
 
-        bot.on(text(id, "завтра"));
+        bot.on(text(jdbc, id, "завтра"));
 
         server.verify();
         assertThat(sessions.load(id).orElseThrow().session())
@@ -221,7 +221,7 @@ class BookingBotDayTests {
                 })
                 .andRespond(withSuccess(accepted("wamid.bot-no-days"), APPLICATION_JSON));
 
-        bot.on(reply(id, BotReplies.SERVICE_PREFIX + serviceId));
+        bot.on(reply(jdbc, id, BotReplies.SERVICE_PREFIX + serviceId));
 
         server.verify();
         assertThat(sessions.load(id).orElseThrow().session()).isEqualTo(BotSession.menu());
@@ -250,7 +250,7 @@ class BookingBotDayTests {
                     })
                     .andRespond(withSuccess(accepted("wamid.bot-day-no-svc"), APPLICATION_JSON));
 
-            bot.on(reply(id, "day:2026-11-03"));
+            bot.on(reply(jdbc, id, "day:2026-11-03"));
             assertThat(sessions.load(id).orElseThrow().session())
                     .isEqualTo(new BotSession(Step.SERVICE, null, null, null, null));
 
@@ -259,7 +259,7 @@ class BookingBotDayTests {
                     .isZero();
             sessions.save(id, new BotSession(Step.DAY, serviceId, null, null, null), NOW.minus(Duration.ofMinutes(1)));
 
-            bot.on(reply(id, "day:2026-11-03"));
+            bot.on(reply(jdbc, id, "day:2026-11-03"));
 
             server.verify();
             assertThat(sessions.load(id).orElseThrow().session()).isEqualTo(BotSession.menu());

@@ -99,7 +99,7 @@ class BookingBotServiceListTests {
                         .doesNotContain(BotReplies.SERVICE_PREFIX + inactiveServiceId))
                 .andRespond(withSuccess(accepted("wamid.bot-svc-1"), APPLICATION_JSON));
 
-        bot.on(reply(id, BotReplies.BOOK));
+        bot.on(reply(jdbc, id, BotReplies.BOOK));
 
         server.verify();
         assertThat(sessionOf(jdbc, id)).contains(new SessionRow("service", NOW));
@@ -118,10 +118,10 @@ class BookingBotServiceListTests {
                     .andRespond(withSuccess(accepted("wamid.bot-svc-repeat-" + i), APPLICATION_JSON));
         }
 
-        bot.on(text(id, "хочу массаж"));
+        bot.on(text(jdbc, id, "хочу массаж"));
         assertThat(sessionOf(jdbc, id)).contains(new SessionRow("service", NOW));
 
-        bot.on(reply(id, BotReplies.SERVICE_PREFIX + inactiveServiceId));
+        bot.on(reply(jdbc, id, BotReplies.SERVICE_PREFIX + inactiveServiceId));
 
         server.verify();
         assertThat(sessionOf(jdbc, id)).contains(new SessionRow("service", NOW));
@@ -169,9 +169,9 @@ class BookingBotServiceListTests {
                             .containsExactlyElementsOf(expectedFirstPage))
                     .andRespond(withSuccess(accepted("wamid.bot-svc-page-wrap"), APPLICATION_JSON));
 
-            bot.on(reply(id, BotReplies.BOOK));
-            bot.on(reply(id, "more_services:9"));
-            bot.on(reply(id, "more_services:50"));
+            bot.on(reply(jdbc, id, BotReplies.BOOK));
+            bot.on(reply(jdbc, id, "more_services:9"));
+            bot.on(reply(jdbc, id, "more_services:50"));
 
             server.verify();
             assertThat(sessionOf(jdbc, id)).contains(new SessionRow("service", NOW));
@@ -197,7 +197,7 @@ class BookingBotServiceListTests {
                 })
                 .andRespond(withSuccess(accepted("wamid.bot-no-svc"), APPLICATION_JSON));
 
-        bot.on(reply(id, BotReplies.BOOK));
+        bot.on(reply(jdbc, id, BotReplies.BOOK));
 
         server.verify();
         assertThat(sessionOf(jdbc, id)).contains(new SessionRow("menu", NOW));
@@ -215,10 +215,10 @@ class BookingBotServiceListTests {
                     .andRespond(withSuccess(accepted("wamid.bot-menu-" + i), APPLICATION_JSON));
         }
 
-        bot.on(reply(id, BotReplies.SERVICE_PREFIX + activeServiceId));
+        bot.on(reply(jdbc, id, BotReplies.SERVICE_PREFIX + activeServiceId));
         assertThat(sessionOf(jdbc, id)).contains(new SessionRow("menu", NOW));
 
-        bot.on(text(id, "запишите меня"));
+        bot.on(text(jdbc, id, "запишите меня"));
 
         server.verify();
         assertThat(sessionOf(jdbc, id)).contains(new SessionRow("menu", NOW));

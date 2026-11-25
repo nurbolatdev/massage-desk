@@ -50,7 +50,7 @@ final class BotReplies {
     static final String OTHER_DAY = "other_day";
     static final int TIMES_PER_PAGE = 8;
 
-    static final String CONFIRM = "confirm";
+    static final String CONFIRM_PREFIX = "confirm:";
     static final String OTHER_TIME = "other_time";
 
     static final String TIME_TAKEN_TEXT = "Это время уже заняли. Выберите другое.";
@@ -168,7 +168,7 @@ final class BotReplies {
         return new Buttons(
                 "Проверьте запись:\n" + lines(option, start, zone),
                 List.of(
-                        new Button(CONFIRM, "Подтвердить"),
+                        new Button(CONFIRM_PREFIX + start, "Подтвердить"),
                         new Button(OTHER_TIME, "Другое время")));
     }
 
@@ -216,6 +216,10 @@ final class BotReplies {
 
     static Optional<Instant> moreTimesAfterOf(@Nullable String replyId) {
         return parseCanonical(replyId, MORE_TIMES_PREFIX, Instant::parse);
+    }
+
+    static Optional<Instant> confirmedStartOf(@Nullable String replyId) {
+        return parseCanonical(replyId, CONFIRM_PREFIX, Instant::parse);
     }
 
     private static <T> Optional<T> parseCanonical(

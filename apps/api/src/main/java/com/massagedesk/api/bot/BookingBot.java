@@ -152,6 +152,9 @@ class BookingBot {
         }
         Optional<Instant> start = BotReplies.timeOf(replyId);
         if (start.isPresent()) {
+            if (!LocalDate.ofInstant(start.get(), zone()).equals(day)) {
+                return timeList(serviceId, day, null, null);
+            }
             Optional<ServiceOption> option = activeService(serviceId);
             Optional<DaySlots> daySlots = slots.freeStarts(serviceId, day);
             if (option.isEmpty() || daySlots.isEmpty()) {
@@ -182,7 +185,7 @@ class BookingBot {
         if (serviceId == null || day == null || start == null || updatedAt == null) {
             return menuTurn();
         }
-        if (BotReplies.CONFIRM.equals(message.replyId())) {
+        if (BotReplies.confirmedStartOf(message.replyId()).filter(start::equals).isPresent()) {
             return confirmBooking(message, serviceId, day, start, updatedAt);
         }
         if (BotReplies.OTHER_TIME.equals(message.replyId())) {
