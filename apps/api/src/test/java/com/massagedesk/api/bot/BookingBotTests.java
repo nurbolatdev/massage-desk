@@ -1,5 +1,6 @@
 package com.massagedesk.api.bot;
 
+import static com.massagedesk.api.bot.BotConversations.bot;
 import static com.massagedesk.api.bot.BotConversations.buttonIds;
 import static com.massagedesk.api.bot.BotConversations.cleanUp;
 import static com.massagedesk.api.bot.BotConversations.conversation;
@@ -30,8 +31,6 @@ import com.massagedesk.api.clients.ClientRepository;
 import com.massagedesk.api.messaging.TestOutboundMessages;
 import com.massagedesk.api.messaging.WhatsAppSendException;
 import com.massagedesk.api.schedule.FixedClockConfiguration;
-import com.massagedesk.api.schedule.ServiceCatalog;
-import com.massagedesk.api.settings.SettingsService;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.UUID;
@@ -40,6 +39,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -52,9 +52,8 @@ import tools.jackson.databind.json.JsonMapper;
 @Import({TestcontainersConfiguration.class, FixedClockConfiguration.class})
 class BookingBotTests {
 
-    @Autowired private SettingsService settings;
+    @Autowired private ApplicationContext context;
     @Autowired private BotSessionStore sessions;
-    @Autowired private ServiceCatalog services;
     @Autowired private ClientRepository clients;
     @Autowired private JdbcTemplate jdbc;
     @Autowired private JdbcClient jdbcClient;
@@ -70,8 +69,7 @@ class BookingBotTests {
         cleanUp(jdbc);
         RestClient.Builder builder = RestClient.builder();
         server = MockRestServiceServer.bindTo(builder).build();
-        bot = new BookingBot(
-                settings, sessions, services, TestOutboundMessages.create(jdbcClient, builder, json, clock), clock);
+        bot = bot(context, TestOutboundMessages.create(jdbcClient, builder, json, clock));
     }
 
     @AfterEach

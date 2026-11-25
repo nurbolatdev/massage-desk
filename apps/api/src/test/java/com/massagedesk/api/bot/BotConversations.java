@@ -5,6 +5,11 @@ import static com.massagedesk.api.schedule.FixedClockConfiguration.NOW;
 import com.massagedesk.api.clients.Client;
 import com.massagedesk.api.clients.ClientRepository;
 import com.massagedesk.api.messaging.ClientMessageReceived;
+import com.massagedesk.api.messaging.OutboundMessages;
+import com.massagedesk.api.schedule.ServiceCatalog;
+import com.massagedesk.api.schedule.SlotService;
+import com.massagedesk.api.settings.SettingsService;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -13,6 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.context.ApplicationContext;
 import org.springframework.http.client.ClientHttpRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.http.client.MockClientHttpRequest;
@@ -30,6 +36,16 @@ final class BotConversations {
     }
 
     private BotConversations() {
+    }
+
+    static BookingBot bot(ApplicationContext context, OutboundMessages outbound) {
+        return new BookingBot(
+                context.getBean(SettingsService.class),
+                context.getBean(BotSessionStore.class),
+                context.getBean(ServiceCatalog.class),
+                context.getBean(SlotService.class),
+                outbound,
+                context.getBean(Clock.class));
     }
 
     static UUID conversation(ClientRepository clients, JdbcTemplate jdbc, String phone) {
@@ -66,6 +82,13 @@ final class BotConversations {
     }
 
     static void cleanUp(JdbcTemplate jdbc) {
+        jdbc.update("""
+                delete from events where entity_id in (
+                    select id from appointments where client_id in (select id from clients where phone like ?)
+                )""", BOT_PHONE_PATTERN);
+        jdbc.update("""
+                delete from appointments where client_id in (select id from clients where phone like ?)""",
+                BOT_PHONE_PATTERN);
         jdbc.update("""
                 delete from messages where conversation_id in (
                     select id from conversations where client_id in (select id from clients where phone like ?)

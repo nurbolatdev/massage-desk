@@ -85,18 +85,30 @@ final class BotReplies {
     }
 
     static OutboundMessage services(List<ServiceOption> options) {
+        return services(options, 0);
+    }
+
+    static OutboundMessage services(List<ServiceOption> options, int offset) {
         if (options == null || options.isEmpty()) {
             throw new IllegalArgumentException("options must not be empty");
         }
-        List<Row> rows = options.stream()
-                .limit(MAX_SERVICES)
-                .map(option -> {
-                    Objects.requireNonNull(option, "option");
-                    String description = option.durationMin() + "\u00a0мин · " + price(option.price()) + "\u00a0₸";
-                    return new Row(SERVICE_PREFIX + option.id(), title(option.name()), description);
-                })
-                .toList();
+        int start = offset >= 0 && offset < options.size() ? offset : 0;
+        int remaining = options.size() - start;
+        int count = remaining <= MAX_SERVICES ? remaining : MAX_SERVICES - 1;
+        List<Row> rows = new ArrayList<>(count + 1);
+        for (int i = 0; i < count; i++) {
+            ServiceOption option = Objects.requireNonNull(options.get(start + i), "option");
+            rows.add(new Row(SERVICE_PREFIX + option.id(), title(option.name()), details(option)));
+        }
+        if (remaining > MAX_SERVICES) {
+            rows.add(new Row(MORE_SERVICES_PREFIX + (start + count), MORE_SERVICES_TITLE, null));
+        }
         return new ListMenu(SERVICES_TEXT, SERVICES_BUTTON, rows);
+    }
+
+    static String details(ServiceOption option) {
+        Objects.requireNonNull(option, "option");
+        return option.durationMin() + "\u00a0мин · " + price(option.price()) + "\u00a0₸";
     }
 
     static OutboundMessage noServices() {

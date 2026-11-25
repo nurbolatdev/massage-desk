@@ -31,7 +31,7 @@ class BotRepliesTests {
     }
 
     @Test
-    void servicesTakesAtMostTenOptionsInOrderWithFormattedRows() {
+    void servicesPaginatesWhenMoreThanTenOptionsAndShowsAllWhenTenOrFewer() {
         List<ServiceOption> twelve = IntStream.rangeClosed(1, 12)
                 .mapToObj(i -> new ServiceOption(
                         UUID.fromString("00000000-0000-0000-0000-%012d".formatted(i)),
@@ -40,18 +40,35 @@ class BotRepliesTests {
                         new BigDecimal("8000.00")))
                 .toList();
 
-        ListMenu menu = (ListMenu) BotReplies.services(twelve);
-
-        assertThat(menu.body()).isEqualTo("Выберите массаж из списка.");
-        assertThat(menu.buttonLabel()).isEqualTo("Выбрать массаж");
-        assertThat(menu.rows()).hasSize(10);
-        assertThat(menu.rows().get(0))
+        ListMenu firstPage = (ListMenu) BotReplies.services(twelve);
+        assertThat(firstPage.body()).isEqualTo("Выберите массаж из списка.");
+        assertThat(firstPage.buttonLabel()).isEqualTo("Выбрать массаж");
+        assertThat(firstPage.rows()).hasSize(10);
+        assertThat(firstPage.rows().get(0))
                 .isEqualTo(new Row(
                         "service:00000000-0000-0000-0000-000000000001",
                         "Массаж №1",
                         "60\u00a0мин · 8\u00a0000\u00a0₸"));
-        assertThat(menu.rows().get(9).id())
+        assertThat(firstPage.rows().get(8).id())
+                .isEqualTo("service:00000000-0000-0000-0000-000000000009");
+        assertThat(firstPage.rows().get(9))
+                .isEqualTo(new Row("more_services:9", "Ещё массажи", null));
+
+        ListMenu secondPage = (ListMenu) BotReplies.services(twelve, 9);
+        assertThat(secondPage.rows())
+                .extracting(Row::id)
+                .containsExactly(
+                        "service:00000000-0000-0000-0000-000000000010",
+                        "service:00000000-0000-0000-0000-000000000011",
+                        "service:00000000-0000-0000-0000-000000000012");
+
+        ListMenu tenOptions = (ListMenu) BotReplies.services(twelve.subList(0, 10));
+        assertThat(tenOptions.rows()).hasSize(10);
+        assertThat(tenOptions.rows().get(9).id())
                 .isEqualTo("service:00000000-0000-0000-0000-000000000010");
+
+        assertThat(BotReplies.services(twelve, 50)).isEqualTo(firstPage);
+        assertThat(BotReplies.services(twelve, -1)).isEqualTo(firstPage);
     }
 
     @Test

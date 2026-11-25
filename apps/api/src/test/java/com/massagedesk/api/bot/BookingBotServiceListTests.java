@@ -1,5 +1,6 @@
 package com.massagedesk.api.bot;
 
+import static com.massagedesk.api.bot.BotConversations.bot;
 import static com.massagedesk.api.bot.BotConversations.buttonIds;
 import static com.massagedesk.api.bot.BotConversations.cleanUp;
 import static com.massagedesk.api.bot.BotConversations.conversation;
@@ -28,17 +29,18 @@ import com.massagedesk.api.messaging.TestOutboundMessages;
 import com.massagedesk.api.schedule.FixedClockConfiguration;
 import com.massagedesk.api.schedule.MassageService;
 import com.massagedesk.api.schedule.MassageServiceRepository;
-import com.massagedesk.api.schedule.ServiceCatalog;
-import com.massagedesk.api.settings.SettingsService;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -51,9 +53,8 @@ import tools.jackson.databind.json.JsonMapper;
 @Import({TestcontainersConfiguration.class, FixedClockConfiguration.class})
 class BookingBotServiceListTests {
 
-    @Autowired private SettingsService settings;
+    @Autowired private ApplicationContext context;
     @Autowired private BotSessionStore sessions;
-    @Autowired private ServiceCatalog catalog;
     @Autowired private MassageServiceRepository serviceRepository;
     @Autowired private ClientRepository clients;
     @Autowired private JdbcTemplate jdbc;
@@ -78,8 +79,7 @@ class BookingBotServiceListTests {
 
         RestClient.Builder builder = RestClient.builder();
         server = MockRestServiceServer.bindTo(builder).build();
-        bot = new BookingBot(
-                settings, sessions, catalog, TestOutboundMessages.create(jdbcClient, builder, json, clock), clock);
+        bot = bot(context, TestOutboundMessages.create(jdbcClient, builder, json, clock));
     }
 
     @AfterEach
@@ -121,10 +121,65 @@ class BookingBotServiceListTests {
         bot.on(text(id, "хочу массаж"));
         assertThat(sessionOf(jdbc, id)).contains(new SessionRow("service", NOW));
 
-        bot.on(reply(id, BotReplies.SERVICE_PREFIX + activeServiceId));
+        bot.on(reply(id, BotReplies.SERVICE_PREFIX + inactiveServiceId));
 
         server.verify();
         assertThat(sessionOf(jdbc, id)).contains(new SessionRow("service", NOW));
+    }
+
+    @Test
+    void moreThanTenActiveServicesPaginatesAndWrapsOutOfRangeOffsetToFirstPage() {
+        assertThat(jdbc.queryForObject("select count(*) from services where active", Integer.class))
+                .isEqualTo(1);
+        List<UUID> extraIds = new ArrayList<>(10);
+        try {
+            for (int i = 2; i <= 11; i++) {
+                UUID extraId = serviceRepository
+                        .saveAndFlush(new MassageService("Массаж №" + i, 60, new BigDecimal("8000.00"), i))
+                        .getId();
+                extraIds.add(extraId);
+            }
+            List<String> expectedFirstPage = new ArrayList<>(10);
+            expectedFirstPage.add(BotReplies.SERVICE_PREFIX + activeServiceId);
+            for (int i = 0; i < 8; i++) {
+                expectedFirstPage.add(BotReplies.SERVICE_PREFIX + extraIds.get(i));
+            }
+            expectedFirstPage.add("more_services:9");
+
+            List<String> expectedSecondPage = List.of(
+                    BotReplies.SERVICE_PREFIX + extraIds.get(8),
+                    BotReplies.SERVICE_PREFIX + extraIds.get(9));
+
+            UUID id = conversation(clients, jdbc, "+998900001205");
+            sessions.save(id, BotSession.menu(), NOW.minus(Duration.ofMinutes(1)));
+
+            server.expect(requestTo(MESSAGES_URL))
+                    .andExpect(method(POST))
+                    .andExpect(request -> assertThat(rowIds(requestJson(json, request)))
+                            .containsExactlyElementsOf(expectedFirstPage))
+                    .andRespond(withSuccess(accepted("wamid.bot-svc-page-1"), APPLICATION_JSON));
+            server.expect(requestTo(MESSAGES_URL))
+                    .andExpect(method(POST))
+                    .andExpect(request -> assertThat(rowIds(requestJson(json, request)))
+                            .containsExactlyElementsOf(expectedSecondPage))
+                    .andRespond(withSuccess(accepted("wamid.bot-svc-page-2"), APPLICATION_JSON));
+            server.expect(requestTo(MESSAGES_URL))
+                    .andExpect(method(POST))
+                    .andExpect(request -> assertThat(rowIds(requestJson(json, request)))
+                            .containsExactlyElementsOf(expectedFirstPage))
+                    .andRespond(withSuccess(accepted("wamid.bot-svc-page-wrap"), APPLICATION_JSON));
+
+            bot.on(reply(id, BotReplies.BOOK));
+            bot.on(reply(id, "more_services:9"));
+            bot.on(reply(id, "more_services:50"));
+
+            server.verify();
+            assertThat(sessionOf(jdbc, id)).contains(new SessionRow("service", NOW));
+        } finally {
+            for (UUID extraId : extraIds) {
+                jdbc.update("delete from services where id = ?", extraId);
+            }
+        }
     }
 
     @Test
