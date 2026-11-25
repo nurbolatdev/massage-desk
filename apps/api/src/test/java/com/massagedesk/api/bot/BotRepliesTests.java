@@ -37,13 +37,16 @@ class BotRepliesTests {
     @Test
     void menuWithUpcomingAppointmentsListsThemInMasterZoneAndAddsCancelButton() {
         ZoneId tashkent = ZoneId.of("Asia/Tashkent");
+        UUID serviceId = UUID.fromString("00000000-0000-0000-0000-000000000010");
         List<Upcoming> two = List.of(
                 new Upcoming(
                         UUID.fromString("00000000-0000-0000-0000-000000000001"),
+                        serviceId,
                         "Классический массаж",
                         Instant.parse("2026-11-03T05:00:00Z")),
                 new Upcoming(
                         UUID.fromString("00000000-0000-0000-0000-000000000002"),
+                        serviceId,
                         "Классический массаж",
                         Instant.parse("2026-11-10T07:00:00Z")));
 
@@ -57,6 +60,7 @@ class BotRepliesTests {
                         Вторник, 10 ноября, 12:00 — Классический массаж""",
                         List.of(
                                 new Button("book", "Записаться"),
+                                new Button("move", "Перенести запись"),
                                 new Button("cancel", "Отменить запись"))));
 
         String fortyChars = "Классический расслабляющий массаж спины!";
@@ -67,6 +71,7 @@ class BotRepliesTests {
         List<Upcoming> ten = IntStream.rangeClosed(1, 10)
                 .mapToObj(i -> new Upcoming(
                         UUID.fromString("00000000-0000-0000-0000-%012d".formatted(i)),
+                        serviceId,
                         fortyChars,
                         sundaySept30.plus(Duration.ofMinutes(30L * i))))
                 .toList();
@@ -76,19 +81,21 @@ class BotRepliesTests {
         assertThat(tenMenu.buttons())
                 .containsExactly(
                         new Button("book", "Записаться"),
+                        new Button("move", "Перенести запись"),
                         new Button("cancel", "Отменить запись"));
     }
 
     @Test
     void picksAndNoUpcomingBuildExpectedMessagesAndValidateBounds() {
         ZoneId tashkent = ZoneId.of("Asia/Tashkent");
+        UUID serviceId = UUID.fromString("00000000-0000-0000-0000-000000000010");
         UUID firstId = UUID.fromString("00000000-0000-0000-0000-000000000001");
         UUID secondId = UUID.fromString("00000000-0000-0000-0000-000000000002");
         String longServiceName =
                 "Классический глубокотканный расслабляющий массаж спины, шеи и воротниковой зоны";
         List<Upcoming> two = List.of(
-                new Upcoming(firstId, "Классический массаж", Instant.parse("2026-11-03T05:00:00Z")),
-                new Upcoming(secondId, longServiceName, Instant.parse("2026-11-10T07:00:00Z")));
+                new Upcoming(firstId, serviceId, "Классический массаж", Instant.parse("2026-11-03T05:00:00Z")),
+                new Upcoming(secondId, serviceId, longServiceName, Instant.parse("2026-11-10T07:00:00Z")));
 
         ListMenu menu = (ListMenu) BotReplies.picks(BotReplies.CANCEL_PICK_TEXT, two, tashkent);
         assertThat(menu.body()).isEqualTo("Какую запись отменить?");
@@ -109,6 +116,7 @@ class BotRepliesTests {
         List<Upcoming> eleven = IntStream.rangeClosed(1, 11)
                 .mapToObj(i -> new Upcoming(
                         UUID.fromString("00000000-0000-0000-0000-%012d".formatted(i)),
+                        serviceId,
                         "Классический массаж",
                         Instant.parse("2026-11-03T05:00:00Z")))
                 .toList();
@@ -127,8 +135,9 @@ class BotRepliesTests {
     void cancelConfirmationAndCancelledIncludeFullServiceNameLocalWhenAndActionButtons() {
         ZoneId tashkent = ZoneId.of("Asia/Tashkent");
         UUID id = UUID.fromString("00000000-0000-0000-0000-000000000001");
+        UUID serviceId = UUID.fromString("00000000-0000-0000-0000-000000000010");
         Upcoming item = new Upcoming(
-                id, "Классический массаж", Instant.parse("2026-11-03T05:00:00Z"));
+                id, serviceId, "Классический массаж", Instant.parse("2026-11-03T05:00:00Z"));
 
         assertThat(BotReplies.cancelConfirmation(item, tashkent))
                 .isEqualTo(new Buttons(

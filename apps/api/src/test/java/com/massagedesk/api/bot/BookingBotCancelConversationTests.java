@@ -125,8 +125,8 @@ class BookingBotCancelConversationTests {
         expectReply(8, body -> {
             assertThat(interactiveBodyOf(body))
                     .contains("Ваши записи:\nВторник, 3 ноября, 14:00 — Классический массаж");
-            assertThat(buttonIds(body)).containsExactly("book", "cancel");
-            nextReplyId.set(buttonIds(body).get(1));
+            assertThat(buttonIds(body)).containsExactly("book", "move", "cancel");
+            nextReplyId.set(buttonIds(body).get(2));
         });
         expectReply(9, body -> {
             assertThat(rowIds(body)).hasSize(1);
@@ -188,8 +188,8 @@ class BookingBotCancelConversationTests {
             assertThat(interactiveBodyOf(body))
                     .contains("Вторник, 3 ноября, 14:00 — Классический массаж")
                     .doesNotContain("10:00");
-            assertThat(buttonIds(body)).containsExactly("book", "cancel");
-            nextReplyId.set(buttonIds(body).get(1));
+            assertThat(buttonIds(body)).containsExactly("book", "move", "cancel");
+            nextReplyId.set(buttonIds(body).get(2));
         });
         for (int step = 2; step <= 3; step++) {
             expectReply(step, body -> {

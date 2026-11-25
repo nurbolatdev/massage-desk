@@ -27,17 +27,22 @@ final class BotReplies {
     static final String MENU_TEXT = "Здравствуйте! Я помогу записаться на массаж.";
     static final String BOOK = "book";
     static final String BOOK_TITLE = "Записаться";
+    static final String MOVE = "move";
+    static final String MOVE_TITLE = "Перенести запись";
     static final String CANCEL = "cancel";
     static final String CANCEL_TITLE = "Отменить запись";
     static final String APPOINTMENT_PREFIX = "appointment:";
     static final String UPCOMING_HEADER = "Ваши записи:";
     static final String NO_UPCOMING_TEXT = "У вас нет предстоящих записей.";
+    static final String MOVE_PICK_TEXT = "Какую запись перенести?";
     static final String CANCEL_PICK_TEXT = "Какую запись отменить?";
     static final String PICK_BUTTON = "Выбрать запись";
     static final int MAX_UPCOMING = 10;
     static final String CANCEL_CONFIRM_PREFIX = "cancel_confirm:";
     static final String KEEP = "keep";
     static final String KEEP_TITLE = "Не отменять";
+    static final String MOVE_CONFIRM_PREFIX = "move_confirm:";
+    static final String MOVE_CONFIRM_TITLE = "Перенести";
     static final String GONE_TEXT = "Эту запись уже изменили или отменили.";
 
     static final String SERVICES_TEXT = "Выберите массаж из списка.";
@@ -90,9 +95,10 @@ final class BotReplies {
         }
     }
 
-    record Upcoming(UUID id, String serviceName, Instant start) {
+    record Upcoming(UUID id, UUID serviceId, String serviceName, Instant start) {
         Upcoming {
             Objects.requireNonNull(id, "id");
+            Objects.requireNonNull(serviceId, "serviceId");
             Objects.requireNonNull(serviceName, "serviceName");
             Objects.requireNonNull(start, "start");
         }
@@ -133,7 +139,10 @@ final class BotReplies {
         }
         return new Buttons(
                 body.toString(),
-                List.of(new Button(BOOK, BOOK_TITLE), new Button(CANCEL, CANCEL_TITLE)));
+                List.of(
+                        new Button(BOOK, BOOK_TITLE),
+                        new Button(MOVE, MOVE_TITLE),
+                        new Button(CANCEL, CANCEL_TITLE)));
     }
 
     static OutboundMessage noUpcoming() {
@@ -177,6 +186,32 @@ final class BotReplies {
         return new Buttons(
                 "Запись отменена:\n" + item.serviceName() + "\n" + when(item.start(), zone),
                 List.of(new Button(BOOK, BOOK_TITLE)));
+    }
+
+    static OutboundMessage moveConfirmation(Upcoming item, Instant start, ZoneId zone) {
+        Objects.requireNonNull(item, "item");
+        Objects.requireNonNull(start, "start");
+        Objects.requireNonNull(zone, "zone");
+        return new Buttons(
+                "Перенести запись?\n"
+                        + item.serviceName()
+                        + "\nСейчас: "
+                        + when(item.start(), zone)
+                        + "\nНовое время: "
+                        + when(start, zone),
+                List.of(
+                        new Button(
+                                MOVE_CONFIRM_PREFIX + new IdAndStart(item.id(), start),
+                                MOVE_CONFIRM_TITLE),
+                        new Button(OTHER_TIME, "Другое время")));
+    }
+
+    static OutboundMessage moved(Upcoming item, Instant start, ZoneId zone) {
+        Objects.requireNonNull(item, "item");
+        Objects.requireNonNull(start, "start");
+        Objects.requireNonNull(zone, "zone");
+        return new Text(
+                "Запись перенесена:\n" + item.serviceName() + "\n" + when(start, zone) + "\nЖдём вас!");
     }
 
     static OutboundMessage services(List<ServiceOption> options) {
@@ -302,6 +337,10 @@ final class BotReplies {
 
     static Optional<UUID> cancelConfirmOf(@Nullable String replyId) {
         return parseCanonical(replyId, CANCEL_CONFIRM_PREFIX, UUID::fromString);
+    }
+
+    static Optional<IdAndStart> moveConfirmOf(@Nullable String replyId) {
+        return parseCanonical(replyId, MOVE_CONFIRM_PREFIX, BotReplies::parseIdAndStart);
     }
 
     static Optional<UUID> serviceIdOf(@Nullable String replyId) {

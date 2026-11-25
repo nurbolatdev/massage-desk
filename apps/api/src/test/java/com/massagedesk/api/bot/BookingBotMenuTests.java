@@ -160,7 +160,7 @@ class BookingBotMenuTests {
                         JsonNode body = requestJson(json, request);
                         assertThat(body.path("interactive").path("body").path("text").asString())
                                 .isEqualTo(expectedMenuText);
-                        assertThat(buttonIds(body)).containsExactly("book", "cancel");
+                        assertThat(buttonIds(body)).containsExactly("book", "move", "cancel");
                     })
                     .andRespond(withSuccess(accepted("wamid.bot-menu-upcoming-" + attempt), APPLICATION_JSON));
         }
@@ -181,7 +181,7 @@ class BookingBotMenuTests {
         bot.on(text(jdbc, id, "Здравствуйте"));
         assertThat(sessions.load(id).orElseThrow().session()).isEqualTo(BotSession.menu());
 
-        bot.on(reply(jdbc, id, "move"));
+        bot.on(text(jdbc, id, "привет"));
         assertThat(sessions.load(id).orElseThrow().session()).isEqualTo(BotSession.menu());
 
         bot.on(reply(jdbc, id, "cancel"));

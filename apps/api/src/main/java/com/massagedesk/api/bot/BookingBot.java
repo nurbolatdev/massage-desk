@@ -48,6 +48,7 @@ class BookingBot {
     private final BotSessionStore sessions;
     private final BotLists lists;
     private final AppointmentChanges changes;
+    private final Rescheduling moves;
     private final SlotService slots;
     private final AppointmentService appointments;
     private final OutboundMessages outbound;
@@ -58,6 +59,7 @@ class BookingBot {
             BotSessionStore sessions,
             BotLists lists,
             AppointmentChanges changes,
+            Rescheduling moves,
             SlotService slots,
             AppointmentService appointments,
             OutboundMessages outbound,
@@ -66,6 +68,7 @@ class BookingBot {
         this.sessions = Objects.requireNonNull(sessions, "sessions");
         this.lists = Objects.requireNonNull(lists, "lists");
         this.changes = Objects.requireNonNull(changes, "changes");
+        this.moves = Objects.requireNonNull(moves, "moves");
         this.slots = Objects.requireNonNull(slots, "slots");
         this.appointments = Objects.requireNonNull(appointments, "appointments");
         this.outbound = Objects.requireNonNull(outbound, "outbound");
@@ -108,18 +111,27 @@ class BookingBot {
         return switch (current.step()) {
             case MENU -> Optional.of(onMenu(message));
             case SERVICE -> Optional.of(onService(message.replyId()));
-            case DAY -> Optional.of(onDay(current, message));
-            case TIME -> Optional.of(onTime(current, message));
-            case CONFIRM -> Optional.of(onConfirm(current, updatedAt, message));
+            case DAY -> Optional.of(current.appointmentId() != null
+                    ? moves.onDay(current, message)
+                    : onDay(current, message));
+            case TIME -> Optional.of(current.appointmentId() != null
+                    ? moves.onTime(current, message)
+                    : onTime(current, message));
+            case CONFIRM -> current.appointmentId() != null
+                    ? moves.onConfirm(current, updatedAt, message)
+                    : Optional.of(onConfirm(current, updatedAt, message));
             case CANCEL_PICK -> Optional.of(changes.onPick(message.clientId(), message.replyId()));
             case CANCEL_CONFIRM -> changes.onCancelConfirm(current, updatedAt, message);
-            case MOVE_PICK -> Optional.of(changes.menu(message.clientId()));
+            case MOVE_PICK -> Optional.of(moves.onPick(message.clientId(), message.replyId()));
         };
     }
 
     private Turn onMenu(ClientMessageReceived message) {
         if (BotReplies.BOOK.equals(message.replyId())) {
             return lists.serviceList(0);
+        }
+        if (BotReplies.MOVE.equals(message.replyId())) {
+            return moves.pickList(message.clientId());
         }
         if (BotReplies.CANCEL.equals(message.replyId())) {
             return changes.pickList(message.clientId());
@@ -142,9 +154,7 @@ class BookingBot {
         if (serviceId == null) {
             return changes.menu(message.clientId());
         }
-        LocalDate today = lists.today();
-        Optional<LocalDate> day = BotReplies.dayOf(message.replyId())
-                .filter(d -> !d.isBefore(today) && d.isBefore(today.plusDays(BotLists.DAYS_AHEAD)));
+        Optional<LocalDate> day = lists.pickedDay(message.replyId());
         if (day.isPresent()) {
             return lists.timeList(serviceId, day.get(), null, null);
         }
