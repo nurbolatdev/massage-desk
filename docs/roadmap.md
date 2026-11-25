@@ -783,14 +783,14 @@ Owner step, no code.
   1. `feat(bot): conversation state machine`
   1. `feat(bot): service list from the menu`
   1. `docs: bot state and button replies`
-- **Then:** `feature/bot-booking-selection` — `feat(bot): service, day and time selection`
+- **Then:** `feature/bot-booking-selection` — `feat(bot): service, day and time selection` (issue #157)
   1. `feat(bot): day and time lists`
   1. `feat(bot): service and day selection`
   1. `feat(bot): time selection`
   1. `feat(bot): booking confirmation`
   1. `test(bot): full booking conversation`
   1. `docs: bot booking`
-- **Then:** `feature/bot-reschedule-cancel` — `feat(bot): reschedule and cancel` (closes the issue)
+- **Then:** `feature/bot-reschedule-cancel` — `feat(bot): reschedule and cancel` (issue #158) (closes the issue)
   1. `feat(bot): upcoming appointments in the menu`
   1. `feat(bot): reschedule`
   1. `feat(bot): cancel`
