@@ -22,7 +22,8 @@ import org.springframework.stereotype.Component;
 
 /**
  * Moves only the client's own upcoming confirmed appointments, re-checked on every step; free time
- * comes from the schedule service with the moving appointment excluded.
+ * comes from the schedule service with the moving appointment excluded; the change cutoff is
+ * checked when the appointment is picked and again after the claim.
  */
 @Component
 class Rescheduling {
@@ -57,7 +58,11 @@ class Rescheduling {
         Optional<Upcoming> picked =
                 BotReplies.appointmentIdOf(replyId).flatMap(id -> changes.own(id, clientId));
         if (picked.isPresent()) {
-            return orGone(lists.moveDayList(picked.get(), null), clientId);
+            Upcoming item = picked.get();
+            if (changes.tooLate(item)) {
+                return changes.tooLateToMove(clientId);
+            }
+            return orGone(lists.moveDayList(item, null), clientId);
         }
         return pickList(clientId);
     }
@@ -149,7 +154,9 @@ class Rescheduling {
             }
             return Optional.of(orGone(
                     movable(appointmentId, clientId, start)
-                            .map(target -> reschedule(target, clientId, day, start)),
+                            .map(target -> changes.tooLate(target)
+                                    ? changes.tooLateToMove(clientId)
+                                    : reschedule(target, clientId, day, start)),
                     clientId));
         }
         Optional<Upcoming> item = movable(appointmentId, clientId, start);
