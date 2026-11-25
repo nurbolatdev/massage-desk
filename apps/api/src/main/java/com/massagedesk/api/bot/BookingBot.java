@@ -117,7 +117,9 @@ class BookingBot {
             case TIME -> Optional.of(current.appointmentId() != null
                     ? moves.onTime(current, message)
                     : onTime(current, message));
-            case CONFIRM -> Optional.of(onConfirm(current, updatedAt, message));
+            case CONFIRM -> current.appointmentId() != null
+                    ? moves.onConfirm(current, updatedAt, message)
+                    : Optional.of(onConfirm(current, updatedAt, message));
             case CANCEL_PICK -> Optional.of(changes.onPick(message.clientId(), message.replyId()));
             case CANCEL_CONFIRM -> changes.onCancelConfirm(current, updatedAt, message);
             case MOVE_PICK -> Optional.of(moves.onPick(message.clientId(), message.replyId()));

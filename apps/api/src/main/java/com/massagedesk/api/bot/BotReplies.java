@@ -206,6 +206,14 @@ final class BotReplies {
                         new Button(OTHER_TIME, "Другое время")));
     }
 
+    static OutboundMessage moved(Upcoming item, Instant start, ZoneId zone) {
+        Objects.requireNonNull(item, "item");
+        Objects.requireNonNull(start, "start");
+        Objects.requireNonNull(zone, "zone");
+        return new Text(
+                "Запись перенесена:\n" + item.serviceName() + "\n" + when(start, zone) + "\nЖдём вас!");
+    }
+
     static OutboundMessage services(List<ServiceOption> options) {
         return services(options, 0);
     }
@@ -329,6 +337,10 @@ final class BotReplies {
 
     static Optional<UUID> cancelConfirmOf(@Nullable String replyId) {
         return parseCanonical(replyId, CANCEL_CONFIRM_PREFIX, UUID::fromString);
+    }
+
+    static Optional<IdAndStart> moveConfirmOf(@Nullable String replyId) {
+        return parseCanonical(replyId, MOVE_CONFIRM_PREFIX, BotReplies::parseIdAndStart);
     }
 
     static Optional<UUID> serviceIdOf(@Nullable String replyId) {

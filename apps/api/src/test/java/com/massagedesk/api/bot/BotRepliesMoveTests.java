@@ -2,9 +2,11 @@ package com.massagedesk.api.bot;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.massagedesk.api.bot.BotReplies.IdAndStart;
 import com.massagedesk.api.bot.BotReplies.Upcoming;
 import com.massagedesk.api.messaging.OutboundMessage.Button;
 import com.massagedesk.api.messaging.OutboundMessage.Buttons;
+import com.massagedesk.api.messaging.OutboundMessage.Text;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.List;
@@ -40,5 +42,39 @@ class BotRepliesMoveTests {
         Upcoming longItem = new Upcoming(id, serviceId, longName, oldStart);
         Buttons longConfirmation = (Buttons) BotReplies.moveConfirmation(longItem, newStart, tashkent);
         assertThat(longConfirmation.body()).contains("\n" + longName + "\n");
+    }
+
+    @Test
+    void movedFormatsNewLocalTimeAndMoveConfirmOfParsesOnlyCanonicalButtonIds() {
+        ZoneId tashkent = ZoneId.of("Asia/Tashkent");
+        UUID id = UUID.fromString("00000000-0000-0000-0000-000000000001");
+        UUID serviceId = UUID.fromString("00000000-0000-0000-0000-000000000010");
+        Instant oldStart = Instant.parse("2026-11-03T05:00:00Z");
+        Instant newStart = Instant.parse("2026-11-03T07:00:00Z");
+        Upcoming item = new Upcoming(id, serviceId, "Классический массаж", oldStart);
+
+        assertThat(BotReplies.moved(item, newStart, tashkent))
+                .isEqualTo(new Text(
+                        """
+                        Запись перенесена:
+                        Классический массаж
+                        Вторник, 3 ноября, 12:00
+                        Ждём вас!"""));
+
+        Buttons confirmation = (Buttons) BotReplies.moveConfirmation(item, newStart, tashkent);
+        String confirmButtonId = confirmation.buttons().getFirst().id();
+        assertThat(BotReplies.moveConfirmOf(confirmButtonId))
+                .contains(new IdAndStart(id, newStart));
+
+        assertThat(BotReplies.moveConfirmOf(null)).isEmpty();
+        for (String invalid : List.of(
+                "",
+                "move_confirm:" + id,
+                "move_confirm:" + id + ":",
+                "move_confirm:00000000-0000-0000-0000-00000000000A:2026-11-03T07:00:00Z",
+                "move_confirm:" + id + ":2026-11-03T07:00Z",
+                "confirm:" + id + ":2026-11-03T07:00:00Z")) {
+            assertThat(BotReplies.moveConfirmOf(invalid)).isEmpty();
+        }
     }
 }
