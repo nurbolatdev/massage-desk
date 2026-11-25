@@ -124,6 +124,25 @@ class BotRepliesTests {
     }
 
     @Test
+    void cancelConfirmationAndCancelledIncludeFullServiceNameLocalWhenAndActionButtons() {
+        ZoneId tashkent = ZoneId.of("Asia/Tashkent");
+        UUID id = UUID.fromString("00000000-0000-0000-0000-000000000001");
+        Upcoming item = new Upcoming(
+                id, "Классический массаж", Instant.parse("2026-11-03T05:00:00Z"));
+
+        assertThat(BotReplies.cancelConfirmation(item, tashkent))
+                .isEqualTo(new Buttons(
+                        "Отменить запись?\nКлассический массаж\nВторник, 3 ноября, 10:00",
+                        List.of(
+                                new Button("cancel_confirm:" + id, "Отменить запись"),
+                                new Button("keep", "Не отменять"))));
+        assertThat(BotReplies.cancelled(item, tashkent))
+                .isEqualTo(new Buttons(
+                        "Запись отменена:\nКлассический массаж\nВторник, 3 ноября, 10:00",
+                        List.of(new Button("book", "Записаться"))));
+    }
+
+    @Test
     void servicesPaginatesWhenMoreThanTenOptionsAndShowsAllWhenTenOrFewer() {
         List<ServiceOption> twelve = IntStream.rangeClosed(1, 12)
                 .mapToObj(i -> new ServiceOption(
@@ -336,6 +355,7 @@ class BotRepliesTests {
         Instant start = Instant.parse("2026-11-03T05:00:00Z");
 
         assertThat(BotReplies.appointmentIdOf("appointment:" + id)).contains(id);
+        assertThat(BotReplies.cancelConfirmOf("cancel_confirm:" + id)).contains(id);
         assertThat(BotReplies.serviceIdOf("service:" + id)).contains(id);
         assertThat(BotReplies.moreServicesOffsetOf("more_services:0")).contains(0);
         assertThat(BotReplies.moreServicesOffsetOf("more_services:9")).contains(9);
@@ -349,8 +369,13 @@ class BotRepliesTests {
                 "",
                 "book",
                 "cancel",
+                "keep",
                 "appointment:",
                 "appointment:1-1-1-1-1",
+                "cancel_confirm",
+                "cancel_confirm:",
+                "cancel_confirm:1-1-1-1-1",
+                "cancel_confirm:00000000-0000-0000-0000-00000000000A",
                 "confirm",
                 "confirm:2026-11-03T05:00:00Z",
                 "confirm:" + id,
@@ -367,6 +392,7 @@ class BotRepliesTests {
                 "more_services:07",
                 "more_services:+7")) {
             assertThat(BotReplies.appointmentIdOf(invalid)).isEmpty();
+            assertThat(BotReplies.cancelConfirmOf(invalid)).isEmpty();
             assertThat(BotReplies.serviceIdOf(invalid)).isEmpty();
             assertThat(BotReplies.moreServicesOffsetOf(invalid)).isEmpty();
             assertThat(BotReplies.dayOf(invalid)).isEmpty();
@@ -375,6 +401,7 @@ class BotRepliesTests {
             assertThat(BotReplies.confirmationOf(invalid)).isEmpty();
         }
         assertThat(BotReplies.appointmentIdOf(null)).isEmpty();
+        assertThat(BotReplies.cancelConfirmOf(null)).isEmpty();
         assertThat(BotReplies.serviceIdOf(null)).isEmpty();
         assertThat(BotReplies.moreServicesOffsetOf(null)).isEmpty();
         assertThat(BotReplies.dayOf(null)).isEmpty();

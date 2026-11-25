@@ -84,9 +84,12 @@ class BookingBot {
         }
         Instant now = clock.instant();
         BotSession current = currentSession(loaded.get(), now);
-        Turn turn = next(current, loaded.get().updatedAt(), message);
-        sessions.save(message.conversationId(), turn.next(), now);
-        for (OutboundMessage reply : turn.replies()) {
+        Optional<Turn> turn = next(current, loaded.get().updatedAt(), message);
+        if (turn.isEmpty()) {
+            return;
+        }
+        sessions.save(message.conversationId(), turn.get().next(), now);
+        for (OutboundMessage reply : turn.get().replies()) {
             outbound.send(message.conversationId(), Author.BOT, reply);
         }
     }
@@ -100,16 +103,17 @@ class BookingBot {
         return BotSession.menu();
     }
 
-    private Turn next(
+    private Optional<Turn> next(
             BotSession current, @Nullable Instant updatedAt, ClientMessageReceived message) {
         return switch (current.step()) {
-            case MENU -> onMenu(message);
-            case SERVICE -> onService(message.replyId());
-            case DAY -> onDay(current, message);
-            case TIME -> onTime(current, message);
-            case CONFIRM -> onConfirm(current, updatedAt, message);
-            case CANCEL_PICK -> changes.onPick(message.clientId(), message.replyId());
-            case MOVE_PICK, CANCEL_CONFIRM -> changes.menu(message.clientId());
+            case MENU -> Optional.of(onMenu(message));
+            case SERVICE -> Optional.of(onService(message.replyId()));
+            case DAY -> Optional.of(onDay(current, message));
+            case TIME -> Optional.of(onTime(current, message));
+            case CONFIRM -> Optional.of(onConfirm(current, updatedAt, message));
+            case CANCEL_PICK -> Optional.of(changes.onPick(message.clientId(), message.replyId()));
+            case CANCEL_CONFIRM -> changes.onCancelConfirm(current, updatedAt, message);
+            case MOVE_PICK -> Optional.of(changes.menu(message.clientId()));
         };
     }
 

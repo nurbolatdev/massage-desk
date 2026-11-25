@@ -247,8 +247,8 @@ class BookingBotMenuTests {
         server.expect(requestTo(MESSAGES_URL))
                 .andExpect(method(POST))
                 .andExpect(request -> assertThat(buttonIds(requestJson(json, request)))
-                        .containsExactly("book", "cancel"))
-                .andRespond(withSuccess(accepted("wamid.bot-pick-own-menu"), APPLICATION_JSON));
+                        .containsExactly("cancel_confirm:" + ownId, "keep"))
+                .andRespond(withSuccess(accepted("wamid.bot-pick-own-confirm"), APPLICATION_JSON));
 
         bot.on(reply(jdbc, id, "appointment:" + foreignId));
         assertThat(sessions.load(id).orElseThrow().session()).isEqualTo(pickSession);
@@ -274,7 +274,8 @@ class BookingBotMenuTests {
         bot.on(reply(jdbc, id, "appointment:" + ownId));
 
         server.verify();
-        assertThat(sessions.load(id).orElseThrow().session()).isEqualTo(BotSession.menu());
+        assertThat(sessions.load(id).orElseThrow().session())
+                .isEqualTo(new BotSession(Step.CANCEL_CONFIRM, null, null, null, ownId));
     }
 
     private Appointment saveDirect(Client forClient, Instant start, AppointmentStatus status) {

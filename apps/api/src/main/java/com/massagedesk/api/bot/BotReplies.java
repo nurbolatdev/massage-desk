@@ -35,6 +35,10 @@ final class BotReplies {
     static final String CANCEL_PICK_TEXT = "Какую запись отменить?";
     static final String PICK_BUTTON = "Выбрать запись";
     static final int MAX_UPCOMING = 10;
+    static final String CANCEL_CONFIRM_PREFIX = "cancel_confirm:";
+    static final String KEEP = "keep";
+    static final String KEEP_TITLE = "Не отменять";
+    static final String GONE_TEXT = "Эту запись уже изменили или отменили.";
 
     static final String SERVICES_TEXT = "Выберите массаж из списка.";
     static final String SERVICES_BUTTON = "Выбрать массаж";
@@ -157,6 +161,24 @@ final class BotReplies {
         return new ListMenu(body, PICK_BUTTON, rows);
     }
 
+    static OutboundMessage cancelConfirmation(Upcoming item, ZoneId zone) {
+        Objects.requireNonNull(item, "item");
+        Objects.requireNonNull(zone, "zone");
+        return new Buttons(
+                "Отменить запись?\n" + item.serviceName() + "\n" + when(item.start(), zone),
+                List.of(
+                        new Button(CANCEL_CONFIRM_PREFIX + item.id(), CANCEL_TITLE),
+                        new Button(KEEP, KEEP_TITLE)));
+    }
+
+    static OutboundMessage cancelled(Upcoming item, ZoneId zone) {
+        Objects.requireNonNull(item, "item");
+        Objects.requireNonNull(zone, "zone");
+        return new Buttons(
+                "Запись отменена:\n" + item.serviceName() + "\n" + when(item.start(), zone),
+                List.of(new Button(BOOK, BOOK_TITLE)));
+    }
+
     static OutboundMessage services(List<ServiceOption> options) {
         return services(options, 0);
     }
@@ -276,6 +298,10 @@ final class BotReplies {
 
     static Optional<UUID> appointmentIdOf(@Nullable String replyId) {
         return parseCanonical(replyId, APPOINTMENT_PREFIX, UUID::fromString);
+    }
+
+    static Optional<UUID> cancelConfirmOf(@Nullable String replyId) {
+        return parseCanonical(replyId, CANCEL_CONFIRM_PREFIX, UUID::fromString);
     }
 
     static Optional<UUID> serviceIdOf(@Nullable String replyId) {

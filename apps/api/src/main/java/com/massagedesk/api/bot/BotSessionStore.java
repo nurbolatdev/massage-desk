@@ -92,4 +92,22 @@ class BotSessionStore {
                 .param("at", at.atOffset(ZoneOffset.UTC))
                 .update();
     }
+
+    boolean claim(UUID conversationId, Step step, Instant updatedAt, Instant at) {
+        Objects.requireNonNull(conversationId, "conversationId");
+        Objects.requireNonNull(step, "step");
+        Objects.requireNonNull(updatedAt, "updatedAt");
+        Objects.requireNonNull(at, "at");
+        return jdbc.sql("""
+                update bot_sessions
+                set step = 'menu', service_id = null, day = null, start_at = null,
+                    appointment_id = null, updated_at = cast(:at as timestamptz)
+                where conversation_id = :id and step = :step
+                  and updated_at = cast(:updatedAt as timestamptz)""")
+                .param("id", conversationId)
+                .param("step", step.column())
+                .param("updatedAt", updatedAt.atOffset(ZoneOffset.UTC))
+                .param("at", at.atOffset(ZoneOffset.UTC))
+                .update() == 1;
+    }
 }
