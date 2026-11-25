@@ -41,6 +41,8 @@ final class BotReplies {
     static final String CANCEL_CONFIRM_PREFIX = "cancel_confirm:";
     static final String KEEP = "keep";
     static final String KEEP_TITLE = "Не отменять";
+    static final String MOVE_CONFIRM_PREFIX = "move_confirm:";
+    static final String MOVE_CONFIRM_TITLE = "Перенести";
     static final String GONE_TEXT = "Эту запись уже изменили или отменили.";
 
     static final String SERVICES_TEXT = "Выберите массаж из списка.";
@@ -184,6 +186,24 @@ final class BotReplies {
         return new Buttons(
                 "Запись отменена:\n" + item.serviceName() + "\n" + when(item.start(), zone),
                 List.of(new Button(BOOK, BOOK_TITLE)));
+    }
+
+    static OutboundMessage moveConfirmation(Upcoming item, Instant start, ZoneId zone) {
+        Objects.requireNonNull(item, "item");
+        Objects.requireNonNull(start, "start");
+        Objects.requireNonNull(zone, "zone");
+        return new Buttons(
+                "Перенести запись?\n"
+                        + item.serviceName()
+                        + "\nСейчас: "
+                        + when(item.start(), zone)
+                        + "\nНовое время: "
+                        + when(start, zone),
+                List.of(
+                        new Button(
+                                MOVE_CONFIRM_PREFIX + new IdAndStart(item.id(), start),
+                                MOVE_CONFIRM_TITLE),
+                        new Button(OTHER_TIME, "Другое время")));
     }
 
     static OutboundMessage services(List<ServiceOption> options) {

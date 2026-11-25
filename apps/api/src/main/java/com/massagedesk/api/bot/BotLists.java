@@ -76,6 +76,12 @@ class BotLists {
         return LocalDate.ofInstant(clock.instant(), zone());
     }
 
+    Optional<LocalDate> pickedDay(@Nullable String replyId) {
+        LocalDate today = today();
+        return BotReplies.dayOf(replyId)
+                .filter(d -> !d.isBefore(today) && d.isBefore(today.plusDays(DAYS_AHEAD)));
+    }
+
     Turn serviceList(int offset) {
         List<ServiceOption> options = activeOptions();
         if (options.isEmpty()) {

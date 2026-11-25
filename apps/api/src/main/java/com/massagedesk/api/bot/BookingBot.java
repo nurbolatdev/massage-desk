@@ -111,8 +111,12 @@ class BookingBot {
         return switch (current.step()) {
             case MENU -> Optional.of(onMenu(message));
             case SERVICE -> Optional.of(onService(message.replyId()));
-            case DAY -> Optional.of(onDay(current, message));
-            case TIME -> Optional.of(onTime(current, message));
+            case DAY -> Optional.of(current.appointmentId() != null
+                    ? moves.onDay(current, message)
+                    : onDay(current, message));
+            case TIME -> Optional.of(current.appointmentId() != null
+                    ? moves.onTime(current, message)
+                    : onTime(current, message));
             case CONFIRM -> Optional.of(onConfirm(current, updatedAt, message));
             case CANCEL_PICK -> Optional.of(changes.onPick(message.clientId(), message.replyId()));
             case CANCEL_CONFIRM -> changes.onCancelConfirm(current, updatedAt, message);
@@ -148,9 +152,7 @@ class BookingBot {
         if (serviceId == null) {
             return changes.menu(message.clientId());
         }
-        LocalDate today = lists.today();
-        Optional<LocalDate> day = BotReplies.dayOf(message.replyId())
-                .filter(d -> !d.isBefore(today) && d.isBefore(today.plusDays(BotLists.DAYS_AHEAD)));
+        Optional<LocalDate> day = lists.pickedDay(message.replyId());
         if (day.isPresent()) {
             return lists.timeList(serviceId, day.get(), null, null);
         }
