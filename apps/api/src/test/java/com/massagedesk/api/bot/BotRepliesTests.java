@@ -60,6 +60,7 @@ class BotRepliesTests {
                         Вторник, 10 ноября, 12:00 — Классический массаж""",
                         List.of(
                                 new Button("book", "Записаться"),
+                                new Button("move", "Перенести запись"),
                                 new Button("cancel", "Отменить запись"))));
 
         String fortyChars = "Классический расслабляющий массаж спины!";
@@ -80,6 +81,7 @@ class BotRepliesTests {
         assertThat(tenMenu.buttons())
                 .containsExactly(
                         new Button("book", "Записаться"),
+                        new Button("move", "Перенести запись"),
                         new Button("cancel", "Отменить запись"));
     }
 

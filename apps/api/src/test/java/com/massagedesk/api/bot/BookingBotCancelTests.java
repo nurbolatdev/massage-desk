@@ -213,7 +213,7 @@ class BookingBotCancelTests {
                     JsonNode body = requestJson(json, request);
                     assertThat(interactiveBodyOf(body))
                             .contains("Ваши записи:\nВторник, 3 ноября, 10:00 — Классический массаж");
-                    assertThat(buttonIds(body)).containsExactly("book", "cancel");
+                    assertThat(buttonIds(body)).containsExactly("book", "move", "cancel");
                 })
                 .andRespond(withSuccess(accepted("wamid.bot-cancel-keep"), APPLICATION_JSON));
 

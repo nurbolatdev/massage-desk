@@ -64,14 +64,18 @@ class AppointmentChanges {
                 List.of(new Text(BotReplies.GONE_TEXT), BotReplies.menu(upcoming(clientId), lists.zone())));
     }
 
-    Turn pickList(UUID clientId) {
+    Turn picks(UUID clientId, Step step, String body) {
         List<Upcoming> items = upcoming(clientId);
         if (items.isEmpty()) {
             return new Turn(BotSession.menu(), List.of(BotReplies.noUpcoming()));
         }
         return new Turn(
-                new BotSession(Step.CANCEL_PICK, null, null, null, null),
-                List.of(BotReplies.picks(BotReplies.CANCEL_PICK_TEXT, items, lists.zone())));
+                new BotSession(step, null, null, null, null),
+                List.of(BotReplies.picks(body, items, lists.zone())));
+    }
+
+    Turn pickList(UUID clientId) {
+        return picks(clientId, Step.CANCEL_PICK, BotReplies.CANCEL_PICK_TEXT);
     }
 
     Turn onPick(UUID clientId, @Nullable String replyId) {

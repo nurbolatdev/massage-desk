@@ -27,11 +27,14 @@ final class BotReplies {
     static final String MENU_TEXT = "Здравствуйте! Я помогу записаться на массаж.";
     static final String BOOK = "book";
     static final String BOOK_TITLE = "Записаться";
+    static final String MOVE = "move";
+    static final String MOVE_TITLE = "Перенести запись";
     static final String CANCEL = "cancel";
     static final String CANCEL_TITLE = "Отменить запись";
     static final String APPOINTMENT_PREFIX = "appointment:";
     static final String UPCOMING_HEADER = "Ваши записи:";
     static final String NO_UPCOMING_TEXT = "У вас нет предстоящих записей.";
+    static final String MOVE_PICK_TEXT = "Какую запись перенести?";
     static final String CANCEL_PICK_TEXT = "Какую запись отменить?";
     static final String PICK_BUTTON = "Выбрать запись";
     static final int MAX_UPCOMING = 10;
@@ -134,7 +137,10 @@ final class BotReplies {
         }
         return new Buttons(
                 body.toString(),
-                List.of(new Button(BOOK, BOOK_TITLE), new Button(CANCEL, CANCEL_TITLE)));
+                List.of(
+                        new Button(BOOK, BOOK_TITLE),
+                        new Button(MOVE, MOVE_TITLE),
+                        new Button(CANCEL, CANCEL_TITLE)));
     }
 
     static OutboundMessage noUpcoming() {

@@ -224,7 +224,7 @@ class BookingBotConversationTests {
                 .noneSatisfy(body -> assertThat(textOf(body)).isEqualTo(BotReplies.TIME_TAKEN_TEXT))
                 .allSatisfy(body -> assertThat(
                                 BOOKED_TEXT.equals(textOf(body))
-                                        || buttonIds(body).equals(List.of("book", "cancel")))
+                                        || buttonIds(body).equals(List.of("book", "move", "cancel")))
                         .isTrue());
         assertThat(sessions.load(id).orElseThrow().session()).isEqualTo(BotSession.menu());
         assertThat(appointmentsOf(clientIdOf(jdbc, id)))
