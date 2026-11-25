@@ -177,6 +177,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/devices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Register this phone for push notifications; repeating it is safe */
+        post: operations["registerDevice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/devices/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Stop push notifications on this phone */
+        delete: operations["removeDevice"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/services": {
         parameters: {
             query?: never;
@@ -518,11 +552,19 @@ export interface components {
              */
             start: string;
         };
+        DeviceResponse: {
+            /** Format: uuid */
+            id: string;
+        };
         /**
          * @description machine-readable reason of an error response
          * @enum {string}
          */
         ErrorCode: "APPOINTMENT_CONFLICT" | "APPOINTMENT_NOT_FOUND" | "CLIENT_NOT_FOUND" | "IDEMPOTENCY_KEY_REUSED" | "INVALID_HOURS" | "INVALID_PHONE" | "INVALID_REQUEST" | "INVALID_TIME_OFF" | "NOT_CONFIRMED" | "NOT_STARTED" | "OUTSIDE_SCHEDULE" | "PHONE_TAKEN" | "SERVICE_NOT_FOUND" | "TIME_OFF_NOT_FOUND" | "TIME_TAKEN" | "UNKNOWN_TIME_ZONE";
+        RegisterDeviceRequest: {
+            /** @description Expo push token of this phone */
+            expoPushToken: string;
+        };
         RescheduleAppointmentRequest: {
             /**
              * Format: date-time
@@ -1203,6 +1245,69 @@ export interface operations {
             };
             /** @description client not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+        };
+    };
+    registerDevice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterDeviceRequest"];
+            };
+        };
+        responses: {
+            /** @description the device id; the same token always gives the same id */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceResponse"];
+                };
+            };
+            /** @description missing or invalid token */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+        };
+    };
+    removeDevice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description device id */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description the device no longer gets notifications (also when it was not registered) */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description invalid id */
+            400: {
                 headers: {
                     [name: string]: unknown;
                 };

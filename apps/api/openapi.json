@@ -758,6 +758,77 @@
         "tags" : [ "clients" ]
       }
     },
+    "/devices" : {
+      "post" : {
+        "operationId" : "registerDevice",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RegisterDeviceRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DeviceResponse"
+                }
+              }
+            },
+            "description" : "the device id; the same token always gives the same id"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "description" : "missing or invalid token"
+          }
+        },
+        "summary" : "Register this phone for push notifications; repeating it is safe",
+        "tags" : [ "devices" ]
+      }
+    },
+    "/devices/{id}" : {
+      "delete" : {
+        "operationId" : "removeDevice",
+        "parameters" : [ {
+          "description" : "device id",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "the device no longer gets notifications (also when it was not registered)"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "description" : "invalid id"
+          }
+        },
+        "summary" : "Stop push notifications on this phone",
+        "tags" : [ "devices" ]
+      }
+    },
     "/services" : {
       "get" : {
         "operationId" : "listServices",
@@ -1665,10 +1736,33 @@
         },
         "required" : [ "end", "start" ]
       },
+      "DeviceResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        },
+        "required" : [ "id" ]
+      },
       "ErrorCode" : {
         "type" : "string",
         "description" : "machine-readable reason of an error response",
         "enum" : [ "APPOINTMENT_CONFLICT", "APPOINTMENT_NOT_FOUND", "CLIENT_NOT_FOUND", "IDEMPOTENCY_KEY_REUSED", "INVALID_HOURS", "INVALID_PHONE", "INVALID_REQUEST", "INVALID_TIME_OFF", "NOT_CONFIRMED", "NOT_STARTED", "OUTSIDE_SCHEDULE", "PHONE_TAKEN", "SERVICE_NOT_FOUND", "TIME_OFF_NOT_FOUND", "TIME_TAKEN", "UNKNOWN_TIME_ZONE" ]
+      },
+      "RegisterDeviceRequest" : {
+        "type" : "object",
+        "properties" : {
+          "expoPushToken" : {
+            "type" : "string",
+            "description" : "Expo push token of this phone",
+            "maxLength" : 255,
+            "minLength" : 0,
+            "pattern" : "^Expo(nent)?PushToken\\[[^\\]\\s]{1,200}\\]$"
+          }
+        },
+        "required" : [ "expoPushToken" ]
       },
       "RescheduleAppointmentRequest" : {
         "type" : "object",
