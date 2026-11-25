@@ -9,6 +9,7 @@ import com.massagedesk.api.messaging.OutboundMessage.Text;
 import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -212,6 +213,29 @@ final class BotReplies {
         Objects.requireNonNull(zone, "zone");
         return new Text(
                 "Запись перенесена:\n" + item.serviceName() + "\n" + when(start, zone) + "\nЖдём вас!");
+    }
+
+    static OutboundMessage tooLateToCancel(Duration cutoff) {
+        return new Text(
+                "До начала записи меньше "
+                        + minutes(cutoff)
+                        + ", поэтому отменить её через бота уже нельзя. "
+                        + "Если не можете прийти, напишите здесь — мастер увидит ваше сообщение и ответит.");
+    }
+
+    static OutboundMessage tooLateToMove(Duration cutoff) {
+        return new Text(
+                "До начала записи меньше "
+                        + minutes(cutoff)
+                        + ", поэтому перенести её через бота уже нельзя. "
+                        + "Если не успеваете, напишите здесь — мастер увидит ваше сообщение и ответит.");
+    }
+
+    static String minutes(Duration cutoff) {
+        Objects.requireNonNull(cutoff, "cutoff");
+        long n = cutoff.toMinutes();
+        String word = n % 10 == 1 && n % 100 != 11 ? "минуты" : "минут";
+        return n + " " + word;
     }
 
     static OutboundMessage services(List<ServiceOption> options) {

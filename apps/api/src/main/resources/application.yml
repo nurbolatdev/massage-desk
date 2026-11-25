@@ -76,6 +76,9 @@ app:
     # grid of offered start times and how far ahead the first one is; overridable by APP_SLOTS_STEP / APP_SLOTS_MIN_NOTICE
     step: 30m
     min-notice: 0m
+  bot:
+    # how long before an appointment starts a client can still cancel or move it through the bot (whole minutes); overridable by APP_BOT_CHANGE_CUTOFF
+    change-cutoff: 30m
 
 # Flyway locations by profile: "supabase" adds Supabase-only migrations,
 # "seed" adds development seed data (never enable it on prod).
