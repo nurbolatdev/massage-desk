@@ -798,6 +798,8 @@ Owner step, no code.
   1. `test(bot): cancel conversations`
   1. `docs: cancel from the menu`
 - **Then:** `feature/bot-reschedule` — `feat(bot): reschedule` (closes #158 and #155)
+  1. `refactor(bot): day and time lists for a moving appointment`
+  1. `feat(bot): move button and appointment pick`
   1. `feat(bot): new time for an upcoming appointment`
   1. `feat(bot): reschedule`
   1. `test(bot): reschedule conversations`
