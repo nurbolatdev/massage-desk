@@ -141,6 +141,16 @@ class BotSessionStoreTests {
     }
 
     @Test
+    void claimMatchesLoadedUpdatedAtWhenSavedInstantHasNanoseconds() {
+        UUID conversationId = conversation("+998900001207", false);
+        BotSession confirm = new BotSession(Step.CANCEL_CONFIRM, null, null, null, UUID.randomUUID());
+        store.save(conversationId, confirm, Instant.parse("2026-11-02T05:20:00.123456789Z"));
+        Instant updatedAt = store.load(conversationId).orElseThrow().updatedAt();
+
+        assertThat(store.claim(conversationId, Step.CANCEL_CONFIRM, updatedAt, NOW)).isTrue();
+    }
+
+    @Test
     void stepValuesMatchMigrationCheckConstraint() throws IOException {
         String sql = new ClassPathResource("db/migration/V5__bot_sessions.sql")
                 .getContentAsString(StandardCharsets.UTF_8);

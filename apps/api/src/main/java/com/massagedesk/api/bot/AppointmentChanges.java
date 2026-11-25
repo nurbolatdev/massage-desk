@@ -72,6 +72,9 @@ class AppointmentChanges {
     }
 
     Turn onPick(UUID clientId, @Nullable String replyId) {
+        if (BotReplies.BOOK.equals(replyId)) {
+            return lists.serviceList(0);
+        }
         Optional<Upcoming> picked =
                 BotReplies.appointmentIdOf(replyId).flatMap(id -> own(id, clientId));
         if (picked.isPresent()) {
@@ -85,6 +88,9 @@ class AppointmentChanges {
 
     Optional<Turn> onCancelConfirm(
             BotSession current, @Nullable Instant updatedAt, ClientMessageReceived message) {
+        if (BotReplies.BOOK.equals(message.replyId())) {
+            return Optional.of(lists.serviceList(0));
+        }
         UUID appointmentId = current.appointmentId();
         UUID clientId = message.clientId();
         if (appointmentId == null || updatedAt == null) {

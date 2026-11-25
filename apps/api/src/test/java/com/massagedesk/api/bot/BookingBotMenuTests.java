@@ -278,6 +278,30 @@ class BookingBotMenuTests {
                 .isEqualTo(new BotSession(Step.CANCEL_CONFIRM, null, null, null, ownId));
     }
 
+    @Test
+    void bookButtonOnCancelPickOpensServiceListAndKeepsAppointment() {
+        UUID id = conversation(clients, jdbc, "+998900001205");
+        UUID appointmentId = appointments
+                .create(clientIdOf(jdbc, id), serviceId, FIRST_START, AppointmentSource.MANUAL, EventActor.MASTER)
+                .id();
+        sessions.save(
+                id,
+                new BotSession(Step.CANCEL_PICK, null, null, null, null),
+                NOW.minus(Duration.ofMinutes(1)));
+        server.expect(requestTo(MESSAGES_URL))
+                .andExpect(method(POST))
+                .andExpect(request -> assertThat(rowIds(requestJson(json, request)))
+                        .contains("service:" + serviceId))
+                .andRespond(withSuccess(accepted("wamid.bot-pick-book"), APPLICATION_JSON));
+
+        bot.on(reply(jdbc, id, "book"));
+
+        server.verify();
+        assertThat(sessions.load(id).orElseThrow().session().step()).isEqualTo(Step.SERVICE);
+        assertThat(appointmentRepository.findById(appointmentId).orElseThrow().getStatus())
+                .isEqualTo(AppointmentStatus.CONFIRMED);
+    }
+
     private Appointment saveDirect(Client forClient, Instant start, AppointmentStatus status) {
         Appointment appointment = new Appointment(
                 forClient,

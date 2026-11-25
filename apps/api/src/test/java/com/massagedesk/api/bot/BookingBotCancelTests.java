@@ -7,6 +7,7 @@ import static com.massagedesk.api.bot.BotConversations.clientIdOf;
 import static com.massagedesk.api.bot.BotConversations.conversation;
 import static com.massagedesk.api.bot.BotConversations.reply;
 import static com.massagedesk.api.bot.BotConversations.requestJson;
+import static com.massagedesk.api.bot.BotConversations.rowIds;
 import static com.massagedesk.api.bot.BotConversations.text;
 import static com.massagedesk.api.messaging.TestOutboundMessages.MESSAGES_URL;
 import static com.massagedesk.api.messaging.TestOutboundMessages.accepted;
@@ -316,6 +317,31 @@ class BookingBotCancelTests {
         assertThat(appointmentRepository.findById(pastId).orElseThrow().getStatus())
                 .isEqualTo(AppointmentStatus.CONFIRMED);
         assertThat(cancelledEventsCount(pastId)).isZero();
+    }
+
+    @Test
+    void bookButtonOnCancelConfirmOpensServiceListWithoutCancelling() {
+        UUID id = conversation(clients, jdbc, "+998900001205");
+        UUID appointmentId = appointments
+                .create(clientIdOf(jdbc, id), serviceId, START, AppointmentSource.MANUAL, EventActor.MASTER)
+                .id();
+        sessions.save(
+                id,
+                new BotSession(Step.CANCEL_CONFIRM, null, null, null, appointmentId),
+                NOW.minus(Duration.ofMinutes(1)));
+        server.expect(requestTo(MESSAGES_URL))
+                .andExpect(method(POST))
+                .andExpect(request -> assertThat(rowIds(requestJson(json, request)))
+                        .contains("service:" + serviceId))
+                .andRespond(withSuccess(accepted("wamid.bot-confirm-book"), APPLICATION_JSON));
+
+        bot.on(reply(jdbc, id, "book"));
+
+        server.verify();
+        assertThat(sessions.load(id).orElseThrow().session().step()).isEqualTo(Step.SERVICE);
+        assertThat(appointmentRepository.findById(appointmentId).orElseThrow().getStatus())
+                .isEqualTo(AppointmentStatus.CONFIRMED);
+        assertThat(cancelledEventsCount(appointmentId)).isZero();
     }
 
     @RepeatedTest(5)
