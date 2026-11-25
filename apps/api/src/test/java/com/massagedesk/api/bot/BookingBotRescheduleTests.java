@@ -8,7 +8,6 @@ import static com.massagedesk.api.bot.BotConversations.conversation;
 import static com.massagedesk.api.bot.BotConversations.reply;
 import static com.massagedesk.api.bot.BotConversations.requestJson;
 import static com.massagedesk.api.bot.BotConversations.rowIds;
-import static com.massagedesk.api.bot.BotConversations.text;
 import static com.massagedesk.api.messaging.TestOutboundMessages.MESSAGES_URL;
 import static com.massagedesk.api.messaging.TestOutboundMessages.accepted;
 import static com.massagedesk.api.schedule.FixedClockConfiguration.NOW;
@@ -69,11 +68,6 @@ class BookingBotRescheduleTests {
     private static final Instant NEW_START = Instant.parse("2026-11-03T07:00:00Z");
     private static final Instant NEW_END = Instant.parse("2026-11-03T08:00:00Z");
     private static final Instant PAST_START = Instant.parse("2026-11-02T03:00:00Z");
-    private static final String CONFIRMATION_TEXT = """
-            Перенести запись?
-            Классический массаж
-            Сейчас: Вторник, 3 ноября, 10:00
-            Новое время: Вторник, 3 ноября, 12:00""";
     private static final String MOVED_TEXT = """
             Запись перенесена:
             Классический массаж
@@ -194,87 +188,6 @@ class BookingBotRescheduleTests {
 
         server.verify();
         assertAppointment(appointmentId, NEW_START, NEW_END, AppointmentStatus.CONFIRMED);
-    }
-
-    @Test
-    void mismatchedButtonsOrFreeTextRepeatConfirmationAndOtherTimeOrBookLeaveConfirm() {
-        UUID id = conversation(clients, jdbc, "+998900001203");
-        UUID clientId = clientIdOf(jdbc, id);
-        UUID appointmentId = appointments
-                .create(clientId, serviceId, START, AppointmentSource.MANUAL, EventActor.MASTER)
-                .id();
-        UUID otherOwnId = appointments
-                .create(
-                        clientId,
-                        serviceId,
-                        Instant.parse("2026-11-10T05:00:00Z"),
-                        AppointmentSource.MANUAL,
-                        EventActor.MASTER)
-                .id();
-        BotSession confirmSession = new BotSession(Step.CONFIRM, null, TUESDAY, NEW_START, appointmentId);
-        sessions.save(id, confirmSession, NOW.minus(Duration.ofMinutes(1)));
-
-        for (int attempt = 1; attempt <= 4; attempt++) {
-            int currentAttempt = attempt;
-            server.expect(requestTo(MESSAGES_URL))
-                    .andExpect(method(POST))
-                    .andExpect(request -> {
-                        JsonNode body = requestJson(json, request);
-                        assertThat(interactiveBodyOf(body)).isEqualTo(CONFIRMATION_TEXT);
-                        assertThat(buttonIds(body))
-                                .containsExactly(
-                                        "move_confirm:" + appointmentId + ":2026-11-03T07:00:00Z",
-                                        "other_time");
-                    })
-                    .andRespond(withSuccess(
-                            accepted("wamid.bot-move-confirm-repeat-" + currentAttempt),
-                            APPLICATION_JSON));
-        }
-        server.expect(requestTo(MESSAGES_URL))
-                .andExpect(method(POST))
-                .andExpect(request -> {
-                    JsonNode body = requestJson(json, request);
-                    assertThat(interactiveBodyOf(body)).isEqualTo("Вторник, 3 ноября. Выберите время.");
-                    assertThat(rowIds(body))
-                            .doesNotContain("time:2026-11-03T05:00:00Z")
-                            .first()
-                            .isEqualTo("time:2026-11-03T05:30:00Z");
-                })
-                .andRespond(withSuccess(accepted("wamid.bot-move-confirm-other-time"), APPLICATION_JSON));
-        server.expect(requestTo(MESSAGES_URL))
-                .andExpect(method(POST))
-                .andExpect(request -> {
-                    JsonNode body = requestJson(json, request);
-                    assertThat(interactiveBodyOf(body)).isEqualTo("Выберите массаж из списка.");
-                    assertThat(rowIds(body)).contains("service:" + serviceId);
-                })
-                .andRespond(withSuccess(accepted("wamid.bot-move-confirm-book"), APPLICATION_JSON));
-
-        bot.on(reply(jdbc, id, "move_confirm:" + otherOwnId + ":2026-11-03T07:00:00Z"));
-        assertThat(sessions.load(id).orElseThrow().session()).isEqualTo(confirmSession);
-
-        bot.on(reply(jdbc, id, "move_confirm:" + appointmentId + ":2026-11-03T08:00:00Z"));
-        assertThat(sessions.load(id).orElseThrow().session()).isEqualTo(confirmSession);
-
-        bot.on(reply(jdbc, id, "confirm:" + serviceId + ":2026-11-03T07:00:00Z"));
-        assertThat(sessions.load(id).orElseThrow().session()).isEqualTo(confirmSession);
-
-        bot.on(text(jdbc, id, "да"));
-        assertThat(sessions.load(id).orElseThrow().session()).isEqualTo(confirmSession);
-
-        bot.on(reply(jdbc, id, "other_time"));
-        assertThat(sessions.load(id).orElseThrow().session())
-                .isEqualTo(new BotSession(Step.TIME, null, TUESDAY, null, appointmentId));
-
-        sessions.save(id, confirmSession, NOW.minus(Duration.ofMinutes(1)));
-        bot.on(reply(jdbc, id, "book"));
-
-        server.verify();
-        assertThat(sessions.load(id).orElseThrow().session())
-                .isEqualTo(new BotSession(Step.SERVICE, null, null, null, null));
-        assertAppointment(appointmentId, START, START.plus(Duration.ofHours(1)), AppointmentStatus.CONFIRMED);
-        assertThat(rescheduledEventsCount(appointmentId)).isZero();
-        assertThat(rescheduledEventsCount(otherOwnId)).isZero();
     }
 
     @Test

@@ -57,7 +57,7 @@ class Rescheduling {
         Optional<Upcoming> picked =
                 BotReplies.appointmentIdOf(replyId).flatMap(id -> changes.own(id, clientId));
         if (picked.isPresent()) {
-            return lists.moveDayList(picked.get(), null).orElseGet(() -> changes.gone(clientId));
+            return orGone(lists.moveDayList(picked.get(), null), clientId);
         }
         return pickList(clientId);
     }
@@ -67,8 +67,11 @@ class Rescheduling {
             return lists.serviceList(0);
         }
         UUID clientId = message.clientId();
-        Optional<Upcoming> own =
-                Optional.ofNullable(current.appointmentId()).flatMap(id -> changes.own(id, clientId));
+        UUID appointmentId = current.appointmentId();
+        if (appointmentId == null) {
+            return changes.menu(clientId);
+        }
+        Optional<Upcoming> own = changes.own(appointmentId, clientId);
         if (own.isEmpty()) {
             return changes.gone(clientId);
         }
@@ -77,7 +80,7 @@ class Rescheduling {
         Optional<Turn> turn = day.isPresent()
                 ? lists.moveTimeList(item, day.get(), null, null)
                 : lists.moveDayList(item, null);
-        return turn.orElseGet(() -> changes.gone(clientId));
+        return orGone(turn, clientId);
     }
 
     Turn onTime(BotSession current, ClientMessageReceived message) {
@@ -101,8 +104,7 @@ class Rescheduling {
             Instant pickedStart = start.get();
             ZoneId zone = lists.zone();
             if (!LocalDate.ofInstant(pickedStart, zone).equals(day)) {
-                return lists.moveTimeList(item, day, null, null)
-                        .orElseGet(() -> changes.gone(clientId));
+                return orGone(lists.moveTimeList(item, day, null, null), clientId);
             }
             Optional<List<Instant>> starts = lists.moveStarts(item, day);
             if (starts.isEmpty()) {
@@ -113,18 +115,17 @@ class Rescheduling {
                         new BotSession(Step.CONFIRM, null, day, pickedStart, item.id()),
                         List.of(BotReplies.moveConfirmation(item, pickedStart, zone)));
             }
-            return lists.moveTimeList(item, day, null, new Text(BotReplies.TIME_TAKEN_TEXT))
-                    .orElseGet(() -> changes.gone(clientId));
+            return orGone(
+                    lists.moveTimeList(item, day, null, new Text(BotReplies.TIME_TAKEN_TEXT)), clientId);
         }
         Optional<Instant> after = BotReplies.moreTimesAfterOf(replyId);
         if (after.isPresent()) {
-            return lists.moveTimeList(item, day, after.get(), null)
-                    .orElseGet(() -> changes.gone(clientId));
+            return orGone(lists.moveTimeList(item, day, after.get(), null), clientId);
         }
         if (BotReplies.OTHER_DAY.equals(replyId)) {
-            return lists.moveDayList(item, null).orElseGet(() -> changes.gone(clientId));
+            return orGone(lists.moveDayList(item, null), clientId);
         }
-        return lists.moveTimeList(item, day, null, null).orElseGet(() -> changes.gone(clientId));
+        return orGone(lists.moveTimeList(item, day, null, null), clientId);
     }
 
     Optional<Turn> onConfirm(
@@ -146,20 +147,24 @@ class Rescheduling {
             if (!sessions.claim(message.conversationId(), Step.CONFIRM, updatedAt, clock.instant())) {
                 return Optional.empty();
             }
-            return Optional.of(movable(appointmentId, clientId, start)
-                    .map(target -> reschedule(target, clientId, day, start))
-                    .orElseGet(() -> changes.gone(clientId)));
+            return Optional.of(orGone(
+                    movable(appointmentId, clientId, start)
+                            .map(target -> reschedule(target, clientId, day, start)),
+                    clientId));
         }
         Optional<Upcoming> item = movable(appointmentId, clientId, start);
         if (item.isEmpty()) {
             return Optional.of(changes.gone(clientId));
         }
         if (BotReplies.OTHER_TIME.equals(replyId)) {
-            return Optional.of(lists.moveTimeList(item.get(), day, null, null)
-                    .orElseGet(() -> changes.gone(clientId)));
+            return Optional.of(orGone(lists.moveTimeList(item.get(), day, null, null), clientId));
         }
         return Optional.of(new Turn(
                 current, List.of(BotReplies.moveConfirmation(item.get(), start, lists.zone()))));
+    }
+
+    private Turn orGone(Optional<Turn> turn, UUID clientId) {
+        return turn.orElseGet(() -> changes.gone(clientId));
     }
 
     private Optional<Upcoming> movable(UUID appointmentId, UUID clientId, Instant start) {
@@ -172,9 +177,9 @@ class Rescheduling {
             view = appointments.reschedule(target.id(), start, EventActor.BOT);
         } catch (BookingException e) {
             return switch (e.reason()) {
-                case TIME_TAKEN, OUTSIDE_SCHEDULE ->
-                        lists.moveTimeList(target, day, null, new Text(BotReplies.TIME_TAKEN_TEXT))
-                                .orElseGet(() -> changes.gone(clientId));
+                case TIME_TAKEN, OUTSIDE_SCHEDULE -> orGone(
+                        lists.moveTimeList(target, day, null, new Text(BotReplies.TIME_TAKEN_TEXT)),
+                        clientId);
                 case APPOINTMENT_NOT_FOUND, NOT_CONFIRMED -> changes.gone(clientId);
                 case CLIENT_NOT_FOUND, SERVICE_NOT_FOUND, NOT_STARTED, IDEMPOTENCY_KEY_REUSED ->
                         changes.menu(clientId);
