@@ -7,7 +7,6 @@ import com.massagedesk.api.clients.Client;
 import com.massagedesk.api.clients.ClientRepository;
 import com.massagedesk.api.messaging.ClientMessageReceived;
 import com.massagedesk.api.messaging.OutboundMessages;
-import com.massagedesk.api.schedule.ServiceCatalog;
 import com.massagedesk.api.schedule.SlotService;
 import com.massagedesk.api.settings.SettingsService;
 import java.time.Clock;
@@ -43,7 +42,7 @@ final class BotConversations {
         return new BookingBot(
                 context.getBean(SettingsService.class),
                 context.getBean(BotSessionStore.class),
-                context.getBean(ServiceCatalog.class),
+                context.getBean(BotLists.class),
                 context.getBean(SlotService.class),
                 context.getBean(AppointmentService.class),
                 outbound,
