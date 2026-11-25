@@ -2,12 +2,17 @@ package com.massagedesk.api.bot;
 
 import static com.massagedesk.api.schedule.FixedClockConfiguration.NOW;
 
+import com.massagedesk.api.booking.Appointment;
+import com.massagedesk.api.booking.AppointmentRepository;
 import com.massagedesk.api.booking.AppointmentService;
+import com.massagedesk.api.booking.AppointmentSource;
 import com.massagedesk.api.clients.Client;
 import com.massagedesk.api.clients.ClientRepository;
 import com.massagedesk.api.messaging.ClientMessageReceived;
 import com.massagedesk.api.messaging.OutboundMessages;
+import com.massagedesk.api.schedule.MassageService;
 import com.massagedesk.api.schedule.SlotService;
+import com.massagedesk.api.schedule.TimeRange;
 import com.massagedesk.api.settings.SettingsService;
 import java.time.Clock;
 import java.time.Duration;
@@ -72,6 +77,29 @@ final class BotConversations {
                 appointments,
                 outbound,
                 clock);
+    }
+
+    static BookingBot botAt(ApplicationContext context, OutboundMessages outbound, Instant instant) {
+        return bot(
+                context,
+                outbound,
+                Clock.fixed(instant, ZoneOffset.UTC),
+                context.getBean(BotProperties.class));
+    }
+
+    static Appointment saveDirect(
+            ClientRepository clients,
+            AppointmentRepository appointments,
+            JdbcTemplate jdbc,
+            MassageService service,
+            UUID conversationId,
+            Instant start) {
+        Client client = clients.findById(clientIdOf(jdbc, conversationId)).orElseThrow();
+        return appointments.saveAndFlush(new Appointment(
+                client,
+                service,
+                new TimeRange(start, start.plus(Duration.ofHours(1))),
+                AppointmentSource.MANUAL));
     }
 
     static UUID conversation(ClientRepository clients, JdbcTemplate jdbc, String phone) {
@@ -149,6 +177,14 @@ final class BotConversations {
             ids.add(row.path("id").asString());
         }
         return ids;
+    }
+
+    static String textOf(JsonNode body) {
+        return body.path("text").path("body").asString("");
+    }
+
+    static String interactiveBodyOf(JsonNode body) {
+        return body.path("interactive").path("body").path("text").asString("");
     }
 
     static ClientMessageReceived text(JdbcTemplate jdbc, UUID conversationId, String body) {

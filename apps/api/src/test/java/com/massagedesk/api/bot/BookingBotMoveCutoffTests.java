@@ -1,13 +1,16 @@
 package com.massagedesk.api.bot;
 
 import static com.massagedesk.api.bot.BotConversations.bot;
+import static com.massagedesk.api.bot.BotConversations.botAt;
 import static com.massagedesk.api.bot.BotConversations.buttonIds;
 import static com.massagedesk.api.bot.BotConversations.cleanUp;
-import static com.massagedesk.api.bot.BotConversations.clientIdOf;
 import static com.massagedesk.api.bot.BotConversations.conversation;
+import static com.massagedesk.api.bot.BotConversations.interactiveBodyOf;
 import static com.massagedesk.api.bot.BotConversations.reply;
 import static com.massagedesk.api.bot.BotConversations.requestJson;
 import static com.massagedesk.api.bot.BotConversations.rowIds;
+import static com.massagedesk.api.bot.BotConversations.saveDirect;
+import static com.massagedesk.api.bot.BotConversations.textOf;
 import static com.massagedesk.api.messaging.TestOutboundMessages.MESSAGES_URL;
 import static com.massagedesk.api.messaging.TestOutboundMessages.accepted;
 import static com.massagedesk.api.schedule.FixedClockConfiguration.NOW;
@@ -22,10 +25,8 @@ import com.massagedesk.api.TestcontainersConfiguration;
 import com.massagedesk.api.booking.Appointment;
 import com.massagedesk.api.booking.AppointmentRepository;
 import com.massagedesk.api.booking.AppointmentService;
-import com.massagedesk.api.booking.AppointmentSource;
 import com.massagedesk.api.booking.AppointmentStatus;
 import com.massagedesk.api.bot.BotSession.Step;
-import com.massagedesk.api.clients.Client;
 import com.massagedesk.api.clients.ClientRepository;
 import com.massagedesk.api.events.EventActor;
 import com.massagedesk.api.messaging.OutboundMessages;
@@ -43,7 +44,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.time.ZoneOffset;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -134,7 +134,7 @@ class BookingBotMoveCutoffTests {
     @Test
     void pickAtExactBoundaryOpensDayList() {
         UUID id = conversation(clients, jdbc, "+998900001201");
-        UUID appointmentId = saveDirect(id, START).getId();
+        UUID appointmentId = saveDirect(clients, appointmentRepository, jdbc, service, id, START).getId();
         sessions.save(
                 id,
                 new BotSession(Step.MOVE_PICK, null, null, null, null),
@@ -161,7 +161,7 @@ class BookingBotMoveCutoffTests {
     @Test
     void pickOneSecondInsideCutoffSendsTooLateNoticeAndMenuAndKeepsAppointmentAtOriginalTime() {
         UUID id = conversation(clients, jdbc, "+998900001202");
-        UUID appointmentId = saveDirect(id, START).getId();
+        UUID appointmentId = saveDirect(clients, appointmentRepository, jdbc, service, id, START).getId();
         sessions.save(
                 id,
                 new BotSession(Step.MOVE_PICK, null, null, null, null),
@@ -169,7 +169,7 @@ class BookingBotMoveCutoffTests {
 
         expectTextAndMenuWithAppointment(TOO_LATE_30_TEXT, "pick-too-late");
 
-        botAt(NOW.plusSeconds(1)).on(reply(jdbc, id, "appointment:" + appointmentId));
+        botAt(context, outbound, NOW.plusSeconds(1)).on(reply(jdbc, id, "appointment:" + appointmentId));
 
         server.verify();
         assertThat(sessions.load(id).orElseThrow().session()).isEqualTo(BotSession.menu());
@@ -180,7 +180,7 @@ class BookingBotMoveCutoffTests {
     @Test
     void confirmAfterCutoffPassedSinceConfirmationWasShownRefusesToMoveAndReturnsToMenu() {
         UUID id = conversation(clients, jdbc, "+998900001203");
-        UUID appointmentId = saveDirect(id, START).getId();
+        UUID appointmentId = saveDirect(clients, appointmentRepository, jdbc, service, id, START).getId();
         sessions.save(id, BotSession.menu(), NOW.minus(Duration.ofMinutes(1)));
         String confirmReplyId = "move_confirm:" + appointmentId + ":2026-11-03T07:00:00Z";
 
@@ -224,7 +224,7 @@ class BookingBotMoveCutoffTests {
         bot.on(reply(jdbc, id, "appointment:" + appointmentId));
         bot.on(reply(jdbc, id, "day:2026-11-03"));
         bot.on(reply(jdbc, id, "time:2026-11-03T07:00:00Z"));
-        botAt(NOW.plusSeconds(1)).on(reply(jdbc, id, confirmReplyId));
+        botAt(context, outbound, NOW.plusSeconds(1)).on(reply(jdbc, id, confirmReplyId));
 
         server.verify();
         assertThat(sessions.load(id).orElseThrow().session()).isEqualTo(BotSession.menu());
@@ -235,7 +235,7 @@ class BookingBotMoveCutoffTests {
     @Test
     void confirmAtExactBoundaryReschedulesAppointmentAndRecordsBotEvent() {
         UUID id = conversation(clients, jdbc, "+998900001204");
-        UUID appointmentId = saveDirect(id, START).getId();
+        UUID appointmentId = saveDirect(clients, appointmentRepository, jdbc, service, id, START).getId();
         sessions.save(
                 id,
                 new BotSession(Step.CONFIRM, null, TUESDAY, NEW_START, appointmentId),
@@ -261,7 +261,7 @@ class BookingBotMoveCutoffTests {
     @Test
     void confirmInsideCutoffWhenAlreadyCancelledByMasterSendsGoneInsteadOfTooLate() {
         UUID id = conversation(clients, jdbc, "+998900001205");
-        UUID appointmentId = saveDirect(id, START).getId();
+        UUID appointmentId = saveDirect(clients, appointmentRepository, jdbc, service, id, START).getId();
         sessions.save(
                 id,
                 new BotSession(Step.CONFIRM, null, TUESDAY, NEW_START, appointmentId),
@@ -285,7 +285,7 @@ class BookingBotMoveCutoffTests {
                 })
                 .andRespond(withSuccess(accepted("wamid.bot-move-cutoff-gone-menu"), APPLICATION_JSON));
 
-        botAt(NOW.plusSeconds(1))
+        botAt(context, outbound, NOW.plusSeconds(1))
                 .on(reply(jdbc, id, "move_confirm:" + appointmentId + ":2026-11-03T07:00:00Z"));
 
         server.verify();
@@ -296,7 +296,7 @@ class BookingBotMoveCutoffTests {
     @Test
     void masterCanRescheduleAppointmentStartingInFiveMinutes() {
         UUID id = conversation(clients, jdbc, "+998900001206");
-        UUID appointmentId = saveDirect(id, Instant.parse("2026-11-02T05:20:00Z")).getId();
+        UUID appointmentId = saveDirect(clients, appointmentRepository, jdbc, service, id, Instant.parse("2026-11-02T05:20:00Z")).getId();
 
         appointments.reschedule(appointmentId, NEW_START, EventActor.MASTER);
 
@@ -322,23 +322,6 @@ class BookingBotMoveCutoffTests {
                 })
                 .andRespond(withSuccess(
                         accepted("wamid.bot-move-cutoff-menu-" + wamidSuffix), APPLICATION_JSON));
-    }
-
-    private BookingBot botAt(Instant instant) {
-        return bot(
-                context,
-                outbound,
-                Clock.fixed(instant, ZoneOffset.UTC),
-                context.getBean(BotProperties.class));
-    }
-
-    private Appointment saveDirect(UUID conversationId, Instant start) {
-        Client client = clients.findById(clientIdOf(jdbc, conversationId)).orElseThrow();
-        return appointmentRepository.saveAndFlush(new Appointment(
-                client,
-                service,
-                new TimeRange(start, start.plus(Duration.ofHours(1))),
-                AppointmentSource.MANUAL));
     }
 
     private void assertAppointment(
@@ -367,13 +350,5 @@ class BookingBotMoveCutoffTests {
                   and entity_id = ?""",
                 Integer.class,
                 appointmentId);
-    }
-
-    private static String textOf(JsonNode body) {
-        return body.path("text").path("body").asString("");
-    }
-
-    private static String interactiveBodyOf(JsonNode body) {
-        return body.path("interactive").path("body").path("text").asString("");
     }
 }
