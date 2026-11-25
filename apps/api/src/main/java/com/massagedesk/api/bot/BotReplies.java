@@ -90,9 +90,10 @@ final class BotReplies {
         }
     }
 
-    record Upcoming(UUID id, String serviceName, Instant start) {
+    record Upcoming(UUID id, UUID serviceId, String serviceName, Instant start) {
         Upcoming {
             Objects.requireNonNull(id, "id");
+            Objects.requireNonNull(serviceId, "serviceId");
             Objects.requireNonNull(serviceName, "serviceName");
             Objects.requireNonNull(start, "start");
         }

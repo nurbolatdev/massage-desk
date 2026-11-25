@@ -39,7 +39,10 @@ class AppointmentChanges {
     List<Upcoming> upcoming(UUID clientId) {
         return appointments.upcomingOfClient(clientId, BotReplies.MAX_UPCOMING).stream()
                 .map(v -> new Upcoming(
-                        v.appointment().id(), v.serviceName(), v.appointment().period().start()))
+                        v.appointment().id(),
+                        v.appointment().serviceId(),
+                        v.serviceName(),
+                        v.appointment().period().start()))
                 .toList();
     }
 
