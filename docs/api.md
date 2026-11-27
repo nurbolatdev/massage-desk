@@ -318,6 +318,6 @@ Response `200`:
 
 - Repeating the request with the same token is safe: it returns `200` with the same `id` and moves the token to the staff member who sent it last.
 - `DELETE /devices/{id}` removes the device if it belongs to the caller and answers `204`; an unknown `id` or another staff member's device is ignored and also answers `204`.
-- Sending notifications arrives in a later release.
+- The server sends notifications to every registered device through the Expo push service; a token the service reports as no longer registered is removed, and the app registers again on the next sign-in.
 
 - `400` (`application/problem+json`): `expoPushToken` is missing, blank, not an Expo push token (`ExpoPushToken[...]` or `ExponentPushToken[...]`) or longer than 255 characters; malformed JSON; or `id` on `DELETE` is not a UUID.

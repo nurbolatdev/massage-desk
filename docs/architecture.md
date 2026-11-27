@@ -45,6 +45,7 @@ com.massagedesk.api
 ├── bot          conversation flow (buttons)
 ├── ai           AI assistant: model client, tools, guardrails, run log
 ├── reminders    scheduled reminders
+├── push         device registration, push notifications to staff phones
 ├── admin        statistics and diagnostics
 └── security     Supabase JWT, roles
 ```
