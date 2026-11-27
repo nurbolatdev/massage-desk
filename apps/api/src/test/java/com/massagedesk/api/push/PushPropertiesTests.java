@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import tools.jackson.databind.json.JsonMapper;
 
 class PushPropertiesTests {
 
@@ -130,6 +131,7 @@ class PushPropertiesTests {
     @Test
     void contextBindsPropertiesFromConfiguration() {
         new ApplicationContextRunner()
+                .withBean(JsonMapper.class, () -> JsonMapper.builder().build())
                 .withUserConfiguration(PushConfig.class)
                 .withPropertyValues(
                         "app.push.url=https://push.test/--/api/v2/push/send/",
@@ -138,27 +140,32 @@ class PushPropertiesTests {
                         "app.push.read-timeout=12s")
                 .run(context -> {
                     assertThat(context).hasNotFailed();
+                    assertThat(context).hasSingleBean(ExpoPushClient.class);
                     PushProperties props = context.getBean(PushProperties.class);
                     assertThat(props.configured()).isTrue();
                     assertThat(props.url()).isEqualTo("https://push.test/--/api/v2/push/send/");
                     assertThat(props.accessToken()).isEqualTo("my-secret-token");
                     assertThat(props.connectTimeout()).isEqualTo(Duration.ofSeconds(4));
                     assertThat(props.readTimeout()).isEqualTo(Duration.ofSeconds(12));
+                    assertThat(context.getBean(ExpoPushClient.class).configured()).isTrue();
                 });
     }
 
     @Test
     void contextStartsNotConfiguredWithoutPushProperties() {
         new ApplicationContextRunner()
+                .withBean(JsonMapper.class, () -> JsonMapper.builder().build())
                 .withUserConfiguration(PushConfig.class)
                 .run(context -> {
                     assertThat(context).hasNotFailed();
+                    assertThat(context).hasSingleBean(ExpoPushClient.class);
                     PushProperties props = context.getBean(PushProperties.class);
                     assertThat(props.configured()).isFalse();
                     assertThat(props.url()).isEmpty();
                     assertThat(props.accessToken()).isEmpty();
                     assertThat(props.connectTimeout()).isEqualTo(Duration.ofSeconds(5));
                     assertThat(props.readTimeout()).isEqualTo(Duration.ofSeconds(10));
+                    assertThat(context.getBean(ExpoPushClient.class).configured()).isFalse();
                 });
     }
 }
