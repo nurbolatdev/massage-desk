@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 
 import com.massagedesk.api.TestcontainersConfiguration;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +20,7 @@ class DeviceStoreTests {
 
     private static final String TOKEN_A = "ExponentPushToken[aaaaaaaaaaaaaaaaaaaaaa]";
     private static final String TOKEN_B = "ExponentPushToken[bbbbbbbbbbbbbbbbbbbbbb]";
+    private static final String TOKEN_C = "ExponentPushToken[cccccccccccccccccccccc]";
 
     @Autowired
     private DeviceStore store;
@@ -105,6 +107,54 @@ class DeviceStoreTests {
 
         assertThatNoException().isThrownBy(() -> store.remove(UUID.randomUUID(), userId));
         assertThat(deviceCount()).isEqualTo(1);
+    }
+
+    @Test
+    void tokensReturnsEmptyListWhenNoDevicesExist() {
+        assertThat(store.tokens()).isEmpty();
+    }
+
+    @Test
+    void tokensReturnsAllTokensOfAllUsersInCreationOrder() {
+        UUID masterId = insertProfile("master");
+        UUID adminId = insertProfile("admin");
+
+        UUID firstId = store.register(masterId, TOKEN_B);
+        UUID secondId = store.register(adminId, TOKEN_A);
+        UUID thirdId = store.register(masterId, TOKEN_C);
+        jdbc.update("update devices set created_at = '2026-01-01T10:00:00Z'::timestamptz where id = ?", firstId);
+        jdbc.update("update devices set created_at = '2026-01-01T10:00:01Z'::timestamptz where id = ?", secondId);
+        jdbc.update("update devices set created_at = '2026-01-01T10:00:02Z'::timestamptz where id = ?", thirdId);
+
+        assertThat(store.tokens()).containsExactly(TOKEN_B, TOKEN_A, TOKEN_C);
+    }
+
+    @Test
+    void forgetDeletesGivenTokensIgnoresUnknownAndReturnsDeletedCount() {
+        UUID masterId = insertProfile("master");
+        UUID adminId = insertProfile("admin");
+        store.register(masterId, TOKEN_A);
+        store.register(adminId, TOKEN_B);
+        store.register(masterId, TOKEN_C);
+
+        int removed = store.forget(List.of(
+                TOKEN_A,
+                TOKEN_C,
+                "ExponentPushToken[unknown-token]"));
+
+        assertThat(removed).isEqualTo(2);
+        assertThat(store.tokens()).containsExactly(TOKEN_B);
+    }
+
+    @Test
+    void forgetWithEmptyCollectionReturnsZeroAndDeletesNothing() {
+        UUID userId = insertProfile("master");
+        store.register(userId, TOKEN_A);
+
+        int removed = store.forget(List.of());
+
+        assertThat(removed).isZero();
+        assertThat(store.tokens()).containsExactly(TOKEN_A);
     }
 
     private UUID insertProfile(String role) {
