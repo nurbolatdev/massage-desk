@@ -900,7 +900,9 @@ Push, reminders, morning summary, dashboard and reports. Ends with release **v0.
 - **Pull request:** `feat(mobile): push notifications`
 - **Depends on:** M1-21
 - **Commits:**
-  1. `feat(api): device registration and push sender`
+  1. `feat(api): device registration`
+  1. `feat(api): push sender`
+  1. `feat(api): notify the master about bot bookings`
   1. `feat(mobile): notification permissions and channel`
   1. `feat(mobile): open the right screen from a push`
 

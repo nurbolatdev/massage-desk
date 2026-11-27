@@ -1,5 +1,7 @@
 package com.massagedesk.api.push;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -7,7 +9,8 @@ import org.springframework.stereotype.Repository;
 
 /**
  * Push notification devices. One token is one phone; the last staff member to register it owns it;
- * removal is allowed only by the owner.
+ * removal is allowed only by the owner; tokens the push service reports as unregistered are
+ * forgotten.
  */
 @Repository
 class DeviceStore {
@@ -39,6 +42,22 @@ class DeviceStore {
         jdbc.sql("delete from devices where id = :id and user_id = :userId")
                 .param("id", id)
                 .param("userId", userId)
+                .update();
+    }
+
+    List<String> tokens() {
+        return jdbc.sql("select expo_push_token from devices order by created_at, id")
+                .query(String.class)
+                .list();
+    }
+
+    int forget(Collection<String> tokens) {
+        Objects.requireNonNull(tokens, "tokens");
+        if (tokens.isEmpty()) {
+            return 0;
+        }
+        return jdbc.sql("delete from devices where expo_push_token in (:tokens)")
+                .param("tokens", tokens)
                 .update();
     }
 }

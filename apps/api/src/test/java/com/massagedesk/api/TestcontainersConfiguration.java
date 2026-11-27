@@ -18,10 +18,16 @@ public class TestcontainersConfiguration {
 				.withTmpFs(Map.of("/var/lib/postgresql/data", "rw"));
 	}
 
-	/** Tests never send real messages, even when WHATSAPP_* variables are exported in the shell. */
+	/**
+	 * Tests never send real messages or notifications, even when WHATSAPP_* or PUSH_* variables are
+	 * exported in the shell.
+	 */
 	@Bean
-	public DynamicPropertyRegistrar noWhatsAppSending() {
-		return registry -> registry.add("app.whatsapp.api.url", () -> "");
+	public DynamicPropertyRegistrar noOutboundSending() {
+		return registry -> {
+			registry.add("app.whatsapp.api.url", () -> "");
+			registry.add("app.push.url", () -> "");
+		};
 	}
 
 }
