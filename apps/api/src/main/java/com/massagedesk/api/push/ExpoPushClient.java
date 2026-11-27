@@ -31,7 +31,7 @@ import tools.jackson.databind.node.ObjectNode;
  */
 class ExpoPushClient {
 
-    private static final int MAX_BATCH_SIZE = 100;
+    static final int MAX_BATCH_SIZE = 100;
     private static final int MAX_ERROR_BODY_BYTES = 64 * 1024;
     private static final Pattern REQUEST_ERROR_CODE_PATTERN = Pattern.compile("^[A-Z0-9_]{1,64}$");
     private static final Pattern TICKET_ERROR_CODE_PATTERN = Pattern.compile("^[A-Za-z0-9_]{1,64}$");
@@ -58,7 +58,7 @@ class ExpoPushClient {
         Objects.requireNonNull(tokens, "tokens");
         Objects.requireNonNull(message, "message");
         if (tokens.isEmpty() || tokens.size() > MAX_BATCH_SIZE) {
-            throw new IllegalArgumentException("push batch must have 1..100 tokens");
+            throw new IllegalArgumentException("push batch must have 1.." + MAX_BATCH_SIZE + " tokens");
         }
         if (!api.configured()) {
             throw new PushSendException(Reason.NOT_CONFIGURED, 0, null);

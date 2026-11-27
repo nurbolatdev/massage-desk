@@ -2,7 +2,9 @@ package com.massagedesk.api.push;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.TreeMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -17,7 +19,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class PushSender {
 
-    static final int MAX_BATCH = 100;
+    static final int MAX_BATCH = ExpoPushClient.MAX_BATCH_SIZE;
 
     private static final Logger log = LoggerFactory.getLogger(PushSender.class);
 
@@ -57,6 +59,7 @@ public class PushSender {
         int okCount = 0;
         int failedCount = 0;
         List<String> unregistered = new ArrayList<>();
+        Map<String, Integer> failures = new TreeMap<>();
 
         for (int start = 0; start < tokens.size(); start += MAX_BATCH) {
             int end = Math.min(start + MAX_BATCH, tokens.size());
@@ -66,10 +69,12 @@ public class PushSender {
                 tickets = client.send(batch, message);
             } catch (PushSendException e) {
                 failedCount += batch.size();
+                failures.merge("request", batch.size(), Integer::sum);
                 log.warn("push batch of {} failed: {}", batch.size(), e.getMessage());
                 continue;
             } catch (RuntimeException e) {
                 failedCount += batch.size();
+                failures.merge("request", batch.size(), Integer::sum);
                 log.warn("push batch of {} failed: {}", batch.size(), e.getClass().getName());
                 continue;
             }
@@ -81,6 +86,7 @@ public class PushSender {
                     okCount++;
                 } else {
                     failedCount++;
+                    failures.merge(ticket.error() == null ? "unknown" : ticket.error(), 1, Integer::sum);
                     if (ticket.deviceNotRegistered()) {
                         unregistered.add(batch.get(i));
                     }
@@ -97,6 +103,6 @@ public class PushSender {
             }
         }
 
-        log.info("push sent: {} ok, {} failed, {} devices removed", okCount, failedCount, removedCount);
+        log.info("push sent: {} ok, {} failed ({}), {} devices removed", okCount, failedCount, failures, removedCount);
     }
 }

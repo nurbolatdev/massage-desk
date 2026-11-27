@@ -185,7 +185,7 @@ class PushSenderTests {
         server.verify();
         assertThat(store.tokens()).containsExactly(TOKEN_1);
         assertThat(output.getOut())
-                .contains("push sent: 1 ok, 1 failed, 1 devices removed")
+                .contains("push sent: 1 ok, 1 failed ({DeviceNotRegistered=1}), 1 devices removed")
                 .doesNotContain(TOKEN_1)
                 .doesNotContain(TOKEN_2)
                 .doesNotContain("ExponentPushToken")
@@ -194,7 +194,7 @@ class PushSenderTests {
     }
 
     @Test
-    void messageRateExceededTicketKeepsRow() {
+    void messageRateExceededTicketKeepsRowAndLogsItsCode(CapturedOutput output) {
         UUID userId = insertProfile("master");
         registerDevice(userId, TOKEN_1);
 
@@ -216,6 +216,9 @@ class PushSenderTests {
 
         server.verify();
         assertThat(store.tokens()).containsExactly(TOKEN_1);
+        assertThat(output.getOut())
+                .contains("push sent: 0 ok, 1 failed ({MessageRateExceeded=1}), 0 devices removed")
+                .doesNotContain(TOKEN_1);
     }
 
     @Test
@@ -241,7 +244,7 @@ class PushSenderTests {
         assertThat(store.tokens()).hasSize(150);
         assertThat(output.getOut())
                 .contains("push batch of 100 failed: push request failed: UNAVAILABLE (HTTP 503) SERVICE_UNAVAILABLE")
-                .contains("push sent: 50 ok, 100 failed, 0 devices removed")
+                .contains("push sent: 50 ok, 100 failed ({request=100}), 0 devices removed")
                 .doesNotContain(allTokens.get(0))
                 .doesNotContain("ExponentPushToken")
                 .doesNotContain(SAMPLE_MESSAGE.title())
